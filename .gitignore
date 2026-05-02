@@ -1,1 +1,4 @@
 .env
+api/talabat_postman_collection.json
+node_modules/
+.DS_Store
