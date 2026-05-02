@@ -22,6 +22,7 @@ import { registerNotificationsSocket } from "./sockets/notifications.socket.js";
 import { registerDispatchSocket } from "./sockets/dispatch.socket.js";
 
 // ─── Route modules ────────────────────────────────────────────────────────────
+import authRoutes from "./modules/auth/routes/auth.routes.js";
 
 // ═════════════════════════════════════════════════════════════════════════════
 // APP BOOTSTRAP
@@ -67,6 +68,7 @@ app.use("/api", apiLimiter);
 // ═════════════════════════════════════════════════════════════════════════════
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
+app.use("/api/auth", authRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) =>
