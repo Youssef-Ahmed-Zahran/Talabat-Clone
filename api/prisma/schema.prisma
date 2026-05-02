@@ -1,0 +1,1097 @@
+// ============================================================
+// Talabat Clone
+// ============================================================
+
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+// StoreType is intentionally a free-form String on the Store model.
+// This means any new category (e.g. "HEALTH_BEAUTY", "ELECTRONICS",
+// "PET_SUPPLIES") can be added at runtime without modifying the schema
+// or running a Prisma migration.
+// Convention: use UPPER_SNAKE_CASE strings (e.g. "RESTAURANT", "GROCERY").
+
+enum DeliveryType {
+  TALABAT
+  STORE
+  TALABAT_DELIVERY
+  STORE_DELIVERY
+}
+
+enum PaymentMethodType {
+  CASH
+  CARD
+  PAYPAL
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY_FOR_PICKUP
+  WAITING_FOR_DRIVER
+  PICKED_UP
+  ON_THE_WAY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum DriverVehicleType {
+  CAR
+  BIKE
+  BICYCLE
+  WALKER
+}
+
+enum DriverApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DriverStatus {
+  OFFLINE
+  ONLINE
+  ON_DELIVERY
+  SUSPENDED
+}
+
+enum ShirtSize {
+  MEDIUM
+  LARGE
+  XL
+}
+
+enum DocumentType {
+  ID_FRONT
+  ID_BACK
+  LICENSE_FRONT
+  LICENSE_BACK
+  VEHICLE_LICENSE_FRONT
+  VEHICLE_LICENSE_BACK
+  CRIMINAL_RECORD
+  SELFIE
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AssignmentStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum AddressType {
+  APARTMENT
+  VILLA
+  OFFICE
+}
+
+enum NotificationType {
+  ORDER_UPDATE
+  PROMOTION
+  SYSTEM
+  CHAT
+}
+
+enum Platform {
+  IOS
+  ANDROID
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  SUPPORT
+  CUSTOMER
+}
+
+enum MessageSender {
+  USER
+  DRIVER
+}
+
+enum LiveTrackingStatus {
+  WAITING_FOR_DRIVER
+  DRIVER_ASSIGNED
+  DRIVER_HEADING_TO_STORE
+  DRIVER_AT_STORE
+  DRIVER_HEADING_TO_CUSTOMER
+  DELIVERED
+}
+
+enum StatusChangedByType {
+  USER
+  DRIVER
+  ADMIN
+  SYSTEM
+}
+
+// ============================================================
+// GEOGRAPHY
+// ============================================================
+
+model Country {
+  id   String @id @default(uuid())
+  name String
+  code String @unique
+
+  createdAt DateTime @default(now())
+
+  governorates Governorate[]
+  cities       City[]
+
+  @@index([code])
+  @@index([name])
+  @@map("countries")
+}
+
+model Governorate {
+  id        String @id @default(uuid())
+  countryId String
+  name      String
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  cities             City[]
+  driverApplications DriverApplication[]
+
+  @@unique([name, countryId])
+  @@index([countryId])
+  @@map("governorates")
+}
+
+model City {
+  id            String  @id @default(uuid())
+  countryId     String
+  governorateId String?
+  name          String
+
+  country     Country      @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  governorate Governorate? @relation(fields: [governorateId], references: [id], onDelete: SetNull)
+
+  addresses UserAddress[]
+  stores    Store[]
+  drivers   Driver[]
+
+  @@index([countryId])
+  @@index([governorateId])
+  @@index([name])
+  @@map("cities")
+}
+
+// ============================================================
+// USER
+// ============================================================
+
+model User {
+  id           String    @id @default(uuid())
+  fullName     String
+  email        String    @unique
+  phone        String?   @unique
+  passwordHash String
+  role         AdminRole @default(CUSTOMER)
+
+  isVerified Boolean @default(false)
+  isBlocked  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses     UserAddress[]
+  carts         Cart[]
+  orders        Order[]
+  storeReviews  StoreReview[]
+  devices       UserDevice[]
+  conversations Conversation[]
+  savedCards    SavedCard[]
+
+  storeWishlists StoreWishlist[]
+
+  notifications UserNotification[]
+  fcmTokens     UserFcmToken[]
+
+  statusChanges OrderStatusHistory[] @relation("StatusChangedByUser")
+
+  @@index([email])
+  @@index([phone])
+  @@index([isBlocked])
+  @@index([isVerified])
+  @@map("users")
+}
+
+model UserDevice {
+  id          String   @id @default(uuid())
+  userId      String
+  deviceToken String
+  platform    Platform
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceToken])
+  @@index([userId])
+  @@map("user_devices")
+}
+
+// ============================================================
+// ADDRESS
+// ============================================================
+
+model UserAddress {
+  id              String      @id @default(uuid())
+  userId          String
+  cityId          String
+  type            AddressType @default(APARTMENT)
+  label           String?
+  buildingName    String?
+  apartmentNumber String?
+  floor           String?
+  street          String?
+  phone           String?
+
+  latitude  Decimal
+  longitude Decimal
+
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  orders Order[]
+
+  @@index([userId])
+  @@index([cityId])
+  @@index([isDefault])
+  @@map("user_addresses")
+}
+
+model SavedCard {
+  id           String  @id @default(uuid())
+  userId       String
+  lastFour     String
+  brand        String
+  expiryMonth  Int
+  expiryYear   Int
+  isDefault    Boolean @default(false)
+  gatewayToken String?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isDefault])
+  @@map("saved_cards")
+}
+
+// ============================================================
+// OWNER ACCOUNT
+// ============================================================
+
+model OwnerAccount {
+  id           String @id @default(uuid())
+  storeId      String @unique
+  email        String @unique
+  passwordHash String
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store         Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  actionLogs    OwnerActionLog[]
+  notifications OwnerNotification[]
+
+  @@index([email])
+  @@index([isActive])
+  @@map("owner_accounts")
+}
+
+model OwnerActionLog {
+  id          String  @id @default(uuid())
+  ownerId     String
+  action      String
+  targetTable String
+  targetId    String?
+  meta        Json?
+
+  createdAt DateTime @default(now())
+
+  owner OwnerAccount @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([targetTable])
+  @@index([createdAt])
+  @@map("owner_action_logs")
+}
+
+// ============================================================
+// DRIVER
+// ============================================================
+
+model Driver {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  phone        String?      @unique
+  passwordHash String
+  cityId       String
+  status       DriverStatus @default(OFFLINE)
+
+  isOnline  Boolean  @default(false)
+  latitude  Decimal?
+  longitude Decimal?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  application   DriverApplication?
+  documents     DriverDocument[]
+  assignments   OrderDriverAssignment[]
+  deliveries    Delivery[]
+  earnings      DriverEarning[]
+  trackingPings OrderTracking[]
+  liveTracking  LiveTracking[]
+  conversations Conversation[]
+
+  notifications DriverNotification[]
+  fcmTokens     DriverFcmToken[]
+
+  statusChanges OrderStatusHistory[] @relation("StatusChangedByDriver")
+
+  @@index([email])
+  @@index([phone])
+  @@index([cityId])
+  @@index([status])
+  @@index([isOnline])
+  @@index([isOnline, latitude, longitude])
+  @@map("drivers")
+}
+
+model DriverApplication {
+  id       String @id @default(uuid())
+  driverId String @unique
+
+  status DriverApplicationStatus @default(PENDING)
+
+  vehicleType DriverVehicleType
+  firstName   String
+  familyName  String
+  phone       String
+  secondPhone String?
+  isOver18    Boolean           @default(false)
+  nationalId  String?
+
+  nationality          String?
+  gender               String?
+  dateOfBirth          DateTime?
+  idNumber             String?
+  idExpiryDate         DateTime?
+  governorateId        String?
+  residenceGovernorate String?
+
+  drivingLicenseExpiry      DateTime?
+  vehiclePlateNumber        String?
+  vehicleRegistrationExpiry DateTime?
+
+  interestedInTobacco Boolean    @default(false)
+  shirtSize           ShirtSize?
+
+  rejectionReason String?
+  reviewedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  driver      Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  governorate Governorate? @relation(fields: [governorateId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([governorateId])
+  @@map("driver_applications")
+}
+
+model DriverDocument {
+  id              String         @id @default(uuid())
+  driverId        String
+  documentType    DocumentType
+  fileUrl         String
+  status          DocumentStatus @default(PENDING)
+  rejectionReason String?
+  verifiedAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@index([documentType])
+  @@index([status])
+  @@index([driverId, status])
+  @@map("driver_documents")
+}
+
+// ============================================================
+// ADMIN
+// ============================================================
+
+model Admin {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  fullName     String
+  role         AdminRole @default(ADMIN)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  actionLogs AdminActionLog[]
+
+  statusChanges OrderStatusHistory[] @relation("StatusChangedByAdmin")
+
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+  @@map("admins")
+}
+
+model AdminActionLog {
+  id          String  @id @default(uuid())
+  adminId     String
+  action      String
+  targetTable String
+  targetId    String?
+  meta        Json?
+
+  createdAt DateTime @default(now())
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([targetTable])
+  @@index([createdAt])
+  @@map("admin_action_logs")
+}
+
+// ============================================================
+// CATEGORIES
+// ============================================================
+
+model MainCategory {
+  id       String  @id @default(uuid())
+  name     String
+  imageUrl String?
+
+  createdAt DateTime @default(now())
+
+  subCategories SubCategory[]
+  stores        Store[]
+
+  @@index([name])
+  @@map("main_categories")
+}
+
+model SubCategory {
+  id             String  @id @default(uuid())
+  mainCategoryId String
+  name           String
+  imageUrl       String?
+
+  createdAt DateTime @default(now())
+
+  mainCategory MainCategory       @relation(fields: [mainCategoryId], references: [id], onDelete: Cascade)
+  storeLinks   StoreSubCategory[]
+
+  @@index([mainCategoryId])
+  @@index([name])
+  @@map("sub_categories")
+}
+
+// ============================================================
+// STORE
+// ============================================================
+
+model Store {
+  id             String @id @default(uuid())
+  mainCategoryId String
+  cityId         String
+
+  name        String
+  description String?
+  legalName   String?
+  phone       String?
+  email       String?
+  address     String?
+
+  logoUrl  String?
+  coverUrl String?
+
+  // Free-form store type string — e.g. "RESTAURANT", "GROCERY",
+  // "PHARMACY", "HEALTH_BEAUTY", "ELECTRONICS" — no enum lock-in.
+  storeType    String
+  deliveryType DeliveryType
+
+  openTime  String?
+  closeTime String?
+
+  deliveryTimeMinutes Int?
+  minimumOrderCost    Decimal? @default(0)
+  deliveryFees        Decimal? @default(0)
+
+  allowPreorder Boolean @default(false)
+
+  latitude  Decimal
+  longitude Decimal
+
+  ratingSum     Int     @default(0)
+  totalReviews  Int     @default(0)
+  averageRating Decimal @default(0)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mainCategory MainCategory @relation(fields: [mainCategoryId], references: [id], onDelete: Cascade)
+  city         City         @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  ownerAccount    OwnerAccount?
+  reviews         StoreReview[]
+  orders          Order[]
+  paymentMethods  StorePaymentMethod[]
+  storeCategories StoreSubCategory[]
+  carts           Cart[]
+
+  storeWishlists StoreWishlist[]
+
+  @@index([mainCategoryId])
+  @@index([cityId])
+  @@index([storeType])
+  @@index([isActive])
+  @@index([averageRating])
+  @@index([latitude, longitude])
+  @@map("stores")
+}
+
+model StoreSubCategory {
+  id            String @id @default(uuid())
+  storeId       String
+  subCategoryId String
+
+  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  subCategory SubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, subCategoryId])
+  @@index([storeId])
+  @@index([subCategoryId])
+  @@map("store_sub_categories")
+}
+
+// ============================================================
+// PAYMENT METHODS
+// ============================================================
+
+model PaymentMethod {
+  id   String            @id @default(uuid())
+  name PaymentMethodType @unique
+
+  stores StorePaymentMethod[]
+  orders Order[]
+
+  @@map("payment_methods")
+}
+
+model StorePaymentMethod {
+  id              String @id @default(uuid())
+  storeId         String
+  paymentMethodId String
+
+  store         Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, paymentMethodId])
+  @@index([storeId])
+  @@map("store_payment_methods")
+}
+
+// ============================================================
+// WISHLISTS (SPLIT — 4 Tables)
+// ============================================================
+
+model StoreWishlist {
+  id        String   @id @default(uuid())
+  userId    String
+  storeId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+  @@index([userId])
+  @@index([storeId])
+  @@map("store_wishlists")
+}
+
+// ============================================================
+// CART (SPLIT — 3 Item Tables)
+// ============================================================
+
+model Cart {
+  id      String @id @default(uuid())
+  userId  String
+  storeId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+  @@index([userId])
+  @@index([storeId])
+  @@map("carts")
+}
+
+// ============================================================
+// ORDERS (SPLIT — 3 Item Tables)
+// ============================================================
+
+model Order {
+  id        String @id @default(uuid())
+  userId    String
+  storeId   String
+  addressId String
+
+  status OrderStatus @default(PENDING)
+
+  paymentMethodId String
+
+  subtotal     Decimal
+  deliveryFees Decimal
+  tipAmount    Decimal      @default(0)
+  totalAmount  Decimal
+  deliveryType DeliveryType @default(TALABAT)
+
+  deliveryInstructions String?
+  scheduledTime        DateTime?
+
+  cancellationReason String?
+  cancelledAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store         Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  address       UserAddress   @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
+
+  statusHistory OrderStatusHistory[]
+  payment       Payment?
+  driverAssign  OrderDriverAssignment?
+  delivery      Delivery?
+  driverEarning DriverEarning?
+  trackingPings OrderTracking[]
+  liveTracking  LiveTracking?
+  conversation  Conversation?
+
+  review StoreReview?
+
+  @@index([userId])
+  @@index([storeId])
+  @@index([addressId])
+  @@index([status])
+  @@index([paymentMethodId])
+  @@index([createdAt])
+  @@index([userId, status])
+  @@index([storeId, status])
+  @@map("orders")
+}
+
+// ============================================================
+// ORDER STATUS HISTORY
+// ============================================================
+
+model OrderStatusHistory {
+  id            String              @id @default(uuid())
+  orderId       String
+  status        OrderStatus
+  changedByType StatusChangedByType @default(SYSTEM)
+
+  changedByUserId   String?
+  changedByDriverId String?
+  changedByAdminId  String?
+
+  note String?
+
+  createdAt DateTime @default(now())
+
+  order  Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user   User?   @relation("StatusChangedByUser", fields: [changedByUserId], references: [id], onDelete: SetNull)
+  driver Driver? @relation("StatusChangedByDriver", fields: [changedByDriverId], references: [id], onDelete: SetNull)
+  admin  Admin?  @relation("StatusChangedByAdmin", fields: [changedByAdminId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([changedByType])
+  @@index([changedByUserId])
+  @@index([changedByDriverId])
+  @@index([changedByAdminId])
+  @@map("order_status_history")
+}
+
+// ============================================================
+// PAYMENT
+// ============================================================
+
+model Payment {
+  id      String @id @default(uuid())
+  orderId String @unique
+
+  status PaymentStatus @default(PENDING)
+
+  transactionId String?
+  paidAt        DateTime?
+
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([transactionId])
+  @@map("payments")
+}
+
+// ============================================================
+// REVIEWS
+// ============================================================
+
+model StoreReview {
+  id      String @id @default(uuid())
+  storeId String
+  userId  String
+  orderId String @unique
+
+  rating  Int
+  comment String?
+
+  createdAt DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+  @@index([storeId])
+  @@index([rating])
+  @@index([createdAt])
+  @@map("store_reviews")
+}
+
+// ============================================================
+// ORDER ASSIGNMENT
+// ============================================================
+
+model OrderDriverAssignment {
+  id       String @id @default(uuid())
+  orderId  String @unique
+  driverId String
+
+  status AssignmentStatus @default(PENDING)
+
+  assignedAt DateTime  @default(now())
+  acceptedAt DateTime?
+  rejectedAt DateTime?
+
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@index([status])
+  @@index([assignedAt])
+  @@map("order_driver_assignments")
+}
+
+// ============================================================
+// DELIVERY
+// ============================================================
+
+model Delivery {
+  id       String @id @default(uuid())
+  orderId  String @unique
+  driverId String
+
+  assignedAt  DateTime  @default(now())
+  acceptedAt  DateTime?
+  pickedUpAt  DateTime?
+  deliveredAt DateTime?
+
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@map("deliveries")
+}
+
+// ============================================================
+// DRIVER EARNINGS
+// ============================================================
+
+model DriverEarning {
+  id       String @id @default(uuid())
+  driverId String
+  orderId  String @unique
+
+  baseAmount  Decimal
+  tipAmount   Decimal
+  totalAmount Decimal
+
+  paidOut   Boolean   @default(false)
+  paidOutAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@index([paidOut])
+  @@map("driver_earnings")
+}
+
+// ============================================================
+// ORDER TRACKING — GPS Ping History
+// ============================================================
+
+model OrderTracking {
+  id       String @id @default(uuid())
+  orderId  String
+  driverId String
+
+  latitude  Decimal
+  longitude Decimal
+
+  createdAt DateTime @default(now())
+
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([driverId])
+  @@index([createdAt])
+  @@map("order_tracking")
+}
+
+// ============================================================
+// LIVE TRACKING
+// ============================================================
+
+model LiveTracking {
+  id       String  @id @default(uuid())
+  orderId  String  @unique
+  driverId String?
+
+  status           LiveTrackingStatus @default(WAITING_FOR_DRIVER)
+  driverLatitude   Decimal?
+  driverLongitude  Decimal?
+  estimatedArrival DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order  Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([driverId])
+  @@map("live_tracking")
+}
+
+// ============================================================
+// MESSAGING
+// ============================================================
+
+model Conversation {
+  id       String @id @default(uuid())
+  orderId  String @unique
+  userId   String
+  driverId String
+
+  createdAt DateTime @default(now())
+
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  messages Message[]
+
+  @@index([userId])
+  @@index([driverId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String        @id @default(uuid())
+  conversationId String
+  senderType     MessageSender
+  senderId       String
+
+  body      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderType, senderId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+// ============================================================
+// NOTIFICATIONS (SPLIT — User vs Driver)
+// ============================================================
+
+model UserNotification {
+  id     String @id @default(uuid())
+  userId String
+
+  title          String
+  body           String
+  type           NotificationType
+  isRead         Boolean          @default(false)
+  data           Json?
+  relatedOrderId String?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
+  @@index([userId, isRead])
+  @@map("user_notifications")
+}
+
+model OwnerNotification {
+  id      String @id @default(uuid())
+  ownerId String
+
+  title          String
+  body           String
+  type           NotificationType
+  isRead         Boolean          @default(false)
+  data           Json?
+  relatedOrderId String?
+
+  createdAt DateTime @default(now())
+
+  owner OwnerAccount @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
+  @@index([ownerId, isRead])
+  @@map("owner_notifications")
+}
+
+model DriverNotification {
+  id       String @id @default(uuid())
+  driverId String
+
+  title          String
+  body           String
+  type           NotificationType
+  isRead         Boolean          @default(false)
+  data           Json?
+  relatedOrderId String?
+
+  createdAt DateTime @default(now())
+
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
+  @@index([driverId, isRead])
+  @@map("driver_notifications")
+}
+
+// ============================================================
+// FCM TOKENS (SPLIT — User vs Driver)
+// ============================================================
+
+model UserFcmToken {
+  id     String @id @default(uuid())
+  userId String
+
+  token    String
+  platform Platform
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, token])
+  @@index([userId])
+  @@index([platform])
+  @@map("user_fcm_tokens")
+}
+
+model DriverFcmToken {
+  id       String @id @default(uuid())
+  driverId String
+
+  token    String
+  platform Platform
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@unique([driverId, token])
+  @@index([driverId])
+  @@index([platform])
+  @@map("driver_fcm_tokens")
+}
