@@ -38,6 +38,7 @@ import ownerRoutes from "./modules/owner/routes/owner.routes.js";
 import adminRoutes from "./modules/admin/routes/admin.routes.js";
 import trackingRoutes from "./modules/tracking/routes/tracking.routes.js";
 import messagingRoutes from "./modules/messaging/routes/messaging.routes.js";
+import notificationRoutes from "./modules/notification/routes/notification.routes.js";
 
 // ═════════════════════════════════════════════════════════════════════════════
 // APP BOOTSTRAP
@@ -99,6 +100,7 @@ app.use("/api/owners", ownerRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/tracking", trackingRoutes);
 app.use("/api/messaging", messagingRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) =>
