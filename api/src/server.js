@@ -72,8 +72,8 @@ if (process.env.NODE_ENV !== "test") {
 }
 
 // ─── Body parsers ─────────────────────────────────────────────────────────────
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 
 // ─── Global rate limiter (applied to all API routes) ─────────────────────────

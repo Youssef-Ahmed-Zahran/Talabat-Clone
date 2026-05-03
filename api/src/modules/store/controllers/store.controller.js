@@ -86,16 +86,16 @@ export const createStore = async (req, res, next) => {
                     phone: phone || null,
                     email: email || null,
                     address: address || null,
-                    mainCategoryId,
-                    cityId: resolvedGeo.cityId,
-                    storeType,
+                    mainCategory: { connect: { id: mainCategoryId } },
+                    city: { connect: { id: resolvedGeo.cityId } },
+                    storeType: { connect: { name: storeType } },
                     deliveryType,
                     openTime: openTime || null,
                     closeTime: closeTime || null,
-                    deliveryTimeMinutes: deliveryTimeMinutes || null,
-                    minimumOrderCost: minimumOrderCost || 0,
-                    deliveryFees: deliveryFees || 0,
-                    allowPreorder: allowPreorder || false,
+                    deliveryTimeMinutes: deliveryTimeMinutes ? Number(deliveryTimeMinutes) : null,
+                    minimumOrderCost: minimumOrderCost ? Number(minimumOrderCost) : 0,
+                    deliveryFees: deliveryFees ? Number(deliveryFees) : 0,
+                    allowPreorder: allowPreorder === true || allowPreorder === 'true',
                     latitude,
                     longitude,
                     logoUrl,
@@ -213,7 +213,7 @@ export const getAllStores = async (req, res, next) => {
                     address: true,
                     logoUrl: true,
                     coverUrl: true,
-                    storeType: true,
+                    storeType: { select: { name: true } },
                     deliveryType: true,
                     openTime: true,
                     closeTime: true,
@@ -232,9 +232,11 @@ export const getAllStores = async (req, res, next) => {
             prisma.store.count({ where }),
         ]);
 
+        const formattedStores = stores.map(s => ({ ...s, storeType: s.storeType?.name || s.storeType }));
+
         res.json(
             new ApiResponse(200, {
-                stores,
+                stores: formattedStores,
                 pagination: {
                     total,
                     page: Number(page),
@@ -283,6 +285,7 @@ export const getStoreById = async (req, res, next) => {
                         },
                     },
                     mainCategory: { select: { id: true, name: true } },
+                    storeType: { select: { name: true } },
                     storeCategories: {
                         include: {
                             subCategory: { select: { id: true, name: true, imageUrl: true } },
@@ -320,6 +323,10 @@ export const getStoreById = async (req, res, next) => {
 
         if (!store) {
             throw new ApiError(404, "Store not found.");
+        }
+
+        if (store.storeType && store.storeType.name) {
+            store.storeType = store.storeType.name;
         }
 
         // Merge tenant-specific counts into _count
@@ -391,12 +398,12 @@ export const updateStore = async (req, res, next) => {
         let logoUrl = existing.logoUrl;
         let coverUrl = existing.coverUrl;
 
-        if (logo) {
+        if (logo && !logo.startsWith('http')) {
             if (existing.logoUrl) await deleteFromCloudinary(existing.logoUrl);
             logoUrl = await uploadToCloudinary(logo, "stores/logos");
         }
 
-        if (cover) {
+        if (cover && !cover.startsWith('http')) {
             if (existing.coverUrl) await deleteFromCloudinary(existing.coverUrl);
             coverUrl = await uploadToCloudinary(cover, "stores/covers");
         }
@@ -410,16 +417,23 @@ export const updateStore = async (req, res, next) => {
                 ...(openTime !== undefined && { openTime }),
                 ...(closeTime !== undefined && { closeTime }),
                 ...(deliveryType && { deliveryType }),
-                ...(deliveryTimeMinutes !== undefined && { deliveryTimeMinutes }),
-                ...(minimumOrderCost !== undefined && { minimumOrderCost }),
-                ...(deliveryFees !== undefined && { deliveryFees }),
-                ...(allowPreorder !== undefined && { allowPreorder }),
+                ...(deliveryTimeMinutes !== undefined && { deliveryTimeMinutes: Number(deliveryTimeMinutes) }),
+                ...(minimumOrderCost !== undefined && { minimumOrderCost: Number(minimumOrderCost) }),
+                ...(deliveryFees !== undefined && { deliveryFees: Number(deliveryFees) }),
+                ...(allowPreorder !== undefined && { allowPreorder: allowPreorder === true || allowPreorder === 'true' }),
                 ...(latitude !== undefined && { latitude }),
                 ...(longitude !== undefined && { longitude }),
                 logoUrl,
                 coverUrl,
             },
+            include: {
+                storeType: { select: { name: true } }
+            }
         });
+
+        if (store.storeType && store.storeType.name) {
+            store.storeType = store.storeType.name;
+        }
 
         res.json(new ApiResponse(200, store, "Store updated."));
     } catch (err) {
