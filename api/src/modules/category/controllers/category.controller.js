@@ -1,234 +1,410 @@
 import prisma from "../../../config/db.js";
 import { ApiError } from "../../../utils/ApiError.js";
 import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { resolveGeographyData } from "../../../utils/geography.util.js";
+import {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} from "../../../utils/cloudinaryUpload.js";
 
-/**
- * GET /api/addresses
- */
-export const getMyAddresses = async (req, res, next) => {
+// ═══════════════════════════════════════════════════════════════
+// MAIN CATEGORIES
+// ═══════════════════════════════════════════════════════════════
+
+/** GET /api/categories */
+export const getAllMainCategories = async (req, res, next) => {
   try {
-    const addresses = await prisma.userAddress.findMany({
-      where: { userId: req.user.id },
-      orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+    const categories = await prisma.mainCategory.findMany({
+      orderBy: { name: "asc" },
       include: {
-        city: {
-          include: {
-            country: { select: { id: true, name: true, code: true } },
-            governorate: { select: { id: true, name: true } },
-          },
-        },
+        _count: { select: { subCategories: true, stores: true } },
       },
     });
 
-    res.json(new ApiResponse(200, addresses, "Addresses fetched."));
+    res.json(new ApiResponse(200, categories, "Main categories fetched."));
   } catch (err) {
     next(err);
   }
 };
 
-/**
- * POST /api/addresses
- */
-export const addAddress = async (req, res, next) => {
-  try {
-    const {
-      cityId,
-      type,
-      label,
-      buildingName,
-      apartmentNumber,
-      floor,
-      street,
-      phone,
-      latitude,
-      longitude,
-      isDefault,
-      cityName,
-      governorateName,
-      countryName,
-      countryCode,
-    } = req.body;
-    const userId = req.user.id;
-
-    if (
-      latitude === undefined ||
-      longitude === undefined ||
-      !cityName ||
-      !countryName ||
-      !countryCode
-    ) {
-      throw new ApiError(
-        400,
-        "latitude, longitude, cityName, countryName, and countryCode are required.",
-      );
-    }
-
-    const resolvedGeo = await resolveGeographyData({
-      cityName,
-      governorateName,
-      countryName,
-      countryCode,
-    });
-
-    // If setting as default, unset other defaults
-    if (isDefault) {
-      await prisma.userAddress.updateMany({
-        where: { userId, isDefault: true },
-        data: { isDefault: false },
-      });
-    }
-
-    const address = await prisma.userAddress.create({
-      data: {
-        userId,
-        cityId: resolvedGeo.cityId,
-        type: type || "APARTMENT",
-        label: label || null,
-        buildingName: buildingName || null,
-        apartmentNumber: apartmentNumber || null,
-        floor: floor || null,
-        street: street || null,
-        phone: phone || null,
-        latitude,
-        longitude,
-        isDefault: isDefault || false,
-      },
-      include: {
-        city: {
-          include: {
-            country: { select: { id: true, name: true, code: true } },
-          },
-        },
-      },
-    });
-
-    res.status(201).json(new ApiResponse(201, address, "Address added."));
-  } catch (err) {
-    next(err);
-  }
-};
-
-/**
- * PUT /api/addresses/:id
- */
-export const updateAddress = async (req, res, next) => {
+/** GET /api/categories/:id */
+export const getMainCategoryById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
-    const {
-      type,
-      label,
-      buildingName,
-      apartmentNumber,
-      floor,
-      street,
-      phone,
-      latitude,
-      longitude,
-      cityName,
-      governorateName,
-      countryName,
-      countryCode,
-    } = req.body;
 
-    const existing = await prisma.userAddress.findFirst({
-      where: { id, userId },
-    });
-    if (!existing) {
-      throw new ApiError(404, "Address not found.");
-    }
-
-    let finalCityId = undefined;
-    if (cityName && countryName && countryCode) {
-      const resolvedGeo = await resolveGeographyData({
-        cityName,
-        governorateName,
-        countryName,
-        countryCode,
-      });
-      finalCityId = resolvedGeo.cityId;
-    }
-
-    const address = await prisma.userAddress.update({
+    const category = await prisma.mainCategory.findUnique({
       where: { id },
-      data: {
-        ...(type && { type }),
-        ...(label !== undefined && { label }),
-        ...(buildingName !== undefined && { buildingName }),
-        ...(apartmentNumber !== undefined && { apartmentNumber }),
-        ...(floor !== undefined && { floor }),
-        ...(street !== undefined && { street }),
-        ...(phone !== undefined && { phone }),
-        ...(latitude !== undefined && { latitude }),
-        ...(longitude !== undefined && { longitude }),
-        ...(finalCityId && { cityId: finalCityId }),
-      },
       include: {
-        city: {
-          include: {
-            country: { select: { id: true, name: true, code: true } },
+        subCategories: { orderBy: { name: "asc" } },
+        _count: { select: { stores: true } },
+      },
+    });
+
+    if (!category) {
+      throw new ApiError(404, "Main category not found.");
+    }
+
+    res.json(new ApiResponse(200, category, "Main category fetched."));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** GET /api/categories/:id/sub-categories */
+export const getSubCategories = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const subCategories = await prisma.subCategory.findMany({
+      where: { mainCategoryId: id },
+      orderBy: { name: "asc" },
+      include: {
+        _count: { select: { storeLinks: true } },
+      },
+    });
+
+    res.json(new ApiResponse(200, subCategories, "Sub-categories fetched."));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** POST /api/categories — Admin */
+export const createMainCategory = async (req, res, next) => {
+  try {
+    const { name, image } = req.body;
+
+    if (!name) {
+      throw new ApiError(400, "Name is required.");
+    }
+
+    let imageUrl = null;
+    if (image) {
+      imageUrl = await uploadToCloudinary(image, "categories");
+    }
+
+    const category = await prisma.mainCategory.create({
+      data: { name, imageUrl },
+    });
+
+    res
+      .status(201)
+      .json(new ApiResponse(201, category, "Main category created."));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** PUT /api/categories/:id — Admin */
+export const updateMainCategory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name, image } = req.body;
+
+    const existing = await prisma.mainCategory.findUnique({ where: { id } });
+    if (!existing) {
+      throw new ApiError(404, "Main category not found.");
+    }
+
+    let imageUrl = existing.imageUrl;
+    if (image) {
+      if (existing.imageUrl) {
+        await deleteFromCloudinary(existing.imageUrl);
+      }
+      imageUrl = await uploadToCloudinary(image, "categories");
+    }
+
+    const category = await prisma.mainCategory.update({
+      where: { id },
+      data: { ...(name && { name }), imageUrl },
+    });
+
+    res.json(new ApiResponse(200, category, "Main category updated."));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** DELETE /api/categories/:id — Admin */
+export const deleteMainCategory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const existing = await prisma.mainCategory.findUnique({ where: { id } });
+    if (!existing) {
+      throw new ApiError(404, "Main category not found.");
+    }
+
+    if (existing.imageUrl) {
+      await deleteFromCloudinary(existing.imageUrl);
+    }
+
+    await prisma.mainCategory.delete({ where: { id } });
+
+    res.json(new ApiResponse(200, null, "Main category deleted."));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// SUB-CATEGORIES
+// ═══════════════════════════════════════════════════════════════
+
+/** POST /api/categories/:id/sub-categories — Admin */
+export const createSubCategory = async (req, res, next) => {
+  try {
+    const { id: mainCategoryId } = req.params;
+    const { name, image } = req.body;
+
+    if (!name) {
+      throw new ApiError(400, "Name is required.");
+    }
+
+    const mainCategory = await prisma.mainCategory.findUnique({
+      where: { id: mainCategoryId },
+    });
+    if (!mainCategory) {
+      throw new ApiError(404, "Main category not found.");
+    }
+
+    let imageUrl = null;
+    if (image) {
+      imageUrl = await uploadToCloudinary(image, "categories/sub");
+    }
+
+    const subCategory = await prisma.subCategory.create({
+      data: { name, mainCategoryId, imageUrl },
+    });
+
+    res
+      .status(201)
+      .json(new ApiResponse(201, subCategory, "Sub-category created."));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** PUT /api/categories/sub-categories/:subId — Admin */
+export const updateSubCategory = async (req, res, next) => {
+  try {
+    const { subId } = req.params;
+    const { name, image } = req.body;
+
+    const existing = await prisma.subCategory.findUnique({
+      where: { id: subId },
+    });
+    if (!existing) {
+      throw new ApiError(404, "Sub-category not found.");
+    }
+
+    let imageUrl = existing.imageUrl;
+    if (image) {
+      if (existing.imageUrl) {
+        await deleteFromCloudinary(existing.imageUrl);
+      }
+      imageUrl = await uploadToCloudinary(image, "categories/sub");
+    }
+
+    const subCategory = await prisma.subCategory.update({
+      where: { id: subId },
+      data: { ...(name && { name }), imageUrl },
+    });
+
+    res.json(new ApiResponse(200, subCategory, "Sub-category updated."));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** DELETE /api/categories/sub-categories/:subId — Admin */
+export const deleteSubCategory = async (req, res, next) => {
+  try {
+    const { subId } = req.params;
+
+    const existing = await prisma.subCategory.findUnique({
+      where: { id: subId },
+    });
+    if (!existing) {
+      throw new ApiError(404, "Sub-category not found.");
+    }
+
+    if (existing.imageUrl) {
+      await deleteFromCloudinary(existing.imageUrl);
+    }
+
+    await prisma.subCategory.delete({ where: { id: subId } });
+
+    res.json(new ApiResponse(200, null, "Sub-category deleted."));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// STORE ↔ SUB-CATEGORY LINKS
+// ═══════════════════════════════════════════════════════════════
+
+/** POST /api/categories/sub-categories/:subId/stores — Admin */
+export const linkStoreToSubCategory = async (req, res, next) => {
+  try {
+    const { subId } = req.params;
+    const { storeId } = req.body;
+
+    if (!storeId) throw new ApiError(400, "storeId is required.");
+
+    const subCategory = await prisma.subCategory.findUnique({
+      where: { id: subId },
+    });
+    if (!subCategory) throw new ApiError(404, "Sub-category not found.");
+
+    const store = await prisma.store.findUnique({ where: { id: storeId } });
+    if (!store) throw new ApiError(404, "Store not found.");
+
+    // Check if already linked
+    const existing = await prisma.storeSubCategory.findUnique({
+      where: { storeId_subCategoryId: { storeId, subCategoryId: subId } },
+    });
+    if (existing)
+      throw new ApiError(409, "Store is already linked to this sub-category.");
+
+    const link = await prisma.storeSubCategory.create({
+      data: { storeId, subCategoryId: subId },
+      include: {
+        store: { select: { id: true, name: true, logoUrl: true } },
+        subCategory: { select: { id: true, name: true } },
+      },
+    });
+
+    res
+      .status(201)
+      .json(new ApiResponse(201, link, "Store linked to sub-category."));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** DELETE /api/categories/sub-categories/:subId/stores/:storeId — Admin */
+export const unlinkStoreFromSubCategory = async (req, res, next) => {
+  try {
+    const { subId, storeId } = req.params;
+
+    const link = await prisma.storeSubCategory.findUnique({
+      where: { storeId_subCategoryId: { storeId, subCategoryId: subId } },
+    });
+    if (!link) throw new ApiError(404, "Link not found.");
+
+    await prisma.storeSubCategory.delete({ where: { id: link.id } });
+
+    res.json(new ApiResponse(200, null, "Store unlinked from sub-category."));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** GET /api/categories/sub-categories/:subId/stores — Public */
+export const getStoresInSubCategory = async (req, res, next) => {
+  try {
+    const { subId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const subCategory = await prisma.subCategory.findUnique({
+      where: { id: subId },
+    });
+    if (!subCategory) throw new ApiError(404, "Sub-category not found.");
+
+    const where = { subCategoryId: subId, store: { isActive: true } };
+
+    const [links, total] = await Promise.all([
+      prisma.storeSubCategory.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        include: {
+          store: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              logoUrl: true,
+              coverUrl: true,
+              storeType: true,
+              deliveryType: true,
+              deliveryTimeMinutes: true,
+              minimumOrderCost: true,
+              deliveryFees: true,
+              averageRating: true,
+              totalReviews: true,
+              city: { select: { id: true, name: true } },
+            },
           },
         },
-      },
-    });
-
-    res.json(new ApiResponse(200, address, "Address updated."));
-  } catch (err) {
-    next(err);
-  }
-};
-
-/**
- * DELETE /api/addresses/:id
- */
-export const deleteAddress = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    const existing = await prisma.userAddress.findFirst({
-      where: { id, userId: req.user.id },
-    });
-    if (!existing) {
-      throw new ApiError(404, "Address not found.");
-    }
-
-    await prisma.userAddress.delete({ where: { id } });
-
-    res.json(new ApiResponse(200, null, "Address deleted."));
-  } catch (err) {
-    next(err);
-  }
-};
-
-/**
- * PATCH /api/addresses/:id/default
- */
-export const setDefaultAddress = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
-
-    const existing = await prisma.userAddress.findFirst({
-      where: { id, userId },
-    });
-    if (!existing) {
-      throw new ApiError(404, "Address not found.");
-    }
-
-    // Unset all defaults, then set this one
-    await prisma.$transaction([
-      prisma.userAddress.updateMany({
-        where: { userId, isDefault: true },
-        data: { isDefault: false },
       }),
-      prisma.userAddress.update({
-        where: { id },
-        data: { isDefault: true },
-      }),
+      prisma.storeSubCategory.count({ where }),
     ]);
 
-    res.json(new ApiResponse(200, null, "Default address updated."));
+    const stores = links.map((l) => l.store);
+
+    res.json(
+      new ApiResponse(
+        200,
+        {
+          subCategory: { id: subCategory.id, name: subCategory.name },
+          stores,
+          pagination: {
+            total,
+            page: Number(page),
+            limit: Number(limit),
+            totalPages: Math.ceil(total / Number(limit)),
+          },
+        },
+        "Stores in sub-category fetched.",
+      ),
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** GET /api/categories/sub-categories/:subId/stores/all — Admin */
+export const getAllStoresInSubCategoryAdmin = async (req, res, next) => {
+  try {
+    const { subId } = req.params;
+
+    const subCategory = await prisma.subCategory.findUnique({
+      where: { id: subId },
+    });
+    if (!subCategory) throw new ApiError(404, "Sub-category not found.");
+
+    const where = { subCategoryId: subId };
+
+    const links = await prisma.storeSubCategory.findMany({
+      where,
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            logoUrl: true,
+            storeType: true,
+            isActive: true,
+          },
+        },
+      },
+    });
+
+    const stores = links.map((l) => l.store);
+
+    res.json(
+      new ApiResponse(
+        200,
+        {
+          subCategory: { id: subCategory.id, name: subCategory.name },
+          stores,
+        },
+        "All stores in sub-category fetched (Admin).",
+      ),
+    );
   } catch (err) {
     next(err);
   }
