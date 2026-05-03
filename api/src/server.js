@@ -36,6 +36,7 @@ import wishlistRoutes from "./modules/wishlist/routes/wishlist.routes.js";
 import driverRoutes from "./modules/driver/routes/driver.routes.js";
 import ownerRoutes from "./modules/owner/routes/owner.routes.js";
 import adminRoutes from "./modules/admin/routes/admin.routes.js";
+import trackingRoutes from "./modules/tracking/routes/tracking.routes.js";
 
 // ═════════════════════════════════════════════════════════════════════════════
 // APP BOOTSTRAP
@@ -95,6 +96,7 @@ app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/drivers", driverRoutes);
 app.use("/api/owners", ownerRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/tracking", trackingRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) =>
