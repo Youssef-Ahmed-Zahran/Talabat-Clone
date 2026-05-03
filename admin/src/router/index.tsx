@@ -10,6 +10,8 @@ import LoginPage from "../features/auth/pages/Login";
 import DashboardPage from "../features/dashboard/pages/DashboardPage";
 import MainCategoriesPage from "../features/categories/pages/MainCategoriesPage";
 import SubCategoriesPage from "../features/categories/pages/SubCategoriesPage";
+import UsersListPage from "../features/users/pages/UsersListPage";
+import UserDetailsPage from "../features/users/pages/UserDetailsPage";
 
 // ── Heavy Modules (Lazy Loaded to reduce initial bundle size) ──────────
 import {
@@ -71,6 +73,8 @@ const router = createBrowserRouter([
           </Suspense>
         ),
       },
+      { path: "users", element: <UsersListPage /> },
+      { path: "users/:userId", element: <UserDetailsPage /> },
     ],
   },
   {
