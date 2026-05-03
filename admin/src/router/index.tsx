@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import MainLayout from "../components/layout/MainLayout";
 import ProtectedRoute from "../components/protected-route/ProtectedRoute";
 import NotFoundPage from "../components/not-found/NotFoundPage";
+import PageLoader from "../components/loader/PageLoader";
 
 // ── Core Pages (Eagerly Loaded for immediate access) ───────────────────
 import LoginPage from "../features/auth/pages/Login";
@@ -10,6 +12,7 @@ import MainCategoriesPage from "../features/categories/pages/MainCategoriesPage"
 import SubCategoriesPage from "../features/categories/pages/SubCategoriesPage";
 
 // ── Heavy Modules (Lazy Loaded to reduce initial bundle size) ──────────
+import { StoresListPage, StoreDetailsPage } from "./lazyComponents";
 
 const router = createBrowserRouter([
   {
@@ -30,6 +33,22 @@ const router = createBrowserRouter([
       {
         path: "categories/:mainId/subcategories",
         element: <SubCategoriesPage />,
+      },
+      {
+        path: "stores",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <StoresListPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "stores/:storeId",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <StoreDetailsPage />
+          </Suspense>
+        ),
       },
     ],
   },
