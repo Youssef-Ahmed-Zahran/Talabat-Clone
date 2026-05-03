@@ -31,6 +31,7 @@ import catalogRoutes from "./modules/catalog/routes/catalog.routes.js";
 import cartRoutes from "./modules/cart/routes/cart.routes.js";
 import orderRoutes from "./modules/order/routes/order.routes.js";
 import paymentRoutes from "./modules/payment/routes/payment.routes.js";
+import reviewRoutes from "./modules/review/routes/review.routes.js";
 
 // ═════════════════════════════════════════════════════════════════════════════
 // APP BOOTSTRAP
@@ -85,6 +86,7 @@ app.use("/api/catalog", catalogRoutes);
 app.use("/api/carts", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) =>
