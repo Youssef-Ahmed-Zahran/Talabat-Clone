@@ -6,3 +6,9 @@ export const StoresListPage = lazy(
 export const StoreDetailsPage = lazy(
   () => import("../features/stores/pages/StoreDetailsPage"),
 );
+export const StoreCatalogPage = lazy(
+  () => import("../features/catalog/pages/StoreCatalogPage"),
+);
+export const ProductOptionsPage = lazy(
+  () => import("../features/catalog/pages/ProductOptionsPage"),
+);

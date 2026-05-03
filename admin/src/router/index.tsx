@@ -12,7 +12,12 @@ import MainCategoriesPage from "../features/categories/pages/MainCategoriesPage"
 import SubCategoriesPage from "../features/categories/pages/SubCategoriesPage";
 
 // ── Heavy Modules (Lazy Loaded to reduce initial bundle size) ──────────
-import { StoresListPage, StoreDetailsPage } from "./lazyComponents";
+import {
+  StoresListPage,
+  StoreDetailsPage,
+  StoreCatalogPage,
+  ProductOptionsPage,
+} from "./lazyComponents";
 
 const router = createBrowserRouter([
   {
@@ -47,6 +52,22 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <StoreDetailsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "stores/:storeId/catalog",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <StoreCatalogPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "stores/:storeId/catalog/products/:productId",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ProductOptionsPage />
           </Suspense>
         ),
       },
