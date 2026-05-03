@@ -91,7 +91,7 @@ export function StoreFormModal({
           ownerEmail: "",
           ownerPassword: "",
           logoUrl: editingStore.logoUrl || "",
-          coverImage: editingStore.coverImage || "",
+          coverImage: editingStore.coverUrl || editingStore.coverImage || "",
         }
       : defaultValues,
   });

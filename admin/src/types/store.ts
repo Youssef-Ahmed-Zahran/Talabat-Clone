@@ -4,6 +4,7 @@ export interface Store {
   nameAr?: string;
   logoUrl?: string;
   coverImage?: string;
+  coverUrl?: string;
   address?: string;
   phone?: string;
   email?: string;
