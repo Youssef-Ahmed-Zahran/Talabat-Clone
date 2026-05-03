@@ -6,6 +6,7 @@ import NotFoundPage from "../components/not-found/NotFoundPage";
 // ── Core Pages (Eagerly Loaded for immediate access) ───────────────────
 import LoginPage from "../features/auth/pages/Login";
 import DashboardPage from "../features/dashboard/pages/DashboardPage";
+import MainCategoriesPage from "../features/categories/pages/MainCategoriesPage";
 
 // ── Heavy Modules (Lazy Loaded to reduce initial bundle size) ──────────
 
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "dashboard", element: <DashboardPage /> },
+      { path: "categories", element: <MainCategoriesPage /> },
     ],
   },
   {
