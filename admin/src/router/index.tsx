@@ -7,6 +7,7 @@ import NotFoundPage from "../components/not-found/NotFoundPage";
 import LoginPage from "../features/auth/pages/Login";
 import DashboardPage from "../features/dashboard/pages/DashboardPage";
 import MainCategoriesPage from "../features/categories/pages/MainCategoriesPage";
+import SubCategoriesPage from "../features/categories/pages/SubCategoriesPage";
 
 // ── Heavy Modules (Lazy Loaded to reduce initial bundle size) ──────────
 
@@ -26,6 +27,10 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "dashboard", element: <DashboardPage /> },
       { path: "categories", element: <MainCategoriesPage /> },
+      {
+        path: "categories/:mainId/subcategories",
+        element: <SubCategoriesPage />,
+      },
     ],
   },
   {
