@@ -28,6 +28,8 @@ import addressRoutes from "./modules/address/routes/address.routes.js";
 import categoryRoutes from "./modules/category/routes/category.routes.js";
 import storeRoutes from "./modules/store/routes/store.routes.js";
 import catalogRoutes from "./modules/catalog/routes/catalog.routes.js";
+import cartRoutes from "./modules/cart/routes/cart.routes.js";
+import orderRoutes from "./modules/order/routes/order.routes.js";
 
 // ═════════════════════════════════════════════════════════════════════════════
 // APP BOOTSTRAP
@@ -79,6 +81,8 @@ app.use("/api/addresses", addressRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/stores", storeRoutes);
 app.use("/api/catalog", catalogRoutes);
+app.use("/api/carts", cartRoutes);
+app.use("/api/orders", orderRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) =>
