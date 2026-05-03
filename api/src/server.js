@@ -34,6 +34,7 @@ import paymentRoutes from "./modules/payment/routes/payment.routes.js";
 import reviewRoutes from "./modules/review/routes/review.routes.js";
 import wishlistRoutes from "./modules/wishlist/routes/wishlist.routes.js";
 import driverRoutes from "./modules/driver/routes/driver.routes.js";
+import ownerRoutes from "./modules/owner/routes/owner.routes.js";
 
 // ═════════════════════════════════════════════════════════════════════════════
 // APP BOOTSTRAP
@@ -91,6 +92,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/drivers", driverRoutes);
+app.use("/api/owners", ownerRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) =>
