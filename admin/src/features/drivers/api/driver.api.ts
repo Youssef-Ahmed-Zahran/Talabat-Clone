@@ -1,0 +1,164 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import api from "../../../config/axios";
+import type { Driver } from "../../../types";
+
+// ── Response shape from backend ────────────────────────────────────────
+interface DriversResponse {
+  drivers: Driver[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+// ── Fetch all drivers (admin endpoint) ─────────────────────────────────
+const fetchDrivers = async (): Promise<DriversResponse> => {
+  const { data } = await api.get("/admin/drivers");
+  return data.data ?? data;
+};
+
+export const useDrivers = () => {
+  return useQuery({
+    queryKey: ["drivers"],
+    queryFn: fetchDrivers,
+  });
+};
+
+// ── Fetch a single driver by ID ─────────────────────────────────────────
+const fetchDriverById = async (id: string): Promise<Driver> => {
+  const { data } = await api.get(`/admin/drivers/${id}`);
+  return data.data ?? data;
+};
+
+export const useDriver = (id: string) => {
+  return useQuery({
+    queryKey: ["drivers", id],
+    queryFn: () => fetchDriverById(id),
+    enabled: !!id,
+  });
+};
+
+// ── Approve driver application ─────────────────────────────────────────
+const approveDriver = async (driverId: string) => {
+  const { data } = await api.patch(`/admin/drivers/${driverId}/approve`);
+  return data.data ?? data;
+};
+
+export const useApproveDriver = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: approveDriver,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers"] });
+    },
+  });
+};
+
+// ── Reject driver application ──────────────────────────────────────────
+const rejectDriver = async (driverId: string) => {
+  const { data } = await api.patch(`/admin/drivers/${driverId}/reject`);
+  return data.data ?? data;
+};
+
+export const useRejectDriver = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: rejectDriver,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers"] });
+    },
+  });
+};
+
+// ── Suspend driver ─────────────────────────────────────────────────────
+const suspendDriver = async (driverId: string) => {
+  const { data } = await api.patch(`/admin/drivers/${driverId}/suspend`);
+  return data.data ?? data;
+};
+
+export const useSuspendDriver = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: suspendDriver,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers"] });
+    },
+  });
+};
+
+// ── Unsuspend driver ───────────────────────────────────────────────────
+const unsuspendDriver = async (driverId: string) => {
+  const { data } = await api.patch(`/admin/drivers/${driverId}/unsuspend`);
+  return data.data ?? data;
+};
+
+export const useUnsuspendDriver = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: unsuspendDriver,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers"] });
+    },
+  });
+};
+
+// ── Delete driver ──────────────────────────────────────────────────────
+const deleteDriver = async (driverId: string) => {
+  const { data } = await api.delete(`/admin/drivers/${driverId}`);
+  return data.data ?? data;
+};
+
+export const useDeleteDriver = () => {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  return useMutation({
+    mutationFn: deleteDriver,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers"] });
+      navigate("/drivers");
+    },
+  });
+};
+
+// ── Verify Driver Document ─────────────────────────────────────────────
+const verifyDocument = async (docId: string) => {
+  const { data } = await api.patch(`/admin/drivers/documents/${docId}/verify`);
+  return data.data ?? data;
+};
+
+export const useVerifyDocument = (driverId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: verifyDocument,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers", driverId] });
+    },
+  });
+};
+
+// ── Reject Driver Document ──────────────────────────────────────────────
+const rejectDocument = async ({
+  docId,
+  reason,
+}: {
+  docId: string;
+  reason: string;
+}) => {
+  const { data } = await api.patch(`/admin/drivers/documents/${docId}/reject`, {
+    reason,
+  });
+  return data.data ?? data;
+};
+
+export const useRejectDocument = (driverId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: rejectDocument,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers", driverId] });
+    },
+  });
+};

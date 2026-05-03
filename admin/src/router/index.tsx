@@ -12,6 +12,8 @@ import MainCategoriesPage from "../features/categories/pages/MainCategoriesPage"
 import SubCategoriesPage from "../features/categories/pages/SubCategoriesPage";
 import UsersListPage from "../features/users/pages/UsersListPage";
 import UserDetailsPage from "../features/users/pages/UserDetailsPage";
+import DriversListPage from "../features/drivers/pages/DriversListPage";
+import DriverDetailsPage from "../features/drivers/pages/DriverDetailsPage";
 
 // ── Heavy Modules (Lazy Loaded to reduce initial bundle size) ──────────
 import {
@@ -75,6 +77,8 @@ const router = createBrowserRouter([
       },
       { path: "users", element: <UsersListPage /> },
       { path: "users/:userId", element: <UserDetailsPage /> },
+      { path: "drivers", element: <DriversListPage /> },
+      { path: "drivers/:driverId", element: <DriverDetailsPage /> },
     ],
   },
   {
