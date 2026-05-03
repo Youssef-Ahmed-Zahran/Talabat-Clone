@@ -1,10 +1,11 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import MainLayout from "../components/layout/MainLayout";
 import ProtectedRoute from "../components/protected-route/ProtectedRoute";
 import NotFoundPage from "../components/not-found/NotFoundPage";
 
 // ── Core Pages (Eagerly Loaded for immediate access) ───────────────────
 import LoginPage from "../features/auth/pages/Login";
+import DashboardPage from "../features/dashboard/pages/DashboardPage";
 
 // ── Heavy Modules (Lazy Loaded to reduce initial bundle size) ──────────
 
@@ -20,6 +21,10 @@ const router = createBrowserRouter([
         <MainLayout />
       </ProtectedRoute>
     ),
+    children: [
+      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { path: "dashboard", element: <DashboardPage /> },
+    ],
   },
   {
     path: "*",
