@@ -24,6 +24,7 @@ import { registerDispatchSocket } from "./sockets/dispatch.socket.js";
 // ─── Route modules ────────────────────────────────────────────────────────────
 import authRoutes from "./modules/auth/routes/auth.routes.js";
 import userRoutes from "./modules/user/routes/user.routes.js";
+import addressRoutes from "./modules/address/routes/address.routes.js";
 
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -72,6 +73,7 @@ app.use("/api", apiLimiter);
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/addresses", addressRoutes);
 
 
 // ─── Health check ─────────────────────────────────────────────────────────────
