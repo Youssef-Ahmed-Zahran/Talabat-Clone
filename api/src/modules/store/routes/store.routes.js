@@ -3,6 +3,7 @@ import { verifyAdmin, verifyStoreManager, optionalAuth } from "../../../middlewa
 import {
     createStore,
     getAllStores,
+    getNearbyStores,
     getStoreById,
     updateStore,
     deleteStore,
@@ -13,6 +14,7 @@ const router = Router();
 
 router.post("/", verifyAdmin, createStore);
 router.get("/admin", verifyAdmin, getAllStores);
+router.get("/nearby", optionalAuth, getNearbyStores);
 router.get("/", optionalAuth, getAllStores);
 router.get("/:id", getStoreById);
 router.put("/:id", verifyStoreManager, updateStore);

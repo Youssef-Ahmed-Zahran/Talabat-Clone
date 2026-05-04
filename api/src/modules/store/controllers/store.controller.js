@@ -251,6 +251,117 @@ export const getAllStores = async (req, res, next) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// GET NEARBY STORES (Public — by lat/lng radius)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/stores/nearby?lat=&lng=&radius=&mainCategoryId=
+ * Uses the Haversine formula to find stores within a given radius (km).
+ * radius defaults to 10 km. Returns stores sorted by distance ASC.
+ */
+export const getNearbyStores = async (req, res, next) => {
+    try {
+        const {
+            lat,
+            lng,
+            radius = 10,
+            mainCategoryId,
+            storeType,
+            limit = 30,
+        } = req.query;
+
+        if (!lat || !lng) {
+            throw new ApiError(400, "lat and lng query params are required.");
+        }
+
+        const userLat = Number(lat);
+        const userLng = Number(lng);
+        const radiusKm = Number(radius);
+        const take = Number(limit);
+
+        // Bounding box pre-filter to reduce the dataset before Haversine
+        // 1 degree latitude ≈ 111 km
+        const latDelta = radiusKm / 111.0;
+        const lngDelta = radiusKm / (111.0 * Math.cos((userLat * Math.PI) / 180));
+
+        const where = {
+            isActive: true,
+            latitude: {
+                gte: userLat - latDelta,
+                lte: userLat + latDelta,
+            },
+            longitude: {
+                gte: userLng - lngDelta,
+                lte: userLng + lngDelta,
+            },
+        };
+
+        if (mainCategoryId) where.mainCategoryId = mainCategoryId;
+        if (storeType) where.storeType = storeType;
+
+        const stores = await prisma.store.findMany({
+            where,
+            take: take * 2, // over-fetch, then trim after Haversine sort
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                logoUrl: true,
+                coverUrl: true,
+                storeType: { select: { name: true } },
+                deliveryType: true,
+                deliveryTimeMinutes: true,
+                minimumOrderCost: true,
+                deliveryFees: true,
+                allowPreorder: true,
+                averageRating: true,
+                totalReviews: true,
+                latitude: true,
+                longitude: true,
+                city: { select: { id: true, name: true } },
+                mainCategory: { select: { id: true, name: true } },
+            },
+        });
+
+        // Haversine distance in km
+        const toRad = (deg) => (deg * Math.PI) / 180;
+        const haversine = (lat1, lng1, lat2, lng2) => {
+            const R = 6371;
+            const dLat = toRad(lat2 - lat1);
+            const dLng = toRad(lng2 - lng1);
+            const a =
+                Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        };
+
+        const withDistance = stores
+            .map((s) => ({
+                ...s,
+                storeType: s.storeType?.name || s.storeType,
+                distanceKm: haversine(
+                    userLat, userLng,
+                    Number(s.latitude), Number(s.longitude)
+                ),
+            }))
+            .filter((s) => s.distanceKm <= radiusKm)
+            .sort((a, b) => a.distanceKm - b.distanceKm)
+            .slice(0, take);
+
+        res.json(
+            new ApiResponse(200, {
+                stores: withDistance,
+                total: withDistance.length,
+                userLocation: { lat: userLat, lng: userLng },
+                radiusKm,
+            }, "Nearby stores fetched.")
+        );
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
 // GET STORE BY ID (Public)
 // ═══════════════════════════════════════════════════════════════
 
