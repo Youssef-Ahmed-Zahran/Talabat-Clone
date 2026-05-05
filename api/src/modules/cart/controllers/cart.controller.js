@@ -14,81 +14,29 @@ export const getCart = async (req, res, next) => {
 
         const cart = await prisma.cart.findUnique({
             where: { userId_storeId: { userId, storeId } },
-            include: {
-                store: {
-                    select: {
-                        id: true, name: true, logoUrl: true, storeType: true,
-                        minimumOrderCost: true, deliveryFees: true, deliveryTimeMinutes: true,
-                    },
-                },
-            },
         });
 
         if (!cart) {
             return res.json(new ApiResponse(200, null, "Cart is empty."));
         }
 
-        const storeType = cart.store.storeType;
-        let items = [];
+        const items = await tenantQuery(storeId, `
+            SELECT ci.*,
+                   ci.base_price AS unit_price,
+                   row_to_json(p.*) AS product,
+                   (SELECT COALESCE(json_agg(row_to_json(o.*)), '[]'::json)
+                    FROM (
+                        SELECT cio.*, row_to_json(pov.*) AS option_value
+                        FROM cart_item_options cio
+                        JOIN product_option_values pov ON pov.id = cio.option_value_id
+                        WHERE cio.cart_item_id = ci.id
+                    ) o) AS options
+            FROM cart_items ci
+            JOIN products p ON p.id = ci.product_id
+            WHERE ci.cart_id = $1
+        `, [cart.id]);
 
-        if (storeType === "RESTAURANT") {
-            items = await tenantQuery(storeId, `
-                SELECT ci.*, 
-                       row_to_json(p.*) as product,
-                       (SELECT json_agg(row_to_json(o.*)) 
-                        FROM (
-                            SELECT cio.*, row_to_json(pov.*) as option_value 
-                            FROM cart_item_options cio
-                            JOIN product_option_values pov ON pov.id = cio.option_value_id
-                            WHERE cio.cart_item_id = ci.id
-                        ) o) as options
-                FROM cart_item_products ci
-                JOIN products p ON p.id = ci.product_id
-                WHERE ci.cart_id = $1
-            `, [cart.id]);
-            cart.restaurantItems = items;
-        } else if (storeType === "GROCERY") {
-            items = await tenantQuery(storeId, `
-                SELECT ci.*, 
-                       row_to_json(p.*) as product,
-                       (SELECT json_agg(row_to_json(o.*)) 
-                        FROM (
-                            SELECT cio.*, row_to_json(pov.*) as option_value 
-                            FROM cart_item_grocery_options cio
-                            JOIN grocery_option_values pov ON pov.id = cio.option_value_id
-                            WHERE cio.cart_item_id = ci.id
-                        ) o) as options
-                FROM cart_item_grocery ci
-                JOIN grocery_products p ON p.id = ci.product_id
-                WHERE ci.cart_id = $1
-            `, [cart.id]);
-            cart.groceryItems = items;
-        } else if (storeType === "PHARMACY") {
-            items = await tenantQuery(storeId, `
-                SELECT ci.*, 
-                       row_to_json(p.*) as product
-                FROM cart_item_pharmacy ci
-                JOIN pharmacy_products p ON p.id = ci.product_id
-                WHERE ci.cart_id = $1
-            `, [cart.id]);
-            cart.pharmacyItems = items;
-        } else {
-            items = await tenantQuery(storeId, `
-                SELECT ci.*, 
-                       row_to_json(p.*) as product,
-                       (SELECT COALESCE(json_agg(row_to_json(o.*)), '[]'::json)
-                        FROM (
-                            SELECT cio.*, row_to_json(pov.*) as option_value 
-                            FROM cart_item_options cio
-                            JOIN product_option_values pov ON pov.id = cio.option_value_id
-                            WHERE cio.cart_item_id = ci.id
-                        ) o) as options
-                FROM cart_items ci
-                JOIN products p ON p.id = ci.product_id
-                WHERE ci.cart_id = $1
-            `, [cart.id]);
-            cart.items = items;
-        }
+        cart.items = items;
 
         res.json(new ApiResponse(200, cart, "Cart fetched."));
     } catch (err) {
@@ -115,10 +63,12 @@ export const addItem = async (req, res, next) => {
         let cart = await prisma.cart.findUnique({ where: { userId_storeId: { userId, storeId } } });
         if (!cart) cart = await prisma.cart.create({ data: { userId, storeId } });
 
-        const updatedItem = await tenantTransaction(storeId, async (client) => {
+        const allItems = await tenantTransaction(storeId, async (client) => {
             const { rows } = await client.query(`
                 INSERT INTO cart_items (cart_id, product_id, quantity, base_price)
                 VALUES ($1, $2, $3, $4)
+                ON CONFLICT (cart_id, product_id)
+                DO UPDATE SET quantity = cart_items.quantity + EXCLUDED.quantity
                 RETURNING *
             `, [cart.id, productId, quantity, product.price]);
 
@@ -146,34 +96,46 @@ export const addItem = async (req, res, next) => {
                         await client.query(`
                             INSERT INTO cart_item_options (cart_item_id, option_value_id, extra_price)
                             VALUES ($1, $2, $3)
+                            ON CONFLICT DO NOTHING
                         `, [cartItem.id, optId, ov.extra_price]);
                     }
                 }
             }
 
-            const { rows: finalRows } = await client.query(`
-                SELECT ci.*, 
-                       row_to_json(p.*) as product,
-                       (SELECT COALESCE(json_agg(row_to_json(o.*)), '[]'::json) 
+            // Return ALL items in the cart so the client gets the full up-to-date state
+            const { rows: cartRows } = await client.query(`
+                SELECT ci.*,
+                       ci.base_price AS unit_price,
+                       row_to_json(p.*) AS product,
+                       (SELECT COALESCE(json_agg(row_to_json(o.*)), '[]'::json)
                         FROM (
-                            SELECT cio.*, row_to_json(pov.*) as option_value 
+                            SELECT cio.*, row_to_json(pov.*) AS option_value
                             FROM cart_item_options cio
                             JOIN product_option_values pov ON pov.id = cio.option_value_id
                             WHERE cio.cart_item_id = ci.id
-                        ) o) as options
+                        ) o) AS options
                 FROM cart_items ci
                 JOIN products p ON p.id = ci.product_id
-                WHERE ci.id = $1
-            `, [cartItem.id]);
+                WHERE ci.cart_id = $1
+            `, [cart.id]);
 
-            return finalRows[0];
+            return cartRows;
         });
 
-        res.status(201).json(new ApiResponse(201, updatedItem, "Item added to cart."));
+        // Return full cart shape that the mobile store expects
+        const fullCart = {
+            id: cart.id,
+            storeId: cart.storeId,
+            userId: cart.userId,
+            items: allItems,
+        };
+
+        res.status(201).json(new ApiResponse(201, fullCart, "Item added to cart."));
     } catch (err) {
         next(err);
     }
 };
+
 
 // ═══════════════════════════════════════════════════════════════
 // UPDATE ITEM QUANTITY
@@ -182,25 +144,16 @@ export const addItem = async (req, res, next) => {
 export const updateItemQuantity = async (req, res, next) => {
     try {
         const { itemId } = req.params;
-        const { quantity, itemType, storeId } = req.body;
+        const { quantity, storeId } = req.body;
 
         if (!quantity || quantity < 1) throw new ApiError(400, "Quantity must be at least 1.");
-        if (!itemType || !storeId) throw new ApiError(400, "itemType and storeId are required.");
+        if (!storeId) throw new ApiError(400, "storeId is required.");
 
-        const tableMap = {
-            restaurant: "cart_item_products",
-            pharmacy: "cart_item_pharmacy",
-            grocery: "cart_item_grocery",
-            universal: "cart_items",
-        };
-        const table = tableMap[itemType] || "cart_items";
-        if (!table) throw new ApiError(400, "Invalid itemType.");
-
-        const [existing] = await tenantQuery(storeId, `SELECT id FROM ${table} WHERE id = $1`, [itemId]);
+        const [existing] = await tenantQuery(storeId, `SELECT id FROM cart_items WHERE id = $1`, [itemId]);
         if (!existing) throw new ApiError(404, "Cart item not found.");
 
         const [updated] = await tenantQuery(storeId, `
-            UPDATE ${table} SET quantity = $1 WHERE id = $2 RETURNING *
+            UPDATE cart_items SET quantity = $1 WHERE id = $2 RETURNING *
         `, [quantity, itemId]);
 
         res.json(new ApiResponse(200, updated, "Quantity updated."));
@@ -216,20 +169,11 @@ export const updateItemQuantity = async (req, res, next) => {
 export const removeItem = async (req, res, next) => {
     try {
         const { itemId } = req.params;
-        const { itemType, storeId } = req.query;
+        const { storeId } = req.query;
 
-        if (!itemType || !storeId) throw new ApiError(400, "itemType and storeId query params are required.");
+        if (!storeId) throw new ApiError(400, "storeId query param is required.");
 
-        const tableMap = {
-            restaurant: "cart_item_products",
-            pharmacy: "cart_item_pharmacy",
-            grocery: "cart_item_grocery",
-            universal: "cart_items",
-        };
-        const table = tableMap[itemType] || "cart_items";
-        if (!table) throw new ApiError(400, "Invalid itemType.");
-
-        await tenantQuery(storeId, `DELETE FROM ${table} WHERE id = $1`, [itemId]);
+        await tenantQuery(storeId, `DELETE FROM cart_items WHERE id = $1`, [itemId]);
 
         res.json(new ApiResponse(200, null, "Item removed from cart."));
     } catch (err) {

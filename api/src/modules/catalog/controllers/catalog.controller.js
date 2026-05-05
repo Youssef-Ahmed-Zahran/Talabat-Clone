@@ -73,7 +73,54 @@ export const getSections = async (req, res, next) => {
         const sections = await tenantQuery(storeId, `
             SELECT 
                 s.*, 
-                (SELECT COUNT(*) FROM products p WHERE p.section_id = s.id) AS products_count
+                (SELECT COUNT(*) FROM products p WHERE p.section_id = s.id) AS products_count,
+                COALESCE(
+                    (SELECT json_agg(prod_with_options ORDER BY prod_with_options.created_at DESC)
+                     FROM (
+                         SELECT 
+                             p.id,
+                             p.name,
+                             p.description,
+                             p.price,
+                             p.primary_image_url AS "imageUrl",
+                             p.is_available AS "isAvailable",
+                             p.quantity,
+                             p.meta,
+                             p.created_at,
+                             COALESCE(
+                                 (SELECT json_agg(
+                                     json_build_object(
+                                         'id', g.id,
+                                         'name', g.name,
+                                         'isRequired', g.is_required,
+                                         'minSelect', g.min_select,
+                                         'maxSelect', g.max_select,
+                                         'sortOrder', g.sort_order,
+                                         'values', COALESCE(
+                                             (SELECT json_agg(
+                                                 json_build_object(
+                                                     'id', v.id,
+                                                     'name', v.name,
+                                                     'extraPrice', v.extra_price
+                                                 )
+                                             )
+                                             FROM product_option_values v
+                                             WHERE v.option_group_id = g.id),
+                                             '[]'::json
+                                         )
+                                     )
+                                     ORDER BY g.sort_order ASC
+                                 )
+                                 FROM product_option_groups g
+                                 WHERE g.product_id = p.id),
+                                 '[]'::json
+                             ) AS "optionGroups"
+                         FROM products p
+                         WHERE p.section_id = s.id AND p.is_available = true
+                     ) AS prod_with_options
+                    ),
+                    '[]'::json
+                ) AS products
             FROM store_sections s
             WHERE s.store_id = $1
             ORDER BY s.sort_order ASC
