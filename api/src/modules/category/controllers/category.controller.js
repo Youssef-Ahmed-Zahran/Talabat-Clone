@@ -328,7 +328,7 @@ export const getStoresInSubCategory = async (req, res, next) => {
               description: true,
               logoUrl: true,
               coverUrl: true,
-              storeType: true,
+              storeType: { select: { name: true } },
               deliveryType: true,
               deliveryTimeMinutes: true,
               minimumOrderCost: true,
@@ -343,7 +343,10 @@ export const getStoresInSubCategory = async (req, res, next) => {
       prisma.storeSubCategory.count({ where }),
     ]);
 
-    const stores = links.map((l) => l.store);
+    const stores = links.map((l) => ({
+      ...l.store,
+      storeType: l.store.storeType?.name || l.store.storeType,
+    }));
 
     res.json(
       new ApiResponse(
@@ -386,14 +389,17 @@ export const getAllStoresInSubCategoryAdmin = async (req, res, next) => {
             id: true,
             name: true,
             logoUrl: true,
-            storeType: true,
+            storeType: { select: { name: true } },
             isActive: true,
           },
         },
       },
     });
 
-    const stores = links.map((l) => l.store);
+    const stores = links.map((l) => ({
+      ...l.store,
+      storeType: l.store.storeType?.name || l.store.storeType,
+    }));
 
     res.json(
       new ApiResponse(
