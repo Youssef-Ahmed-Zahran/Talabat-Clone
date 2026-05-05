@@ -266,6 +266,7 @@ export const getNearbyStores = async (req, res, next) => {
             lng,
             radius = 10,
             mainCategoryId,
+            subCategoryId,
             storeType,
             limit = 30,
         } = req.query;
@@ -298,6 +299,11 @@ export const getNearbyStores = async (req, res, next) => {
 
         if (mainCategoryId) where.mainCategoryId = mainCategoryId;
         if (storeType) where.storeType = storeType;
+        if (subCategoryId) {
+            where.storeCategories = {
+                some: { subCategoryId },
+            };
+        }
 
         const stores = await prisma.store.findMany({
             where,
