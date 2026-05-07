@@ -5,6 +5,7 @@ import { ApiResponse } from "../../../utils/ApiResponse.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../../../utils/cloudinaryUpload.js";
 import { resolveGeographyData } from "../../../utils/geography.util.js";
 import { provisionTenantSchema, dropTenantSchema, tenantQuery } from "../../../lib/tenantDb.js";
+import { detectZone } from "../../zone/controllers/zone.controller.js";
 
 // ═══════════════════════════════════════════════════════════════
 // CREATE STORE (Admin) — also creates OwnerAccount
@@ -43,6 +44,7 @@ export const createStore = async (req, res, next) => {
             paymentMethodIds,
             ownerEmail,
             ownerPassword,
+            zoneId, // explicit zone assignment
         } = req.body;
 
         // Validations
@@ -88,7 +90,7 @@ export const createStore = async (req, res, next) => {
                     address: address || null,
                     mainCategory: { connect: { id: mainCategoryId } },
                     city: { connect: { id: resolvedGeo.cityId } },
-                    storeType: { connect: { name: storeType } },
+                    storeType,
                     deliveryType,
                     openTime: openTime || null,
                     closeTime: closeTime || null,
@@ -130,6 +132,22 @@ export const createStore = async (req, res, next) => {
                         paymentMethodId,
                     })),
                 });
+            }
+
+            // Zone assignment: explicit zoneId takes priority over spatial auto-detection
+            if (zoneId) {
+                // Admin explicitly chose a zone — always assign directly
+                await tx.storeZone.create({
+                    data: { storeId: store.id, zoneId }
+                });
+            } else if (latitude && longitude) {
+                // Fallback: detect zone by coordinates (PostGIS ST_Within)
+                const detectedZone = await detectZone(latitude, longitude);
+                if (detectedZone) {
+                    await tx.storeZone.create({
+                        data: { storeId: store.id, zoneId: detectedZone.id }
+                    });
+                }
             }
 
             return { store, ownerEmail: owner.email };
@@ -213,7 +231,7 @@ export const getAllStores = async (req, res, next) => {
                     address: true,
                     logoUrl: true,
                     coverUrl: true,
-                    storeType: { select: { name: true } },
+                    storeType: true,
                     deliveryType: true,
                     openTime: true,
                     closeTime: true,
@@ -255,16 +273,16 @@ export const getAllStores = async (req, res, next) => {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * GET /api/stores/nearby?lat=&lng=&radius=&mainCategoryId=
- * Uses the Haversine formula to find stores within a given radius (km).
- * radius defaults to 10 km. Returns stores sorted by distance ASC.
+ * GET /api/stores/nearby?lat=&lng=&mainCategoryId=&subCategoryId=
+ * Zone-based store discovery using PostGIS ST_Within.
+ * Returns all stores in the zone that contains the user's coordinates.
+ * Falls back to distance-sorted results within the zone.
  */
 export const getNearbyStores = async (req, res, next) => {
     try {
         const {
             lat,
             lng,
-            radius = 10,
             mainCategoryId,
             subCategoryId,
             storeType,
@@ -277,44 +295,61 @@ export const getNearbyStores = async (req, res, next) => {
 
         const userLat = Number(lat);
         const userLng = Number(lng);
-        const radiusKm = Number(radius);
         const take = Number(limit);
 
-        // Bounding box pre-filter to reduce the dataset before Haversine
-        // 1 degree latitude ≈ 111 km
-        const latDelta = radiusKm / 111.0;
-        const lngDelta = radiusKm / (111.0 * Math.cos((userLat * Math.PI) / 180));
+        // ── Step 1: Find which delivery zone the user is in ──────────────────
+        const zone = await detectZone(userLat, userLng);
 
+        if (!zone) {
+            return res.status(404).json(
+                new ApiResponse(404, {
+                    stores: [],
+                    zone: null,
+                    userLocation: { lat: userLat, lng: userLng },
+                }, "We don't deliver to your location yet.")
+            );
+        }
+
+        // ── Step 2: Get all storeIds assigned to this zone ───────────────────
+        const storeZoneLinks = await prisma.storeZone.findMany({
+            where: { zoneId: zone.id },
+            select: { storeId: true },
+        });
+
+        const zoneStoreIds = storeZoneLinks.map((sz) => sz.storeId);
+
+        if (!zoneStoreIds.length) {
+            return res.json(
+                new ApiResponse(200, {
+                    stores: [],
+                    zone,
+                    userLocation: { lat: userLat, lng: userLng },
+                }, "No stores are assigned to your delivery zone yet.")
+            );
+        }
+
+        // ── Step 3: Fetch stores with optional filters ───────────────────────
         const where = {
+            id: { in: zoneStoreIds },
             isActive: true,
-            latitude: {
-                gte: userLat - latDelta,
-                lte: userLat + latDelta,
-            },
-            longitude: {
-                gte: userLng - lngDelta,
-                lte: userLng + lngDelta,
-            },
         };
 
         if (mainCategoryId) where.mainCategoryId = mainCategoryId;
         if (storeType) where.storeType = storeType;
         if (subCategoryId) {
-            where.storeCategories = {
-                some: { subCategoryId },
-            };
+            where.storeCategories = { some: { subCategoryId } };
         }
 
         const stores = await prisma.store.findMany({
             where,
-            take: take * 2, // over-fetch, then trim after Haversine sort
+            take: take * 2, // over-fetch, trim after Haversine sort
             select: {
                 id: true,
                 name: true,
                 description: true,
                 logoUrl: true,
                 coverUrl: true,
-                storeType: { select: { name: true } },
+                storeType: true,
                 deliveryType: true,
                 deliveryTimeMinutes: true,
                 minimumOrderCost: true,
@@ -329,7 +364,7 @@ export const getNearbyStores = async (req, res, next) => {
             },
         });
 
-        // Haversine distance in km
+        // ── Step 4: Sort by distance within the zone ─────────────────────────
         const toRad = (deg) => (deg * Math.PI) / 180;
         const haversine = (lat1, lng1, lat2, lng2) => {
             const R = 6371;
@@ -350,7 +385,6 @@ export const getNearbyStores = async (req, res, next) => {
                     Number(s.latitude), Number(s.longitude)
                 ),
             }))
-            .filter((s) => s.distanceKm <= radiusKm)
             .sort((a, b) => a.distanceKm - b.distanceKm)
             .slice(0, take);
 
@@ -358,8 +392,8 @@ export const getNearbyStores = async (req, res, next) => {
             new ApiResponse(200, {
                 stores: withDistance,
                 total: withDistance.length,
+                zone,
                 userLocation: { lat: userLat, lng: userLng },
-                radiusKm,
             }, "Nearby stores fetched.")
         );
     } catch (err) {
@@ -402,7 +436,6 @@ export const getStoreById = async (req, res, next) => {
                         },
                     },
                     mainCategory: { select: { id: true, name: true } },
-                    storeType: { select: { name: true } },
                     storeCategories: {
                         include: {
                             subCategory: { select: { id: true, name: true, imageUrl: true } },
@@ -416,6 +449,12 @@ export const getStoreById = async (req, res, next) => {
                     _count: {
                         select: { reviews: true },
                     },
+                    storeZones: {
+                        select: {
+                            zoneId: true,
+                            zone: { select: { id: true, name: true } }
+                        }
+                    }
                 },
             }),
             // Fetch tenant schema data in parallel (graceful fallback on error)
@@ -507,6 +546,7 @@ export const updateStore = async (req, res, next) => {
             longitude,
             logo,
             cover,
+            zoneId, // explicit zone assignment
         } = req.body;
 
         const existing = await prisma.store.findUnique({ where: { id } });
@@ -543,13 +583,36 @@ export const updateStore = async (req, res, next) => {
                 logoUrl,
                 coverUrl,
             },
-            include: {
-                storeType: { select: { name: true } }
-            }
         });
 
-        if (store.storeType && store.storeType.name) {
-            store.storeType = store.storeType.name;
+        // Zone assignment: explicit zoneId takes priority over spatial auto-detection
+        // If latitude/longitude changed AND no explicit zoneId is provided, we re-detect.
+        // If zoneId is provided, we use it directly.
+        if (zoneId !== undefined || (latitude !== undefined && longitude !== undefined)) {
+            const currentZones = await prisma.storeZone.findMany({ where: { storeId: id } });
+            const currentZoneId = currentZones[0]?.zoneId;
+
+            // Determine if we need to change assignment
+            let newZoneId = zoneId;
+            
+            // If no explicit zoneId, but coordinates changed, try to auto-detect
+            if (newZoneId === undefined && (latitude !== undefined || longitude !== undefined)) {
+                const detected = await detectZone(
+                    latitude !== undefined ? latitude : existing.latitude,
+                    longitude !== undefined ? longitude : existing.longitude
+                );
+                newZoneId = detected?.id || null;
+            }
+
+            // If we have a new zoneId (or it was explicitly cleared to null), update it
+            if (newZoneId !== undefined && newZoneId !== currentZoneId) {
+                await prisma.storeZone.deleteMany({ where: { storeId: id } });
+                if (newZoneId) {
+                    await prisma.storeZone.create({
+                        data: { storeId: id, zoneId: newZoneId }
+                    });
+                }
+            }
         }
 
         res.json(new ApiResponse(200, store, "Store updated."));

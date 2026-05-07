@@ -40,6 +40,7 @@ import trackingRoutes from "./modules/tracking/routes/tracking.routes.js";
 import messagingRoutes from "./modules/messaging/routes/messaging.routes.js";
 import notificationRoutes from "./modules/notification/routes/notification.routes.js";
 import geographyRoutes from "./modules/geography/routes/geography.routes.js";
+import zoneRoutes from "./modules/zone/routes/zone.routes.js";
 
 // ═════════════════════════════════════════════════════════════════════════════
 // APP BOOTSTRAP
@@ -103,6 +104,7 @@ app.use("/api/tracking", trackingRoutes);
 app.use("/api/messaging", messagingRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/geography", geographyRoutes);
+app.use("/api/zones", zoneRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) =>

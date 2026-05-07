@@ -111,23 +111,63 @@ export const registerDispatchSocket = (namespace) => {
  * @param {string[]} excludeDriverIds — drivers who already rejected this order
  */
 export const dispatchToNearestDriver = async (io, orderId, store, userAddress, excludeDriverIds = []) => {
-    // 1. Find available drivers (ONLINE, approved, not excluded)
-    const availableDrivers = await prisma.driver.findMany({
-        where: {
-            isOnline: true,
-            status: "ONLINE",
-            application: { status: "APPROVED" },
-            id: { notIn: excludeDriverIds },
-        },
-        select: {
-            id: true,
-            latitude: true,
-            longitude: true,
-            application: {
-                select: { firstName: true, familyName: true },
-            },
-        },
+    // ── 1. Find the zone assigned to this store (if any) ─────────────────────
+    const storeZoneRow = await prisma.storeZone.findFirst({
+        where: { storeId: store.id },
+        select: { zoneId: true },
     });
+    const storeZoneId = storeZoneRow?.zoneId ?? null;
+
+    // ── 2. Build base driver filter ──────────────────────────────────────────
+    const baseWhere = {
+        isOnline: true,
+        status: "ONLINE",
+        application: { status: "APPROVED" },
+        id: { notIn: excludeDriverIds },
+    };
+
+    let availableDrivers = [];
+
+    // ── 3. Prefer zone-assigned drivers when zone exists ─────────────────────
+    if (storeZoneId) {
+        const zoneDriverLinks = await prisma.driverZone.findMany({
+            where: { zoneId: storeZoneId },
+            select: { driverId: true },
+        });
+        const zoneDriverIds = zoneDriverLinks.map((l) => l.driverId);
+
+        if (zoneDriverIds.length > 0) {
+            availableDrivers = await prisma.driver.findMany({
+                where: {
+                    ...baseWhere,
+                    id: { in: zoneDriverIds, notIn: excludeDriverIds },
+                },
+                select: {
+                    id: true,
+                    latitude: true,
+                    longitude: true,
+                    application: { select: { firstName: true, familyName: true } },
+                },
+            });
+            console.log(`[Dispatch] Zone ${storeZoneId} has ${availableDrivers.length} available assigned driver(s).`);
+        }
+    }
+
+    // ── 4. Fallback: any available driver (when no zone or no zone drivers) ──
+    if (availableDrivers.length === 0) {
+        availableDrivers = await prisma.driver.findMany({
+            where: baseWhere,
+            select: {
+                id: true,
+                latitude: true,
+                longitude: true,
+                application: { select: { firstName: true, familyName: true } },
+            },
+        });
+        if (storeZoneId && availableDrivers.length > 0) {
+            console.log(`[Dispatch] No zone drivers available — falling back to ${availableDrivers.length} global driver(s).`);
+        }
+    }
 
     if (availableDrivers.length === 0) {
         console.log(`[Dispatch] No available drivers for order ${orderId}`);
