@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   ChevronDown,
+  MapPin,
 } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import ErrorBoundary from "../error-boundary/ErrorBoundary";
@@ -24,6 +25,7 @@ const ADMIN_NAV_ITEMS = [
   { label: "Users", icon: Users, path: "/users" },
   { label: "Drivers", icon: Truck, path: "/drivers" },
   { label: "Orders", icon: ShoppingBag, path: "/orders" },
+  { label: "Zones", icon: MapPin, path: "/zones" },
 ];
 
 export default function MainLayout() {

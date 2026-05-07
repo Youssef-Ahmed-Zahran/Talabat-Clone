@@ -1,8 +1,8 @@
 import { useClearTimeout } from "../../../hooks/useClearTimeout";
-
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Upload, Navigation, Loader2 } from "lucide-react";
+import { Upload, Navigation, Loader2, MapPin } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   storeSchema,
@@ -12,6 +12,7 @@ import type { Category, Store } from "../../../types";
 import { LocationPicker } from "./LocationPicker";
 import { useCreateStore, useUpdateStore } from "../api/store.api";
 import { handleApiError } from "../../../utils/error";
+import { fetchAllZones, type Zone } from "../../zones/api/zones.api";
 
 interface StoreFormModalProps {
   isOpen: boolean;
@@ -54,6 +55,27 @@ export function StoreFormModal({
   const createMutation = useCreateStore();
   const updateMutation = useUpdateStore();
   const isPending = createMutation.isPending || updateMutation.isPending;
+
+  // Load zones for the zone selector
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [selectedZoneId, setSelectedZoneId] = useState("");
+
+  useEffect(() => {
+    fetchAllZones().then(setZones).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (editingStore?.storeZones?.[0]?.zoneId) {
+      setSelectedZoneId(editingStore.storeZones[0].zoneId);
+    } else {
+      setSelectedZoneId("");
+    }
+  }, [editingStore]);
+
+  // Reset zone selection when modal closes/reopens
+  useEffect(() => {
+    if (!isOpen) setSelectedZoneId("");
+  }, [isOpen]);
 
   useClearTimeout(onClose, isOpen);
 
@@ -166,6 +188,8 @@ export function StoreFormModal({
       countryCode: "EG",
       latitude: data.latitude?.trim() || "30.0444",
       longitude: data.longitude?.trim() || "31.2357",
+      // Pass explicit zone assignment if admin selected one
+      ...(selectedZoneId ? { zoneId: selectedZoneId } : {}),
     };
 
     if (editingStore) {
@@ -602,6 +626,36 @@ export function StoreFormModal({
               Allow Pre-orders
             </label>
           </div>
+
+          {/* Zone assignment — only for new stores */}
+          {!editingStore && (
+            <div className="md:col-span-2 mt-2 pt-4 border-t border-gray-100">
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-brand" />
+                Delivery Zone Assignment
+              </h3>
+              <div>
+                <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
+                  Assign to Zone <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <select
+                  value={selectedZoneId}
+                  onChange={(e) => setSelectedZoneId(e.target.value)}
+                  className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
+                >
+                  <option value="">— No zone (auto-detect from location) —</option>
+                  {zones.map((z) => (
+                    <option key={z.id} value={z.id}>
+                      {z.name}{z.city ? ` · ${z.city.name}` : ""}{!z.isActive ? " (Inactive)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-gray-400 mt-1.5 leading-relaxed">
+                  Select a zone to explicitly link this store to a delivery area. If left blank, the system will attempt to detect the zone from the store's map coordinates.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="md:col-span-2 flex items-center justify-end gap-3 pt-6 border-t border-gray-100 mt-4">
             <button

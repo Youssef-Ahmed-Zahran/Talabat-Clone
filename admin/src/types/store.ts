@@ -33,6 +33,12 @@ export interface Store {
   
   createdAt: string;
   updatedAt?: string;
+  storeZones?: {
+    id: string;
+    storeId: string;
+    zoneId: string;
+    zone: { id: string; name: string };
+  }[];
 }
 
 export interface CreateStorePayload {
@@ -61,6 +67,8 @@ export interface CreateStorePayload {
   cover?: string;
   ownerEmail: string;
   ownerPassword?: string;
+  /** Explicitly assign store to a zone on creation (overrides spatial detection) */
+  zoneId?: string;
 }
 
 export type UpdateStorePayload = Partial<CreateStorePayload>;

@@ -22,6 +22,8 @@ import {
   StoreDetailsPage,
   StoreCatalogPage,
   ProductOptionsPage,
+  ZonesPage,
+  ZoneEditorPage,
 } from "./lazyComponents";
 
 const router = createBrowserRouter([
@@ -81,6 +83,30 @@ const router = createBrowserRouter([
       { path: "drivers", element: <DriversListPage /> },
       { path: "drivers/:driverId", element: <DriverDetailsPage /> },
       { path: "orders", element: <LiveOrdersPage /> },
+      {
+        path: "zones",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ZonesPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "zones/new",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ZoneEditorPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "zones/:id/edit",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ZoneEditorPage />
+          </Suspense>
+        ),
+      },
     ],
   },
   {

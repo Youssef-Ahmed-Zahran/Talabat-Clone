@@ -12,3 +12,9 @@ export const StoreCatalogPage = lazy(
 export const ProductOptionsPage = lazy(
   () => import("../features/catalog/pages/ProductOptionsPage"),
 );
+export const ZonesPage = lazy(
+  () => import("../features/zones/pages/ZonesPage"),
+);
+export const ZoneEditorPage = lazy(
+  () => import("../features/zones/pages/ZoneEditorPage"),
+);
