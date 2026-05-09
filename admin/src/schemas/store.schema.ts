@@ -22,6 +22,9 @@ export const storeSchema = z.object({
   ownerPassword: z.string().optional(),
   logoUrl: z.string().optional(),
   coverImage: z.string().optional(),
+  maxDeliveryDistanceKm: z.number().min(0).optional(),
+  outsideZoneDeliveryFees: z.number().min(0).optional(),
+  commissionRate: z.number().min(0).max(100).optional(),
 });
 
 export type StoreFormValues = z.infer<typeof storeSchema>;

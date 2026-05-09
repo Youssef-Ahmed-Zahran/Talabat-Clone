@@ -162,3 +162,98 @@ export const useRejectDocument = (driverId: string) => {
     },
   });
 };
+
+// ── Fetch Driver Wallet ───────────────────────────────────────────────
+const fetchDriverWallet = async (driverId: string) => {
+  const { data } = await api.get(`/admin/drivers/${driverId}/wallet`);
+  return data.data ?? data;
+};
+
+export const useDriverWallet = (driverId: string) => {
+  return useQuery({
+    queryKey: ["drivers", driverId, "wallet"],
+    queryFn: () => fetchDriverWallet(driverId),
+    enabled: !!driverId,
+  });
+};
+
+// ── Top up Driver Wallet ──────────────────────────────────────────────
+const topUpWallet = async ({
+  driverId,
+  amount,
+  note,
+}: {
+  driverId: string;
+  amount: number;
+  note?: string;
+}) => {
+  const { data } = await api.post(`/admin/drivers/${driverId}/wallet/topup`, {
+    amount,
+    note,
+  });
+  return data.data ?? data;
+};
+
+export const useTopUpWallet = (driverId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: topUpWallet,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers", driverId] });
+      qc.invalidateQueries({ queryKey: ["drivers", driverId, "wallet"] });
+    },
+  });
+};
+
+// ── Debit Driver Wallet ───────────────────────────────────────────────
+const debitWallet = async ({
+  driverId,
+  amount,
+  note,
+}: {
+  driverId: string;
+  amount: number;
+  note?: string;
+}) => {
+  const { data } = await api.post(`/admin/drivers/${driverId}/wallet/debit`, {
+    amount,
+    note,
+  });
+  return data.data ?? data;
+};
+
+export const useDebitWallet = (driverId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: debitWallet,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers", driverId] });
+      qc.invalidateQueries({ queryKey: ["drivers", driverId, "wallet"] });
+    },
+  });
+};
+
+// ── Update Driver Credit Limit ────────────────────────────────────────
+const updateCreditLimit = async ({
+  driverId,
+  creditLimit,
+}: {
+  driverId: string;
+  creditLimit: number;
+}) => {
+  const { data } = await api.patch(
+    `/admin/drivers/${driverId}/wallet/credit-limit`,
+    { creditLimit },
+  );
+  return data.data ?? data;
+};
+
+export const useUpdateCreditLimit = (driverId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: updateCreditLimit,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers", driverId, "wallet"] });
+    },
+  });
+};

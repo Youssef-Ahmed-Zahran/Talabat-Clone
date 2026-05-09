@@ -43,6 +43,9 @@ const defaultValues: StoreFormValues = {
   ownerPassword: "",
   logoUrl: "",
   coverImage: "",
+  maxDeliveryDistanceKm: 0,
+  outsideZoneDeliveryFees: 0,
+  commissionRate: 0,
 };
 
 export function StoreFormModal({
@@ -114,6 +117,9 @@ export function StoreFormModal({
           ownerPassword: "",
           logoUrl: editingStore.logoUrl || "",
           coverImage: editingStore.coverUrl || editingStore.coverImage || "",
+          maxDeliveryDistanceKm: Number(editingStore.maxDeliveryDistanceKm) || 0,
+          outsideZoneDeliveryFees: Number(editingStore.outsideZoneDeliveryFees) || 0,
+          commissionRate: Number(editingStore.commissionRate) || 0,
         }
       : defaultValues,
   });
@@ -122,6 +128,7 @@ export function StoreFormModal({
   const coverImage = watch("coverImage");
   const lat = watch("latitude");
   const lng = watch("longitude");
+  const selectedDeliveryType = watch("deliveryType");
 
   const handleFileChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -183,6 +190,9 @@ export function StoreFormModal({
       allowPreorder: data.allowPreorder ?? false,
       logo: data.logoUrl || undefined,
       cover: data.coverImage || undefined,
+      maxDeliveryDistanceKm: Number(data.maxDeliveryDistanceKm) || undefined,
+      outsideZoneDeliveryFees: Number(data.outsideZoneDeliveryFees) || undefined,
+      commissionRate: Number(data.commissionRate) || undefined,
       cityName: "Cairo",
       countryName: "Egypt",
       countryCode: "EG",
@@ -565,6 +575,34 @@ export function StoreFormModal({
             />
           </div>
 
+          {selectedDeliveryType === "STORE_DELIVERY" && (
+            <>
+              <div>
+                <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
+                  Max Delivery Distance (KM)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  {...register("maxDeliveryDistanceKm", { valueAsNumber: true })}
+                  placeholder="e.g. 15"
+                  className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
+                  Outside Zone Delivery Fees
+                </label>
+                <input
+                  type="number"
+                  {...register("outsideZoneDeliveryFees", { valueAsNumber: true })}
+                  placeholder="e.g. 50"
+                  className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
+                />
+              </div>
+            </>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
@@ -610,6 +648,24 @@ export function StoreFormModal({
               placeholder="15"
               className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
             />
+          </div>
+
+          <div>
+            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
+              Commission Rate (%)
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              {...register("commissionRate", { valueAsNumber: true })}
+              placeholder="e.g. 15"
+              className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
+            />
+            {errors.commissionRate && (
+              <p className="text-red-500 text-xs mt-1">
+                {errors.commissionRate.message}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-3">

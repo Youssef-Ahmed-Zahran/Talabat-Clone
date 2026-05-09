@@ -53,9 +53,9 @@ export function LoginForm() {
     } else {
       loginOwnerMutation.mutate(data, {
         onSuccess: (res) => {
-          setToken(res.token, "owner", res.owner.email);
+          setToken(res.token, "owner", res.owner.storeId);
           toast.success(`Welcome back! Managing ${res.owner.store.name}`);
-          navigate(`/my-store`, { replace: true });
+          navigate(`/dashboard`, { replace: true });
         },
         onError: (error: unknown) => {
           handleApiError(

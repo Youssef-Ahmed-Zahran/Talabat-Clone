@@ -27,6 +27,9 @@ export interface Store {
   deliveryTimeMinutes?: number;
   minimumOrderCost?: number | string;
   deliveryFees?: number | string;
+  maxDeliveryDistanceKm?: number | string;
+  outsideZoneDeliveryFees?: number | string;
+  commissionRate?: number | string;
   allowPreorder?: boolean;
   latitude?: string;
   longitude?: string;
@@ -56,6 +59,9 @@ export interface CreateStorePayload {
   deliveryTimeMinutes: number;
   minimumOrderCost: number;
   deliveryFees: number;
+  maxDeliveryDistanceKm?: number;
+  outsideZoneDeliveryFees?: number;
+  commissionRate?: number;
   allowPreorder: boolean;
   latitude: string;
   longitude: string;

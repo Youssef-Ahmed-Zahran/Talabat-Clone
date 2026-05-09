@@ -33,12 +33,14 @@ export default function MainLayout() {
   const [profileOpen, setProfileOpen] = useState(false);
   const logout = useAuthStore((s) => s.logout);
   const role = useAuthStore((s) => s.role);
+  const storeId = useAuthStore((s) => s.storeId);
   const navigate = useNavigate();
 
   const NAV_ITEMS =
     role === "owner"
       ? [
-          { label: "My Store", icon: Store, path: `/my-store` },
+          { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+          { label: "My Store", icon: Store, path: `/stores/${storeId}` },
           { label: "Orders", icon: ShoppingBag, path: "/orders" },
         ]
       : ADMIN_NAV_ITEMS;

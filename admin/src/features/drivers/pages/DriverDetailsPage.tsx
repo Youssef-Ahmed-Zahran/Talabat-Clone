@@ -6,6 +6,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Wallet,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -23,6 +24,7 @@ import type { DriverStatus } from "../../../types";
 import { DriverProfileCard } from "../components/DriverProfileCard";
 import { DriverApplicationDetails } from "../components/DriverApplicationDetails";
 import { DriverDocumentsList } from "../components/DriverDocumentsList";
+import { DriverWalletDetails } from "../components/DriverWalletDetails";
 
 const APP_STATUS_CONFIG: Record<
   DriverStatus,
@@ -230,6 +232,15 @@ export default function DriverDetailsPage() {
             onVerify={handleVerifyDoc}
             onReject={handleRejectDoc}
           />
+          <div className="pt-4 border-t border-gray-100">
+            <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <div className="p-2 bg-gray-900 text-white rounded-xl">
+                <Wallet className="w-5 h-5" />
+              </div>
+              Financial Management (Wallet)
+            </h3>
+            <DriverWalletDetails driverId={driverId!} />
+          </div>
         </div>
       </div>
     </div>
