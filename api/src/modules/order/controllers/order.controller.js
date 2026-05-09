@@ -39,6 +39,29 @@ export const placeOrder = async (req, res, next) => {
             throw new ApiError(400, "storeId, addressId, and paymentMethodId are required.");
         }
 
+        // ── Resolve Payment Method ─────────────────────────────────────
+        // If the frontend sends 'cash', 'stripe', or 'online' as the ID, resolve it to the actual UUID
+        let resolvedPaymentMethodId = paymentMethodId;
+        const normalizedPM = paymentMethodId.toLowerCase();
+        
+        if (['cash', 'card', 'online', 'paypal', 'stripe'].includes(normalizedPM)) {
+            let pmType;
+            if (normalizedPM === 'online' || normalizedPM === 'stripe') {
+                pmType = 'CARD';
+            } else {
+                pmType = normalizedPM.toUpperCase();
+            }
+
+            const pm = await prisma.paymentMethod.findUnique({
+                where: { name: pmType }
+            });
+            if (pm) {
+                resolvedPaymentMethodId = pm.id;
+            } else {
+                throw new ApiError(400, `Payment method '${pmType}' is not configured in the database.`);
+            }
+        }
+
         const address = await prisma.userAddress.findFirst({ where: { id: addressId, userId } });
         if (!address) throw new ApiError(404, "Address not found.");
 
@@ -70,6 +93,20 @@ export const placeOrder = async (req, res, next) => {
         const tip = Number(tipAmount || 0);
         const totalAmount = subtotal + deliveryFees + tip;
 
+        const commissionRate = Number(store.commissionRate || 0);
+        const commissionAmount = Number((subtotal * (commissionRate / 100)).toFixed(2));
+        
+        let appFee = commissionAmount;
+        let storeEarnings = subtotal - commissionAmount;
+
+        // If the store is delivering, they receive the delivery fee
+        if (store.deliveryType === 'STORE_DELIVERY' || store.deliveryType === 'STORE') {
+            storeEarnings += deliveryFees;
+        } else {
+            // If the platform delivers, the platform keeps the delivery fee
+            appFee += deliveryFees;
+        }
+
         // ── Create the order WITHOUT auto-assigning a driver ──────────────
         // The driver dispatch happens asynchronously after the transaction.
         const order = await prisma.$transaction(async (tx) => {
@@ -78,10 +115,12 @@ export const placeOrder = async (req, res, next) => {
                     userId,
                     storeId,
                     addressId,
-                    paymentMethodId,
+                    paymentMethodId: resolvedPaymentMethodId,
                     subtotal,
                     deliveryFees,
                     tipAmount: tip,
+                    appFee,
+                    storeEarnings,
                     totalAmount,
                     deliveryType: store.deliveryType,
                     deliveryInstructions: deliveryInstructions || null,
@@ -97,11 +136,12 @@ export const placeOrder = async (req, res, next) => {
                 data: { orderId: newOrder.id, status: "PENDING" },
             });
 
-            // Create LiveTracking in WAITING_FOR_DRIVER state
-            // Driver will be assigned after they accept the dispatch
-            await tx.liveTracking.create({
-                data: { orderId: newOrder.id, status: "WAITING_FOR_DRIVER" },
-            });
+            // Create LiveTracking only if it's a platform delivery
+            if (store.deliveryType !== 'STORE_DELIVERY' && store.deliveryType !== 'STORE') {
+                await tx.liveTracking.create({
+                    data: { orderId: newOrder.id, status: "WAITING_FOR_DRIVER" },
+                });
+            }
 
             await tx.cart.delete({ where: { id: cart.id } });
             return newOrder;
@@ -127,15 +167,17 @@ export const placeOrder = async (req, res, next) => {
         });
 
         // ── Dispatch to nearest driver (async — don't block the response) ──
-        // This runs in the background after the response is sent
+        // Only if the store uses our platform delivery
         const io = getIO();
-        setImmediate(async () => {
-            try {
-                await dispatchToNearestDriver(io, order.id, store, address);
-            } catch (err) {
-                console.error("[PlaceOrder] Dispatch error (non-blocking):", err);
-            }
-        });
+        if (store.deliveryType !== 'STORE_DELIVERY' && store.deliveryType !== 'STORE') {
+            setImmediate(async () => {
+                try {
+                    await dispatchToNearestDriver(io, order.id, store, address);
+                } catch (err) {
+                    console.error("[PlaceOrder] Dispatch error (non-blocking):", err);
+                }
+            });
+        }
 
         // ── Notify Store Owner & Admins ──
         try {
@@ -452,8 +494,31 @@ export const updateOrderStatus = async (req, res, next) => {
         let changedByDriverId = null;
         let changedByAdminId = null;
 
-        if (req.admin) { changedByType = "ADMIN"; changedByAdminId = req.admin.id; }
-        if (req.owner) { changedByType = "SYSTEM"; } // Owner acts on behalf of store
+        console.log("[Debug] UpdateOrderStatus - Auth State:", {
+            isAdmin: !!req.admin,
+            isDriver: !!req.driver,
+            isOwner: !!req.owner,
+            adminId: req.admin?.id,
+            driverId: req.driver?.id
+        });
+
+        if (req.admin) { 
+            changedByType = "ADMIN"; 
+            if (req.admin.isFromUserTable) {
+                changedByUserId = req.admin.id;
+            } else {
+                changedByAdminId = req.admin.id;
+            }
+        }
+        else if (req.driver) { 
+            changedByType = "DRIVER"; 
+            changedByDriverId = req.driver.id; 
+        }
+        else if (req.owner) { 
+            changedByType = "SYSTEM"; 
+        }
+
+        console.log("[Debug] UpdateOrderStatus - Resolved IDs:", { changedByType, changedByAdminId, changedByDriverId, changedByUserId });
 
         // Map order status → LiveTracking status
         const liveStatusMap = {
@@ -469,7 +534,15 @@ export const updateOrderStatus = async (req, res, next) => {
         await prisma.$transaction(async (tx) => {
             await tx.order.update({ where: { id }, data: { status } });
             await tx.orderStatusHistory.create({
-                data: { orderId: id, status, changedByType, changedByAdminId, note: note || null },
+                data: { 
+                    orderId: id, 
+                    status, 
+                    changedByType, 
+                    changedByAdminId, 
+                    changedByDriverId,
+                    changedByUserId,
+                    note: note || null 
+                },
             });
 
             // Update LiveTracking if mapped
@@ -491,6 +564,31 @@ export const updateOrderStatus = async (req, res, next) => {
                     data: { status: "ONLINE" },
                 });
             }
+
+            // ─── DELIVERED Logic: Complete the flow ───
+            if (status === "DELIVERED" && order.driverAssign?.driverId) {
+                // 1. Release the driver
+                await tx.driver.update({
+                    where: { id: order.driverAssign.driverId },
+                    data: { status: "ONLINE", isOnline: true },
+                });
+
+                // 2. Mark the assignment as COMPLETED
+                await tx.orderDriverAssignment.update({
+                    where: { orderId: id },
+                    data: { status: "ACCEPTED" }, // Usually accepted means it's finished successfully in this flow
+                });
+
+                // 3. Handle Wallet Transactions (Debit/Credit)
+                try {
+                    const { handleWalletOnDelivery } = await import("../../driver/controllers/wallet.controller.js");
+                    await handleWalletOnDelivery(id, tx);
+                } catch (walletErr) {
+                    console.error("[OrderUpdate] Wallet processing failed:", walletErr);
+                    // We don't throw here to avoid rolling back the order status update, 
+                    // but in production, you might want more robust error handling.
+                }
+            }
         });
 
         // ── Real-time notifications ──────────────────────────────────────
@@ -508,8 +606,11 @@ export const updateOrderStatus = async (req, res, next) => {
             // Notify user
             const { emitToUser } = await import("../../../sockets/notifications.socket.js");
             const userNotifs = {
-                PREPARING:        { title: "Being prepared 👨‍🍳", body: `${order.store.name} is preparing your order. Your driver is on the way to the restaurant.` },
-                READY_FOR_PICKUP: { title: "Ready for pickup 📦", body: `Your order is ready! The driver is at ${order.store.name} picking it up.` },
+                PREPARING:        { title: "Being prepared 👨‍🍳", body: `${order.store.name} is preparing your order.` },
+                READY_FOR_PICKUP: { title: "Ready for pickup 📦", body: `Your order is ready at ${order.store.name}.` },
+                PICKED_UP:        { title: "Order picked up 🛵", body: `The driver has picked up your order and is on the way!` },
+                ON_THE_WAY:       { title: "Almost there! 📍", body: `Your driver is very close with your order.` },
+                DELIVERED:        { title: "Order delivered! 🎉", body: "Enjoy your meal! Please rate your experience." },
                 CANCELLED:        { title: "Order cancelled ❌", body: "Your order has been cancelled." },
             };
             if (userNotifs[status]) {

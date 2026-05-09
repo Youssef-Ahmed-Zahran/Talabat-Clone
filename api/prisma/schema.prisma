@@ -33,6 +33,7 @@ enum PaymentMethodType {
   CASH
   CARD
   PAYPAL
+  STRIPE
 }
 
 enum OrderStatus {
@@ -150,6 +151,20 @@ enum StatusChangedByType {
   SYSTEM
 }
 
+enum WalletTransactionType {
+  CASH_ORDER_DEBIT     // Deducted when driver collects cash from a customer
+  DELIVERY_FEE_CREDIT  // Credited when driver completes an online-paid order
+  ADMIN_TOP_UP         // Admin clears debt after driver deposits cash
+  ADMIN_DEBIT          // Manual deduction by admin
+  PAYOUT               // Driver earnings payout
+}
+
+enum WalletTransactionStatus {
+  PENDING
+  COMPLETED
+  REVERSED
+}
+
 // ============================================================
 // GEOGRAPHY
 // ============================================================
@@ -225,6 +240,7 @@ model User {
   addresses     UserAddress[]
   carts         Cart[]
   orders        Order[]
+  wallet        UserWallet?
   storeReviews  StoreReview[]
   devices       UserDevice[]
   conversations Conversation[]
@@ -384,6 +400,7 @@ model Driver {
   liveTracking  LiveTracking[]
   conversations Conversation[]
   driverZones   DriverZone[]
+  wallet        DriverWallet?
 
   notifications DriverNotification[]
   fcmTokens     DriverFcmToken[]
@@ -571,6 +588,9 @@ model Store {
   minimumOrderCost    Decimal? @default(0)
   deliveryFees        Decimal? @default(0)
 
+  maxDeliveryDistanceKm   Decimal?
+  outsideZoneDeliveryFees Decimal?
+
   allowPreorder Boolean @default(false)
 
   latitude  Decimal
@@ -579,6 +599,8 @@ model Store {
   ratingSum     Int     @default(0)
   totalReviews  Int     @default(0)
   averageRating Decimal @default(0)
+
+  commissionRate Decimal @default(0)
 
   isActive Boolean @default(true)
 
@@ -595,7 +617,7 @@ model Store {
   storeCategories StoreSubCategory[]
   carts           Cart[]
   storeZones      StoreZone[]
-
+  wallet          StoreWallet?
   storeWishlists StoreWishlist[]
 
   @@index([mainCategoryId])
@@ -635,6 +657,7 @@ model Zone {
   description String?
   color       String? // hex color for admin map, e.g. "#FF5733"
   isActive    Boolean @default(true)
+  boundary    Unsupported("geometry")?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -764,6 +787,8 @@ model Order {
   subtotal     Decimal
   deliveryFees Decimal
   tipAmount    Decimal      @default(0)
+  appFee       Decimal      @default(0)
+  storeEarnings Decimal     @default(0)
   totalAmount  Decimal
   deliveryType DeliveryType @default(TALABAT)
 
@@ -953,6 +978,165 @@ model DriverEarning {
   @@index([driverId])
   @@index([paidOut])
   @@map("driver_earnings")
+}
+
+// ============================================================
+// DRIVER WALLET
+// ============================================================
+
+/// Each driver has exactly one wallet.
+/// balance: current balance (can be negative if driver owes money)
+/// creditLimit: max allowed debt before account is suspended
+model DriverWallet {
+  id       String @id @default(uuid())
+  driverId String @unique
+
+  balance     Decimal @default(0)    // current balance (can be negative)
+  creditLimit Decimal @default(1500) // max debt allowed before suspension
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  driver       Driver                   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  transactions DriverWalletTransaction[]
+
+  @@index([driverId])
+  @@map("driver_wallets")
+}
+
+/// Ledger: every single movement in the wallet is recorded here
+model DriverWalletTransaction {
+  id       String @id @default(uuid())
+  walletId String
+  orderId  String? // linked to a specific order if applicable
+
+  type    WalletTransactionType   @default(CASH_ORDER_DEBIT)
+  status  WalletTransactionStatus @default(COMPLETED)
+
+  amount       Decimal // positive = credit, negative = debit
+  balanceAfter Decimal // balance snapshot after this transaction
+
+  note      String?  // optional note (e.g. "cash collected from customer")
+  createdAt DateTime @default(now())
+
+  wallet DriverWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([orderId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("driver_wallet_transactions")
+}
+
+// ============================================================
+// USER WALLET (Customer)
+// ============================================================
+
+model UserWallet {
+  id     String  @id @default(uuid())
+  userId String  @unique
+  balance Decimal @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions UserWalletTransaction[]
+
+  @@map("user_wallets")
+}
+
+model UserWalletTransaction {
+  id       String @id @default(uuid())
+  walletId String
+  orderId  String?
+
+  type   String  @default("REFUND") // REFUND, TOPUP, PAYMENT
+  amount Decimal 
+  balanceAfter Decimal
+
+  note      String?
+  createdAt DateTime @default(now())
+
+  wallet UserWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([orderId])
+  @@map("user_wallet_transactions")
+}
+
+// ============================================================
+// STORE WALLET
+// ============================================================
+
+model StoreWallet {
+  id      String  @id @default(uuid())
+  storeId String  @unique
+  balance Decimal @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store        Store                    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  transactions StoreWalletTransaction[]
+
+  @@map("store_wallets")
+}
+
+model StoreWalletTransaction {
+  id       String @id @default(uuid())
+  walletId String
+  orderId  String?
+
+  type   String  @default("ORDER_EARNING") // ORDER_EARNING, WITHDRAWAL, ADJUSTMENT
+  amount Decimal 
+  balanceAfter Decimal
+
+  note      String?
+  createdAt DateTime @default(now())
+
+  wallet StoreWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([orderId])
+  @@map("store_wallet_transactions")
+}
+
+// ============================================================
+// PLATFORM WALLET (Talabat)
+// ============================================================
+
+model PlatformWallet {
+  id      String  @id @default(uuid())
+  name    String  @unique @default("TALABAT_MAIN")
+  balance Decimal @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions PlatformWalletTransaction[]
+
+  @@map("platform_wallets")
+}
+
+model PlatformWalletTransaction {
+  id       String @id @default(uuid())
+  walletId String
+  orderId  String?
+
+  type   String  @default("COMMISSION") // COMMISSION, AD_REVENUE, PAYOUT
+  amount Decimal 
+  balanceAfter Decimal
+
+  note      String?
+  createdAt DateTime @default(now())
+
+  wallet PlatformWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([orderId])
+  @@map("platform_wallet_transactions")
 }
 
 // ============================================================

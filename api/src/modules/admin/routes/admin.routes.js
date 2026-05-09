@@ -19,6 +19,13 @@ import {
     getDashboardStats,
     getUserOrders,
 } from "../controllers/admin.controller.js";
+import { 
+    getDriverWalletByAdmin, 
+    adminTopUp, 
+    adminDebit, 
+    updateCreditLimit,
+    getPlatformWallet
+} from "../../driver/controllers/wallet.controller.js";
 
 const router = Router();
 
@@ -45,6 +52,13 @@ router.patch("/drivers/:id/unsuspend", unsuspendDriver);
 router.delete("/drivers/:id", deleteDriver);
 router.patch("/drivers/documents/:docId/verify", verifyDocument);
 router.patch("/drivers/documents/:docId/reject", rejectDocument);
+
+// ─── Driver Wallet Management ─────────────────────────────────
+router.get("/drivers/:driverId/wallet", getDriverWalletByAdmin);
+router.post("/drivers/:driverId/wallet/topup", adminTopUp);
+router.post("/drivers/:driverId/wallet/debit", adminDebit);
+router.patch("/drivers/:driverId/wallet/credit-limit", updateCreditLimit);
+router.get("/platform/wallet", getPlatformWallet);
 
 // ─── Admin Management (SUPER_ADMIN only) ──────────────────────
 router.post("/admins", allowAdminRoles("SUPER_ADMIN"), createAdmin);

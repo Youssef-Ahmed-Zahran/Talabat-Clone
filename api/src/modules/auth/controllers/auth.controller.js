@@ -170,7 +170,13 @@ export const registerDriver = async (req, res, next) => {
         const passwordHash = await bcrypt.hash(password, 12);
 
         const driver = await prisma.driver.create({
-            data: { email, phone: phone || null, passwordHash, cityId: resolvedGeo.cityId },
+            data: { 
+                email, 
+                phone: phone || null, 
+                passwordHash, 
+                cityId: resolvedGeo.cityId,
+                wallet: { create: {} } // Create default wallet
+            },
             select: { id: true, email: true, phone: true, cityId: true, status: true, createdAt: true },
         });
 

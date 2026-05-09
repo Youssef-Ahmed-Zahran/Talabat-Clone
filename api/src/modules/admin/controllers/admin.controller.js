@@ -209,6 +209,7 @@ export const getDriverById = async (req, res, next) => {
                 application: { include: { governorate: { select: { id: true, name: true } } } },
                 documents: { orderBy: { createdAt: "desc" } },
                 city: { include: { country: { select: { name: true } } } },
+                wallet: { select: { id: true, balance: true, creditLimit: true } },
                 _count: { select: { deliveries: true, earnings: true } },
             },
         });
@@ -225,12 +226,36 @@ export const getDriverById = async (req, res, next) => {
 export const approveApplication = async (req, res, next) => {
     try {
         const { id } = req.params;
+        console.log(`[Admin] Attempting to approve application for ID: ${id}`);
 
-        const app = await prisma.driverApplication.findUnique({ where: { driverId: id } });
-        if (!app) throw new ApiError(404, "Application not found.");
+        // Try finding by driverId first, then by its own primary id
+        let app = await prisma.driverApplication.findUnique({ where: { driverId: id } });
+        if (!app) {
+            app = await prisma.driverApplication.findUnique({ where: { id } });
+        }
+
+        if (!app) {
+            // If no application exists, create a dummy one so the admin can still "approve" the driver
+            app = await prisma.driverApplication.create({
+                data: {
+                    driverId: id,
+                    status: "APPROVED",
+                    firstName: "Manual",
+                    familyName: "Approval",
+                    vehicleType: "BIKE", // default
+                    phone: "N/A",
+                    nationalId: "N/A",
+                    nationality: "N/A",
+                    gender: "OTHER",
+                    dateOfBirth: new Date(),
+                    reviewedAt: new Date(),
+                }
+            });
+            return res.json(new ApiResponse(200, null, "Driver approved (Application created automatically)."));
+        }
 
         await prisma.driverApplication.update({
-            where: { driverId: id },
+            where: { id: app.id },
             data: { status: "APPROVED", reviewedAt: new Date() },
         });
 
@@ -246,11 +271,16 @@ export const rejectApplication = async (req, res, next) => {
         const { id } = req.params;
         const { reason } = req.body;
 
-        const app = await prisma.driverApplication.findUnique({ where: { driverId: id } });
+        // Try finding by driverId first, then by its own primary id
+        let app = await prisma.driverApplication.findUnique({ where: { driverId: id } });
+        if (!app) {
+            app = await prisma.driverApplication.findUnique({ where: { id } });
+        }
+
         if (!app) throw new ApiError(404, "Application not found.");
 
         await prisma.driverApplication.update({
-            where: { driverId: id },
+            where: { id: app.id },
             data: {
                 status: "REJECTED",
                 rejectionReason: reason || null,
@@ -419,7 +449,9 @@ export const getDashboardStats = async (req, res, next) => {
             pendingApplications,
             recentOrders,
             recentDrivers,
-            recentStores
+            recentStores,
+            appProfitsData,
+            groupedProfits
         ] = await Promise.all([
             prisma.user.count(),
             prisma.driver.count(),
@@ -434,8 +466,38 @@ export const getDashboardStats = async (req, res, next) => {
             prisma.driverApplication.count({ where: { status: "PENDING" } }),
             prisma.order.findMany({ take: 5, orderBy: { createdAt: "desc" }, include: { user: { select: { fullName: true } } } }),
             prisma.driver.findMany({ take: 5, orderBy: { createdAt: "desc" } }),
-            prisma.store.findMany({ take: 5, orderBy: { createdAt: "desc" } })
+            prisma.store.findMany({ take: 5, orderBy: { createdAt: "desc" } }),
+            prisma.order.aggregate({
+                where: { status: "DELIVERED" },
+                _sum: { appFee: true },
+            }),
+            prisma.order.groupBy({
+                by: ['storeId'],
+                where: { status: "DELIVERED" },
+                _sum: { storeEarnings: true, appFee: true }
+            })
         ]);
+
+        const { ensurePlatformWallet } = await import("../../driver/controllers/wallet.controller.js");
+        const pWallet = await ensurePlatformWallet();
+
+        const storeIds = groupedProfits.map(g => g.storeId);
+        const storesData = await prisma.store.findMany({
+            where: { id: { in: storeIds } },
+            select: { id: true, name: true, logoUrl: true }
+        });
+        const storesMap = storesData.reduce((acc, store) => {
+            acc[store.id] = store;
+            return acc;
+        }, {});
+
+        const storeEarningsBreakdown = groupedProfits.map(g => ({
+            storeId: g.storeId,
+            storeName: storesMap[g.storeId]?.name || "Unknown Store",
+            logoUrl: storesMap[g.storeId]?.logoUrl || null,
+            storeEarnings: Number(g._sum.storeEarnings || 0),
+            appProfitFromStore: Number(g._sum.appFee || 0)
+        })).sort((a, b) => b.appProfitFromStore - a.appProfitFromStore);
 
         const activities = [
             ...recentOrders.map(o => ({ id: `o-${o.id}`, text: `New order #${o.id} placed by ${o.user?.fullName || 'a user'}.`, time: o.createdAt, type: 'order' })),
@@ -480,9 +542,12 @@ export const getDashboardStats = async (req, res, next) => {
                 stores: totalStores,
                 orders: { total: totalOrders, pending: pendingOrders, delivered: deliveredOrders },
                 revenue: Number(revenue._sum.totalAmount || 0),
+                totalAppProfit: Number(appProfitsData._sum.appFee || 0),
+                platformWallet: { balance: Number(pWallet.balance) },
                 pendingApplications,
                 activities,
-                revenueHistory
+                revenueHistory,
+                storeEarningsBreakdown
             }, "Dashboard stats fetched.")
         );
     } catch (err) {

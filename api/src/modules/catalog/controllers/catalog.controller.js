@@ -6,7 +6,7 @@ import {
     deleteFromCloudinary,
     deleteMultipleFromCloudinary,
 } from "../../../utils/cloudinaryUpload.js";
-import { getTenantPool, tenantQuery, tenantTransaction } from "../../../lib/tenantDb.js";
+import { tenantQuery, tenantTransaction } from "../../../lib/tenantDb.js";
 import prisma from "../../../config/db.js"; // Needed to fetch store info if necessary
 
 // ═══════════════════════════════════════════════════════════════

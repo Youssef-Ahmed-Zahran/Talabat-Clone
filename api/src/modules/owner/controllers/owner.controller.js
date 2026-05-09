@@ -128,7 +128,7 @@ export const getDashboardStats = async (req, res, next) => {
             prisma.order.count({ where: { storeId, status: "CANCELLED" } }),
             prisma.order.aggregate({
                 where: { storeId, status: "DELIVERED" },
-                _sum: { totalAmount: true },
+                _sum: { totalAmount: true, storeEarnings: true, appFee: true },
             }),
             prisma.store.findUnique({
                 where: { id: storeId },
@@ -136,10 +136,16 @@ export const getDashboardStats = async (req, res, next) => {
             }),
         ]);
 
+        const { ensureStoreWallet } = await import("../../driver/controllers/wallet.controller.js");
+        const wallet = await ensureStoreWallet(storeId);
+
         res.json(
             new ApiResponse(200, {
+                wallet: { balance: Number(wallet.balance) },
                 orders: { total: totalOrders, pending: pendingOrders, delivered: deliveredOrders, cancelled: cancelledOrders },
-                revenue: revenue._sum.totalAmount || 0,
+                revenue: Number(revenue._sum.totalAmount || 0),
+                storeEarnings: Number(revenue._sum.storeEarnings || 0),
+                appCommissionPaid: Number(revenue._sum.appFee || 0),
                 reviews: store,
             }, "Dashboard stats fetched.")
         );

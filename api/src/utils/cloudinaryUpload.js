@@ -1,15 +1,44 @@
 import cloudinary from "../lib/cloudinary.js";
+import { ApiError } from "./ApiError.js";
+import { Jimp } from "jimp";
 
 /**
- * Upload single base64 image to Cloudinary
+ * Upload single base64 image to Cloudinary with automatic compression
  */
 export const uploadToCloudinary = async (base64Image, folder = "products") => {
   try {
-    const result = await cloudinary.uploader.upload(base64Image, {
+    let finalImage = base64Image;
+
+    // Apply compression if it's a base64 string
+    try {
+      let buffer;
+      if (base64Image.includes("base64,")) {
+        buffer = Buffer.from(base64Image.split("base64,")[1], "base64");
+      } else {
+        buffer = Buffer.from(base64Image, "base64");
+      }
+
+      const image = await Jimp.read(buffer);
+      
+      // Resize if width > 1600px to save space
+      if (image.width > 1600) {
+        image.resize({ w: 1600 });
+      }
+
+      const compressedBuffer = await image.getBuffer("image/jpeg", { quality: 80 });
+      finalImage = `data:image/jpeg;base64,${compressedBuffer.toString("base64")}`;
+      
+      console.log(`[Cloudinary] Compressed image from ${Math.round(buffer.length / 1024)}KB to ${Math.round(compressedBuffer.length / 1024)}KB`);
+    } catch (compressError) {
+      console.warn("[Cloudinary] Compression failed, trying original image:", compressError.message);
+      // Fallback to original image if compression fails
+    }
+
+    const result = await cloudinary.uploader.upload(finalImage, {
       folder: folder,
       resource_type: "auto",
       transformation: [
-        { width: 1000, height: 1000, crop: "limit" },
+        { width: 1200, height: 1200, crop: "limit" },
         { quality: "auto" },
         { fetch_format: "auto" },
       ],
@@ -17,8 +46,12 @@ export const uploadToCloudinary = async (base64Image, folder = "products") => {
 
     return result.secure_url;
   } catch (error) {
-    console.error("Error uploading to Cloudinary:", error);
-    throw new Error("Failed to upload image");
+    console.error("Cloudinary Upload Error Details:", {
+      message: error.message,
+      http_code: error.http_code,
+      name: error.name,
+    });
+    throw new ApiError(500, `Cloudinary Upload Failed: ${error.message}`);
   }
 };
 

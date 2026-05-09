@@ -45,6 +45,9 @@ export const createStore = async (req, res, next) => {
             ownerEmail,
             ownerPassword,
             zoneId, // explicit zone assignment
+            maxDeliveryDistanceKm,
+            outsideZoneDeliveryFees,
+            commissionRate,
         } = req.body;
 
         // Validations
@@ -97,6 +100,9 @@ export const createStore = async (req, res, next) => {
                     deliveryTimeMinutes: deliveryTimeMinutes ? Number(deliveryTimeMinutes) : null,
                     minimumOrderCost: minimumOrderCost ? Number(minimumOrderCost) : 0,
                     deliveryFees: deliveryFees ? Number(deliveryFees) : 0,
+                    maxDeliveryDistanceKm: maxDeliveryDistanceKm ? Number(maxDeliveryDistanceKm) : null,
+                    outsideZoneDeliveryFees: outsideZoneDeliveryFees ? Number(outsideZoneDeliveryFees) : null,
+                    commissionRate: commissionRate ? Number(commissionRate) : 0,
                     allowPreorder: allowPreorder === true || allowPreorder === 'true',
                     latitude,
                     longitude,
@@ -238,6 +244,9 @@ export const getAllStores = async (req, res, next) => {
                     deliveryTimeMinutes: true,
                     minimumOrderCost: true,
                     deliveryFees: true,
+                    maxDeliveryDistanceKm: true,
+                    outsideZoneDeliveryFees: true,
+                    commissionRate: true,
                     allowPreorder: true,
                     averageRating: true,
                     totalReviews: true,
@@ -300,37 +309,18 @@ export const getNearbyStores = async (req, res, next) => {
         // ── Step 1: Find which delivery zone the user is in ──────────────────
         const zone = await detectZone(userLat, userLng);
 
-        if (!zone) {
-            return res.status(404).json(
-                new ApiResponse(404, {
-                    stores: [],
-                    zone: null,
-                    userLocation: { lat: userLat, lng: userLng },
-                }, "We don't deliver to your location yet.")
-            );
-        }
-
         // ── Step 2: Get all storeIds assigned to this zone ───────────────────
-        const storeZoneLinks = await prisma.storeZone.findMany({
-            where: { zoneId: zone.id },
-            select: { storeId: true },
-        });
-
-        const zoneStoreIds = storeZoneLinks.map((sz) => sz.storeId);
-
-        if (!zoneStoreIds.length) {
-            return res.json(
-                new ApiResponse(200, {
-                    stores: [],
-                    zone,
-                    userLocation: { lat: userLat, lng: userLng },
-                }, "No stores are assigned to your delivery zone yet.")
-            );
+        let zoneStoreIds = [];
+        if (zone) {
+            const storeZoneLinks = await prisma.storeZone.findMany({
+                where: { zoneId: zone.id },
+                select: { storeId: true },
+            });
+            zoneStoreIds = storeZoneLinks.map((sz) => sz.storeId);
         }
 
         // ── Step 3: Fetch stores with optional filters ───────────────────────
         const where = {
-            id: { in: zoneStoreIds },
             isActive: true,
         };
 
@@ -340,9 +330,16 @@ export const getNearbyStores = async (req, res, next) => {
             where.storeCategories = { some: { subCategoryId } };
         }
 
+        where.OR = [
+            { id: { in: zoneStoreIds } },
+            { 
+                deliveryType: { in: ["STORE_DELIVERY", "STORE"] },
+                maxDeliveryDistanceKm: { not: null }
+            }
+        ];
+
         const stores = await prisma.store.findMany({
             where,
-            take: take * 2, // over-fetch, trim after Haversine sort
             select: {
                 id: true,
                 name: true,
@@ -354,6 +351,9 @@ export const getNearbyStores = async (req, res, next) => {
                 deliveryTimeMinutes: true,
                 minimumOrderCost: true,
                 deliveryFees: true,
+                maxDeliveryDistanceKm: true,
+                outsideZoneDeliveryFees: true,
+                commissionRate: true,
                 allowPreorder: true,
                 averageRating: true,
                 totalReviews: true,
@@ -385,8 +385,23 @@ export const getNearbyStores = async (req, res, next) => {
                     Number(s.latitude), Number(s.longitude)
                 ),
             }))
+            .filter((s) => {
+                if (zoneStoreIds.includes(s.id)) return true;
+                if (s.maxDeliveryDistanceKm && s.distanceKm <= Number(s.maxDeliveryDistanceKm)) return true;
+                return false;
+            })
             .sort((a, b) => a.distanceKm - b.distanceKm)
             .slice(0, take);
+
+        if (withDistance.length === 0) {
+            return res.status(404).json(
+                new ApiResponse(404, {
+                    stores: [],
+                    zone: zone || null,
+                    userLocation: { lat: userLat, lng: userLng },
+                }, "We don't deliver to your location yet.")
+            );
+        }
 
         res.json(
             new ApiResponse(200, {
@@ -547,6 +562,9 @@ export const updateStore = async (req, res, next) => {
             logo,
             cover,
             zoneId, // explicit zone assignment
+            maxDeliveryDistanceKm,
+            outsideZoneDeliveryFees,
+            commissionRate,
         } = req.body;
 
         const existing = await prisma.store.findUnique({ where: { id } });
@@ -577,6 +595,9 @@ export const updateStore = async (req, res, next) => {
                 ...(deliveryTimeMinutes !== undefined && { deliveryTimeMinutes: Number(deliveryTimeMinutes) }),
                 ...(minimumOrderCost !== undefined && { minimumOrderCost: Number(minimumOrderCost) }),
                 ...(deliveryFees !== undefined && { deliveryFees: Number(deliveryFees) }),
+                ...(maxDeliveryDistanceKm !== undefined && { maxDeliveryDistanceKm: maxDeliveryDistanceKm === null ? null : Number(maxDeliveryDistanceKm) }),
+                ...(outsideZoneDeliveryFees !== undefined && { outsideZoneDeliveryFees: outsideZoneDeliveryFees === null ? null : Number(outsideZoneDeliveryFees) }),
+                ...(commissionRate !== undefined && { commissionRate: commissionRate === null ? 0 : Number(commissionRate) }),
                 ...(allowPreorder !== undefined && { allowPreorder: allowPreorder === true || allowPreorder === 'true' }),
                 ...(latitude !== undefined && { latitude }),
                 ...(longitude !== undefined && { longitude }),

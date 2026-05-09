@@ -1,4 +1,4 @@
-import prisma from "../../../config/db.js";
+ import prisma from "../../../config/db.js";
 import { ApiError } from "../../../utils/ApiError.js";
 import { ApiResponse } from "../../../utils/ApiResponse.js";
 import { uploadToCloudinary } from "../../../utils/cloudinaryUpload.js";
@@ -509,3 +509,196 @@ export const rejectOrder = async (req, res, next) => {
         next(err);
     }
 };
+
+/** 
+ * PATCH /api/drivers/orders/:orderId/status
+ * Driver updates the status of their active delivery
+ */
+export const updateDeliveryStatus = async (req, res, next) => {
+    try {
+        const driverId = req.driver.id;
+        const { orderId } = req.params;
+        const { status } = req.body;
+
+        const validStatuses = ["PICKED_UP", "ON_THE_WAY", "DELIVERED"];
+        if (!validStatuses.includes(status)) {
+            throw new ApiError(400, "Invalid status for driver update.");
+        }
+
+        const order = await prisma.order.findUnique({
+            where: { id: orderId },
+            include: {
+                driverAssign: true,
+                paymentMethod: true,
+                store: { select: { name: true } }
+            }
+        });
+
+        if (!order) throw new ApiError(404, "Order not found.");
+        if (order.driverAssign?.driverId !== driverId) {
+            throw new ApiError(403, "This order is not assigned to you.");
+        }
+
+        const liveStatusMap = {
+            PICKED_UP:  "DRIVER_HEADING_TO_CUSTOMER",
+            ON_THE_WAY: "DRIVER_HEADING_TO_CUSTOMER",
+            DELIVERED:  "DELIVERED",
+        };
+
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Update order status
+            const updatedOrder = await tx.order.update({
+                where: { id: orderId },
+                data: { status }
+            });
+
+            // 2. Update status history
+            await tx.orderStatusHistory.create({
+                data: {
+                    orderId,
+                    status,
+                    changedByType: "DRIVER",
+                    changedByDriverId: driverId
+                }
+            });
+
+            // 3. Update delivery table
+            const deliveryData = {};
+            if (status === "PICKED_UP") deliveryData.pickedUpAt = new Date();
+            if (status === "DELIVERED") deliveryData.deliveredAt = new Date();
+            
+            await tx.delivery.update({
+                where: { orderId },
+                data: deliveryData
+            });
+
+            // 4. Update LiveTracking
+            if (liveStatusMap[status]) {
+                await tx.liveTracking.update({
+                    where: { orderId },
+                    data: { status: liveStatusMap[status] }
+                });
+            }
+
+            // 5. Special logic for DELIVERED
+            if (status === "DELIVERED") {
+                // Release driver
+                await tx.driver.update({
+                    where: { id: driverId },
+                    data: { status: "ONLINE" }
+                });
+
+                // Handle Driver Earning (simple version: driver gets delivery fee + tip)
+                // In a real app, this would be a more complex formula
+                const baseAmount = order.deliveryType === "TALABAT_DELIVERY" ? order.deliveryFees : 0;
+                const totalEarning = Number(baseAmount) + Number(order.tipAmount);
+
+                await tx.driverEarning.create({
+                    data: {
+                        driverId,
+                        orderId,
+                        baseAmount,
+                        tipAmount: order.tipAmount,
+                        totalAmount: totalEarning
+                    }
+                });
+
+                // ─── WALLET LOGIC FOR CASH ORDERS ───
+                if (order.paymentMethod.name === "CASH") {
+                    // Driver collected total cash. They now owe this to the platform.
+                    // We debit the Total Amount from their wallet.
+                    
+                    let wallet = await tx.driverWallet.findUnique({ where: { driverId } });
+                    if (!wallet) {
+                        wallet = await tx.driverWallet.create({ data: { driverId } });
+                    }
+
+                    const debitAmount = Number(order.totalAmount);
+                    const newBalance = Number(wallet.balance) - debitAmount;
+
+                    await tx.driverWallet.update({
+                        where: { id: wallet.id },
+                        data: { balance: newBalance }
+                    });
+
+                    await tx.driverWalletTransaction.create({
+                        data: {
+                            walletId: wallet.id,
+                            orderId,
+                            type: "CASH_ORDER_DEBIT",
+                            amount: -debitAmount,
+                            balanceAfter: newBalance,
+                            note: `Cash collected for order #${orderId.slice(-6)}`
+                        }
+                    });
+
+                    // Auto-suspend if credit limit exceeded
+                    if (newBalance <= -Number(wallet.creditLimit)) {
+                        await tx.driver.update({
+                            where: { id: driverId },
+                            data: { status: "SUSPENDED", isOnline: false }
+                        });
+                    }
+                } else {
+                    // For Online/Visa orders, the delivery fee (earning) is added to their wallet as credit
+                    let wallet = await tx.driverWallet.findUnique({ where: { driverId } });
+                    if (!wallet) {
+                        wallet = await tx.driverWallet.create({ data: { driverId } });
+                    }
+
+                    const creditAmount = totalEarning;
+                    if (creditAmount > 0) {
+                        const newBalance = Number(wallet.balance) + creditAmount;
+                        await tx.driverWallet.update({
+                            where: { id: wallet.id },
+                            data: { balance: newBalance }
+                        });
+
+                        await tx.driverWalletTransaction.create({
+                            data: {
+                                walletId: wallet.id,
+                                orderId,
+                                type: "DELIVERY_FEE_CREDIT",
+                                amount: creditAmount,
+                                balanceAfter: newBalance,
+                                note: `Earnings for order #${orderId.slice(-6)}`
+                            }
+                        });
+                    }
+                }
+            }
+
+            return updatedOrder;
+        });
+
+        // ── Notifications ──
+        try {
+            const io = getIO();
+            io.of("/tracking").to(`order:${orderId}`).emit("tracking:status_changed", {
+                orderId,
+                status,
+                liveStatus: liveStatusMap[status]
+            });
+
+            const { emitToUser } = await import("../../../sockets/notifications.socket.js");
+            const userNotifs = {
+                PICKED_UP: { title: "Picked up! 🚀", body: "Your driver has picked up your order and is heading to you." },
+                DELIVERED: { title: "Delivered! 😋", body: "Enjoy your meal! Don't forget to rate the store." }
+            };
+            if (userNotifs[status]) {
+                await emitToUser(io, order.userId, {
+                    ...userNotifs[status],
+                    type: "ORDER_UPDATE",
+                    relatedOrderId: orderId
+                });
+            }
+        } catch (err) {
+            console.error("Socket error:", err);
+        }
+
+        res.json(new ApiResponse(200, result, `Order status updated to ${status}.`));
+    } catch (err) {
+        next(err);
+    }
+};
+
