@@ -12,7 +12,6 @@ import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
 import { StoreFormModal } from "../components/StoreFormModal";
 import { StoresTable } from "../components/StoresTable";
-import { StoreCategoryTabs } from "../components/StoreCategoryTabs";
 import { handleApiError } from "../../../utils/error";
 
 export default function StoresListPage() {
@@ -88,36 +87,99 @@ export default function StoresListPage() {
         </button>
       </div>
 
-      <StoreCategoryTabs
-        categories={categories}
-        activeTab={activeTab}
-        onTabChange={(id) => {
-          setActiveTab(id);
-          setActiveSubTab(undefined);
-        }}
-        subCategories={subCategories}
-        activeSubTab={activeSubTab}
-        onSubTabChange={setActiveSubTab}
-      />
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* ── Filter Sidebar ────────────────────────────────────────── */}
+        <aside className="w-full lg:w-64 shrink-0 space-y-6">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                Search
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Store name..."
+                  className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border-none rounded-xl placeholder:text-gray-400 text-gray-900 focus:ring-2 focus:ring-brand/20 transition-all"
+                />
+              </div>
+            </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search stores…"
-          className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl placeholder:text-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all"
-        />
+            <div className="space-y-3">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                Categories
+              </label>
+              <div className="space-y-1">
+                <button
+                  onClick={() => {
+                    setActiveTab(undefined);
+                    setActiveSubTab(undefined);
+                  }}
+                  className={`w-full flex items-center px-3 py-2 rounded-xl text-[13px] font-medium transition-all ${
+                    activeTab === undefined
+                      ? "bg-brand text-white shadow-sm"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  All Categories
+                </button>
+                {categories?.map((cat) => (
+                  <div key={cat.id} className="space-y-1">
+                    <button
+                      onClick={() => {
+                        setActiveTab(cat.id);
+                        setActiveSubTab(undefined);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition-all ${
+                        activeTab === cat.id && !activeSubTab
+                          ? "bg-brand/10 text-brand"
+                          : activeTab === cat.id
+                            ? "text-brand font-bold"
+                            : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+
+                    {activeTab === cat.id &&
+                      subCategories &&
+                      subCategories.length > 0 && (
+                        <div className="ml-3 pl-3 border-l border-gray-100 space-y-1 py-1">
+                          {subCategories.map((sub) => (
+                            <button
+                              key={sub.id}
+                              onClick={() => setActiveSubTab(sub.id)}
+                              className={`w-full text-left px-3 py-1.5 rounded-lg text-[12px] transition-all ${
+                                activeSubTab === sub.id
+                                  ? "bg-brand text-white shadow-sm font-semibold"
+                                  : "text-gray-500 hover:text-brand hover:bg-brand-50"
+                              }`}
+                            >
+                              {sub.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* ── Table Content ─────────────────────────────────────────── */}
+        <div className="flex-1 min-w-0">
+          <StoresTable
+            stores={filteredStores}
+            onToggleStatus={handleToggle}
+            onEdit={openEditStore}
+            isToggling={toggleMutation.isPending}
+            isLoading={isFetching || isPlaceholderData}
+          />
+        </div>
       </div>
-
-      <StoresTable
-        stores={filteredStores}
-        onToggleStatus={handleToggle}
-        onEdit={openEditStore}
-        isToggling={toggleMutation.isPending}
-        isLoading={isFetching || isPlaceholderData}
-      />
 
       <StoreFormModal
         isOpen={showCreateModal}

@@ -139,6 +139,7 @@ export default function MainCategoriesTable({
 
       {showEditModal && (
         <CategoryModal
+          isOpen={true}
           editingCategory={editingCategory}
           onClose={() => {
             setShowEditModal(false);

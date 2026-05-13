@@ -1,4 +1,4 @@
-import { GripVertical, Pencil, Trash2 } from "lucide-react";
+import { GripVertical, Pencil, Trash2, LayoutGrid } from "lucide-react";
 import type { Section } from "../../../types";
 
 interface SectionTabsProps {
@@ -9,7 +9,7 @@ interface SectionTabsProps {
   onDeleteSection: (section: Section) => void;
 }
 
-export function SectionTabs({
+export function SectionNav({
   sections,
   activeSectionId,
   onSectionChange,
@@ -17,64 +17,85 @@ export function SectionTabs({
   onDeleteSection,
 }: SectionTabsProps) {
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+    <div className="space-y-1.5">
+      <p className="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+        Menu Sections
+      </p>
+
       <button
         onClick={() => onSectionChange(null)}
-        className={`shrink-0 px-4 py-2 text-sm font-medium rounded-xl border transition-all ${
+        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
           activeSectionId === null
-            ? "bg-brand text-white border-brand shadow-sm"
-            : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+            ? "bg-brand text-white shadow-sm"
+            : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
         }`}
       >
-        All Products
+        <div className="flex items-center gap-3">
+          <LayoutGrid
+            className={`w-4 h-4 ${activeSectionId === null ? "text-white" : "text-gray-400"}`}
+          />
+          <span>All Products</span>
+        </div>
       </button>
+
       {sections?.map((s) => (
-        <div key={s.id} className="relative group shrink-0">
+        <div key={s.id} className="relative group">
           <button
             onClick={() => onSectionChange(s.id)}
-            className={`px-4 py-2 text-sm font-medium rounded-xl border transition-all ${
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
               activeSectionId === s.id
-                ? "bg-brand text-white border-brand shadow-sm"
-                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                ? "bg-brand text-white shadow-sm"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
             }`}
           >
-            <span className="flex items-center gap-1.5">
-              <GripVertical className="w-3 h-3 opacity-40" />
-              {s.name}
+            <div className="flex items-center gap-3 min-w-0">
+              <GripVertical
+                className={`w-4 h-4 shrink-0 ${activeSectionId === s.id ? "text-white/40" : "text-gray-300"}`}
+              />
+              <span className="truncate">{s.name}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
               {s.products_count && (
                 <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                     activeSectionId === s.id
-                      ? "bg-white/20"
-                      : "bg-gray-100 text-gray-400"
+                      ? "bg-white/20 text-white"
+                      : "bg-gray-100 text-gray-400 group-hover:bg-gray-200 group-hover:text-gray-600"
                   }`}
                 >
                   {s.products_count}
                 </span>
               )}
-            </span>
+
+              <div
+                className={`flex items-center gap-0.5 transition-opacity duration-200 ${activeSectionId === s.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditSection(s);
+                  }}
+                  className={`p-1 rounded-md transition-colors ${activeSectionId === s.id ? "hover:bg-white/20" : "hover:bg-white shadow-sm border border-gray-100"}`}
+                >
+                  <Pencil
+                    className={`w-3 h-3 ${activeSectionId === s.id ? "text-white" : "text-blue-500"}`}
+                  />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteSection(s);
+                  }}
+                  className={`p-1 rounded-md transition-colors ${activeSectionId === s.id ? "hover:bg-white/20" : "hover:bg-white shadow-sm border border-gray-100"}`}
+                >
+                  <Trash2
+                    className={`w-3 h-3 ${activeSectionId === s.id ? "text-white" : "text-red-500"}`}
+                  />
+                </button>
+              </div>
+            </div>
           </button>
-          {/* Section quick actions */}
-          <div className="absolute -top-1 -right-1 hidden group-hover:flex items-center gap-0.5 z-10">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditSection(s);
-              }}
-              className="p-1 bg-white border border-gray-200 rounded-md shadow-sm hover:bg-blue-50 transition-colors"
-            >
-              <Pencil className="w-2.5 h-2.5 text-blue-500" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeleteSection(s);
-              }}
-              className="p-1 bg-white border border-gray-200 rounded-md shadow-sm hover:bg-red-50 transition-colors"
-            >
-              <Trash2 className="w-2.5 h-2.5 text-red-500" />
-            </button>
-          </div>
         </div>
       ))}
     </div>

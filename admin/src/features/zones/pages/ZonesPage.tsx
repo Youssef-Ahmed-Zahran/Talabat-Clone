@@ -7,8 +7,17 @@ import {
   type Zone,
 } from "../api/zones.api";
 import {
-  MapPin, Plus, Pencil, Trash2, ToggleLeft, ToggleRight,
-  Building2, Users, ChevronRight, AlertTriangle, Loader2
+  MapPin,
+  Plus,
+  Pencil,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+  Building2,
+  Users,
+  ChevronRight,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 
 const ZonesPage: React.FC = () => {
@@ -32,7 +41,10 @@ const ZonesPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadZones();
+    const timer = setTimeout(() => {
+      loadZones();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [loadZones]);
 
   const handleToggleActive = async (zone: Zone) => {
@@ -40,7 +52,9 @@ const ZonesPage: React.FC = () => {
     try {
       await updateZone(zone.id, { isActive: !zone.isActive });
       setZones((prev) =>
-        prev.map((z) => (z.id === zone.id ? { ...z, isActive: !z.isActive } : z))
+        prev.map((z) =>
+          z.id === zone.id ? { ...z, isActive: !z.isActive } : z,
+        ),
       );
     } catch {
       alert("Failed to toggle zone status.");
@@ -68,11 +82,15 @@ const ZonesPage: React.FC = () => {
             <MapPin size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Delivery Zones</h1>
-            <p className="text-sm text-gray-500 mt-1">Manage polygon-based delivery areas</p>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+              Delivery Zones
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Manage polygon-based delivery areas
+            </p>
           </div>
         </div>
-        <button 
+        <button
           className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand text-white font-semibold rounded-xl hover:bg-brand-dark transition-all shadow-sm shadow-brand/20 active:scale-[0.98]"
           onClick={() => navigate("/zones/new")}
         >
@@ -85,12 +103,32 @@ const ZonesPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: "Total Zones", value: zones.length, color: "text-gray-900" },
-          { label: "Active", value: zones.filter((z) => z.isActive).length, color: "text-green-600" },
-          { label: "Inactive", value: zones.filter((z) => !z.isActive).length, color: "text-gray-400" },
-          { label: "Stores Assigned", value: zones.reduce((acc, z) => acc + (z._count?.storeZones ?? 0), 0), color: "text-brand" },
+          {
+            label: "Active",
+            value: zones.filter((z) => z.isActive).length,
+            color: "text-green-600",
+          },
+          {
+            label: "Inactive",
+            value: zones.filter((z) => !z.isActive).length,
+            color: "text-gray-400",
+          },
+          {
+            label: "Stores Assigned",
+            value: zones.reduce(
+              (acc, z) => acc + (z._count?.storeZones ?? 0),
+              0,
+            ),
+            color: "text-brand",
+          },
         ].map((stat, idx) => (
-          <div key={idx} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{stat.label}</p>
+          <div
+            key={idx}
+            className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm"
+          >
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+              {stat.label}
+            </p>
             <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
           </div>
         ))}
@@ -100,7 +138,9 @@ const ZonesPage: React.FC = () => {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-gray-100 border-dashed">
           <Loader2 className="w-10 h-10 text-brand animate-spin mb-4" />
-          <p className="text-gray-500 font-medium tracking-tight">Loading zones…</p>
+          <p className="text-gray-500 font-medium tracking-tight">
+            Loading zones…
+          </p>
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-16 bg-red-50 rounded-3xl border border-red-100 text-center px-6">
@@ -108,8 +148,11 @@ const ZonesPage: React.FC = () => {
             <AlertTriangle size={28} />
           </div>
           <p className="text-red-800 font-semibold text-lg mb-2">{error}</p>
-          <button 
-            onClick={() => { setLoading(true); loadZones(); }}
+          <button
+            onClick={() => {
+              setLoading(true);
+              loadZones();
+            }}
             className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
           >
             Retry
@@ -120,11 +163,14 @@ const ZonesPage: React.FC = () => {
           <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-6">
             <MapPin size={40} />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No delivery zones found</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">
+            No delivery zones found
+          </h3>
           <p className="text-gray-500 max-w-sm mb-8 leading-relaxed">
-            Create your first delivery zone by drawing a polygon on the map to define where your drivers operate.
+            Create your first delivery zone by drawing a polygon on the map to
+            define where your drivers operate.
           </p>
-          <button 
+          <button
             onClick={() => navigate("/zones/new")}
             className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-dark transition-all active:scale-[0.98]"
           >
@@ -134,7 +180,10 @@ const ZonesPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {zones.map((zone) => (
-            <div key={zone.id} className={`group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden ${!zone.isActive ? "opacity-75 grayscale-[0.5]" : ""}`}>
+            <div
+              key={zone.id}
+              className={`group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden ${!zone.isActive ? "opacity-75 grayscale-[0.5]" : ""}`}
+            >
               {/* Color bar */}
               <div
                 className="h-2 w-full"
@@ -144,30 +193,44 @@ const ZonesPage: React.FC = () => {
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 group-hover:text-brand transition-colors line-clamp-1">{zone.name}</h3>
+                    <h3 className="text-lg font-bold text-gray-900 group-hover:text-brand transition-colors line-clamp-1">
+                      {zone.name}
+                    </h3>
                     <p className="text-xs font-semibold text-gray-400 flex items-center gap-1 mt-1 uppercase tracking-wide">
                       <MapPin size={12} /> {zone.city?.name}
                     </p>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${zone.isActive ? "bg-green-50 text-green-600 border border-green-100" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${zone.isActive ? "bg-green-50 text-green-600 border border-green-100" : "bg-gray-100 text-gray-500 border border-gray-200"}`}
+                  >
                     {zone.isActive ? "Active" : "Inactive"}
                   </span>
                 </div>
 
                 {zone.description && (
-                  <p className="text-sm text-gray-500 line-clamp-2 mb-5 min-h-[40px] leading-relaxed">{zone.description}</p>
+                  <p className="text-sm text-gray-500 line-clamp-2 mb-5 min-h-[40px] leading-relaxed">
+                    {zone.description}
+                  </p>
                 )}
 
                 <div className="flex flex-wrap gap-3 mb-6">
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-lg text-xs font-medium text-gray-600 border border-gray-100/50">
                     <Building2 size={13} className="text-gray-400" />
-                    <span>{zone._count?.storeZones ?? 0} <span className="text-gray-400 font-normal">stores</span></span>
+                    <span>
+                      {zone._count?.storeZones ?? 0}{" "}
+                      <span className="text-gray-400 font-normal">stores</span>
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-lg text-xs font-medium text-gray-600 border border-gray-100/50">
                     <Users size={13} className="text-gray-400" />
-                    <span>{zone._count?.driverZones ?? 0} <span className="text-gray-400 font-normal">drivers</span></span>
+                    <span>
+                      {zone._count?.driverZones ?? 0}{" "}
+                      <span className="text-gray-400 font-normal">drivers</span>
+                    </span>
                   </div>
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${zone.boundary ? "bg-brand/5 text-brand border-brand/10" : "bg-red-50 text-red-500 border-red-100"}`}>
+                  <div
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${zone.boundary ? "bg-brand/5 text-brand border-brand/10" : "bg-red-50 text-red-500 border-red-100"}`}
+                  >
                     <MapPin size={13} />
                     <span>{zone.boundary ? "Boundary set" : "No polygon"}</span>
                   </div>
@@ -181,7 +244,13 @@ const ZonesPage: React.FC = () => {
                       disabled={togglingId === zone.id}
                       title={zone.isActive ? "Deactivate" : "Activate"}
                     >
-                      {togglingId === zone.id ? <Loader2 size={16} className="animate-spin" /> : zone.isActive ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                      {togglingId === zone.id ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : zone.isActive ? (
+                        <ToggleRight size={20} />
+                      ) : (
+                        <ToggleLeft size={20} />
+                      )}
                     </button>
 
                     <button
@@ -217,15 +286,18 @@ const ZonesPage: React.FC = () => {
                     <Trash2 size={24} />
                   </div>
                   <h4 className="text-white font-bold mb-1">Delete Zone?</h4>
-                  <p className="text-gray-400 text-xs mb-6">This action cannot be undone. All store/driver links will be lost.</p>
+                  <p className="text-gray-400 text-xs mb-6">
+                    This action cannot be undone. All store/driver links will be
+                    lost.
+                  </p>
                   <div className="flex items-center gap-3 w-full">
-                    <button 
+                    <button
                       className="flex-1 px-4 py-2 bg-white/10 text-white font-semibold rounded-xl hover:bg-white/20 transition-colors"
                       onClick={() => setDeleteConfirm(null)}
                     >
                       Cancel
                     </button>
-                    <button 
+                    <button
                       className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors"
                       onClick={() => handleDelete(zone.id)}
                     >

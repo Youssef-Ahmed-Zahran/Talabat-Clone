@@ -44,6 +44,7 @@ export interface ZoneStore {
   name: string;
   logoUrl?: string;
   isActive: boolean;
+  city?: { name: string };
 }
 
 // ── Zone CRUD ─────────────────────────────────────────────────

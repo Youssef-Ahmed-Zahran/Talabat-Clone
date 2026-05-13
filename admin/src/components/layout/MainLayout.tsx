@@ -16,6 +16,7 @@ import {
 import { useAuthStore } from "../../store/authStore";
 import ErrorBoundary from "../error-boundary/ErrorBoundary";
 import NotificationDropdown from "./NotificationDropdown";
+import Breadcrumbs from "./Breadcrumbs";
 
 // ── Sidebar Navigation Items ──────────────────────────────────────────
 const ADMIN_NAV_ITEMS = [
@@ -203,6 +204,7 @@ export default function MainLayout() {
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-4 lg:p-8 max-w-[1600px] mx-auto animate-fade-in">
+            <Breadcrumbs />
             <ErrorBoundary>
               <Outlet />
             </ErrorBoundary>

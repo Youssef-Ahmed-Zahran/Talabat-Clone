@@ -166,6 +166,7 @@ export default function SubCategoriesTable({
       {/* Edit Modal */}
       {showEditModal && (
         <SubCategoryModal
+          isOpen={true}
           categoryId={categoryId}
           editingSub={editingSub}
           onClose={() => {

@@ -1,18 +1,29 @@
-import { useClearTimeout } from "../../../hooks/useClearTimeout";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Upload, Navigation, Loader2, MapPin } from "lucide-react";
+import {
+  Upload,
+  Navigation,
+  Loader2,
+  MapPin,
+  Check,
+  Building2,
+  Image as ImageIcon,
+  Clock,
+  ShieldCheck,
+  ChevronRight,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import {
   storeSchema,
   type StoreFormValues,
 } from "../../../schemas/store.schema";
-import type { Category, Store } from "../../../types";
+import type { Category, Store, CreateStorePayload } from "../../../types";
 import { LocationPicker } from "./LocationPicker";
 import { useCreateStore, useUpdateStore } from "../api/store.api";
 import { handleApiError } from "../../../utils/error";
 import { fetchAllZones, type Zone } from "../../zones/api/zones.api";
+import { SlideOver } from "../../../components/layout/SlideOver";
 
 interface StoreFormModalProps {
   isOpen: boolean;
@@ -21,6 +32,14 @@ interface StoreFormModalProps {
   categories?: Category[];
 }
 
+const steps = [
+  { id: 1, name: "General Info", icon: Building2 },
+  { id: 2, name: "Branding", icon: ImageIcon },
+  { id: 3, name: "Location", icon: MapPin },
+  { id: 4, name: "Operations", icon: Clock },
+  { id: 5, name: "Owner Account", icon: ShieldCheck },
+];
+
 const defaultValues: StoreFormValues = {
   name: "",
   description: "",
@@ -28,11 +47,11 @@ const defaultValues: StoreFormValues = {
   phone: "",
   email: "",
   address: "",
-  latitude: "",
-  longitude: "",
+  latitude: "30.0444",
+  longitude: "31.2357",
   mainCategoryId: "",
   storeType: "",
-  deliveryType: "",
+  deliveryType: "TALABAT_DELIVERY",
   openTime: "09:00",
   closeTime: "22:00",
   deliveryTimeMinutes: 30,
@@ -43,9 +62,9 @@ const defaultValues: StoreFormValues = {
   ownerPassword: "",
   logoUrl: "",
   coverImage: "",
-  maxDeliveryDistanceKm: 0,
-  outsideZoneDeliveryFees: 0,
-  commissionRate: 0,
+  maxDeliveryDistanceKm: 15,
+  outsideZoneDeliveryFees: 50,
+  commissionRate: 15,
 };
 
 export function StoreFormModal({
@@ -54,18 +73,22 @@ export function StoreFormModal({
   editingStore,
   categories,
 }: StoreFormModalProps) {
-  // ✅ Moved down: mutations now live here, not in the parent page
   const createMutation = useCreateStore();
   const updateMutation = useUpdateStore();
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  // Load zones for the zone selector
+  const [currentStep, setCurrentStep] = useState(1);
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZoneId, setSelectedZoneId] = useState("");
 
   useEffect(() => {
-    fetchAllZones().then(setZones).catch(() => {});
-  }, []);
+    if (isOpen) {
+      fetchAllZones()
+        .then(setZones)
+        .catch(() => {});
+      setCurrentStep(1);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (editingStore?.storeZones?.[0]?.zoneId) {
@@ -75,18 +98,12 @@ export function StoreFormModal({
     }
   }, [editingStore]);
 
-  // Reset zone selection when modal closes/reopens
-  useEffect(() => {
-    if (!isOpen) setSelectedZoneId("");
-  }, [isOpen]);
-
-  useClearTimeout(onClose, isOpen);
-
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    trigger,
     formState: { errors },
   } = useForm<StoreFormValues>({
     resolver: zodResolver(storeSchema),
@@ -106,7 +123,7 @@ export function StoreFormModal({
           storeType: editingStore.storeType || "",
           deliveryType:
             (editingStore.deliveryType as StoreFormValues["deliveryType"]) ||
-            "",
+            "TALABAT_DELIVERY",
           openTime: editingStore.openTime || "09:00",
           closeTime: editingStore.closeTime || "22:00",
           deliveryTimeMinutes: editingStore.deliveryTimeMinutes || 30,
@@ -117,9 +134,11 @@ export function StoreFormModal({
           ownerPassword: "",
           logoUrl: editingStore.logoUrl || "",
           coverImage: editingStore.coverUrl || editingStore.coverImage || "",
-          maxDeliveryDistanceKm: Number(editingStore.maxDeliveryDistanceKm) || 0,
-          outsideZoneDeliveryFees: Number(editingStore.outsideZoneDeliveryFees) || 0,
-          commissionRate: Number(editingStore.commissionRate) || 0,
+          maxDeliveryDistanceKm:
+            Number(editingStore.maxDeliveryDistanceKm) || 15,
+          outsideZoneDeliveryFees:
+            Number(editingStore.outsideZoneDeliveryFees) || 50,
+          commissionRate: Number(editingStore.commissionRate) || 15,
         }
       : defaultValues,
   });
@@ -128,7 +147,35 @@ export function StoreFormModal({
   const coverImage = watch("coverImage");
   const lat = watch("latitude");
   const lng = watch("longitude");
-  const selectedDeliveryType = watch("deliveryType");
+
+  const handleNext = async () => {
+    let fieldsToValidate: (keyof StoreFormValues)[] = [];
+    if (currentStep === 1)
+      fieldsToValidate = ["name", "mainCategoryId", "storeType"];
+    if (currentStep === 2) fieldsToValidate = []; // Media is optional but encouraged
+    if (currentStep === 3)
+      fieldsToValidate = ["address", "latitude", "longitude"];
+    if (currentStep === 4)
+      fieldsToValidate = [
+        "deliveryTimeMinutes",
+        "minimumOrderCost",
+        "deliveryFees",
+        "commissionRate",
+      ];
+    if (currentStep === 5 && !editingStore)
+      fieldsToValidate = ["ownerEmail", "ownerPassword"];
+
+    const isStepValid =
+      fieldsToValidate.length > 0 ? await trigger(fieldsToValidate) : true;
+
+    if (isStepValid) {
+      setCurrentStep((prev) => Math.min(prev + 1, editingStore ? 4 : 5));
+    } else {
+      toast.error("Please fill in all required fields for this step.");
+    }
+  };
+
+  const handleBack = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
   const handleFileChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -137,69 +184,33 @@ export function StoreFormModal({
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setValue(fieldName, reader.result as string);
-      };
+      reader.onloadend = () => setValue(fieldName, reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  const handleGetCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error("Geolocation is not supported by your browser");
-      return;
-    }
-
-    const toastId = toast.loading("Locating...");
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setValue("latitude", position.coords.latitude.toFixed(6));
-        setValue("longitude", position.coords.longitude.toFixed(6));
-        toast.success("Location found!", { id: toastId });
-      },
-      (error) => {
-        console.error(error);
-        toast.error("Unable to retrieve your location", { id: toastId });
-      },
-      { enableHighAccuracy: true },
-    );
-  };
-
-  // ✅ Moved down: onSubmit is now fully encapsulated inside the modal
   const onSubmit = (data: StoreFormValues) => {
-    if (!editingStore && (!data.ownerEmail || !data.ownerPassword)) {
-      toast.error("Owner Email and Password are required for new stores");
-      return;
-    }
-
-    const payload = {
-      mainCategoryId: data.mainCategoryId || "",
-      name: data.name.trim(),
-      description: data.description?.trim() || undefined,
-      legalName: data.legalName?.trim() || undefined,
-      phone: data.phone?.trim() || undefined,
-      email: data.email?.trim() || undefined,
-      address: data.address?.trim() || undefined,
-      storeType: data.storeType.toUpperCase().trim(),
-      deliveryType: data.deliveryType as "TALABAT_DELIVERY" | "STORE_DELIVERY",
-      openTime: data.openTime || "09:00",
-      closeTime: data.closeTime || "22:00",
-      deliveryTimeMinutes: Number(data.deliveryTimeMinutes),
-      minimumOrderCost: Number(data.minimumOrderCost),
-      deliveryFees: Number(data.deliveryFees),
-      allowPreorder: data.allowPreorder ?? false,
-      logo: data.logoUrl || undefined,
-      cover: data.coverImage || undefined,
-      maxDeliveryDistanceKm: Number(data.maxDeliveryDistanceKm) || undefined,
-      outsideZoneDeliveryFees: Number(data.outsideZoneDeliveryFees) || undefined,
-      commissionRate: Number(data.commissionRate) || undefined,
+    const payload: CreateStorePayload = {
+      ...data,
+      mainCategoryId: data.mainCategoryId,
+      deliveryType: (data.deliveryType || "TALABAT_DELIVERY") as
+        | "TALABAT_DELIVERY"
+        | "STORE_DELIVERY",
       cityName: "Cairo",
       countryName: "Egypt",
       countryCode: "EG",
-      latitude: data.latitude?.trim() || "30.0444",
-      longitude: data.longitude?.trim() || "31.2357",
-      // Pass explicit zone assignment if admin selected one
-      ...(selectedZoneId ? { zoneId: selectedZoneId } : {}),
+      openTime: data.openTime || "09:00",
+      closeTime: data.closeTime || "23:00",
+      deliveryTimeMinutes: data.deliveryTimeMinutes || 30,
+      minimumOrderCost: data.minimumOrderCost || 0,
+      deliveryFees: data.deliveryFees || 0,
+      allowPreorder: data.allowPreorder ?? true,
+      ownerEmail: data.ownerEmail || "",
+      latitude: data.latitude || "0",
+      longitude: data.longitude || "0",
+      logo: data.logoUrl,
+      cover: data.coverImage,
+      zoneId: selectedZoneId || undefined,
     };
 
     if (editingStore) {
@@ -210,528 +221,476 @@ export function StoreFormModal({
             toast.success("Store updated successfully");
             onClose();
           },
-          onError: (err: unknown) => {
-            handleApiError(
-              err,
-              "We couldn't update the store details. Please check your information.",
-            );
-          },
+          onError: (err) =>
+            handleApiError(err, "We couldn't update the store."),
         },
       );
     } else {
-      createMutation.mutate(
-        {
-          ...payload,
-          mainCategoryId: data.mainCategoryId
-            ? String(data.mainCategoryId)
-            : "",
-          ownerEmail: data.ownerEmail!.trim(),
-          ownerPassword: data.ownerPassword!,
+      createMutation.mutate(payload, {
+        onSuccess: () => {
+          toast.success("Store created successfully");
+          onClose();
         },
-        {
-          onSuccess: () => {
-            toast.success("Store created successfully");
-            onClose();
-          },
-          onError: (err: unknown) => {
-            handleApiError(
-              err,
-              "We couldn't create the new store. Please try again.",
-            );
-          },
-        },
-      );
+        onError: (err) => handleApiError(err, "We couldn't create the store."),
+      });
     }
   };
 
-  if (!isOpen) return null;
+  const currentSteps = editingStore ? steps.filter((s) => s.id !== 5) : steps;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-200/80 w-full max-w-3xl max-h-[90vh] overflow-y-auto p-8 animate-slide-up">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">
-          {editingStore ? "Edit Store" : "Create New Store"}
-        </h2>
-
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5"
-        >
-          <div className="md:col-span-2 pb-2 border-b border-gray-100">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">
-              Branding &amp; Media
-            </h3>
-            <div className="flex flex-col sm:flex-row gap-6">
-              <div className="flex-1">
-                <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-                  Store Logo
-                </label>
-                <label className="flex items-center justify-center w-full h-24 border-2 border-dashed border-gray-200 rounded-xl hover:border-brand/50 hover:bg-brand/5 transition-colors cursor-pointer group relative overflow-hidden bg-gray-50/50">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileChange(e, "logoUrl")}
-                    className="hidden"
-                  />
-                  {logoUrl ? (
-                    <img
-                      src={logoUrl}
-                      alt="Logo Preview"
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center">
-                      <Upload className="w-5 h-5 text-gray-400 group-hover:text-brand mb-1" />
-                      <span className="text-[11px] text-gray-500 font-medium">
-                        Upload Logo
-                      </span>
-                    </div>
-                  )}
-                </label>
-              </div>
-              <div className="flex-1">
-                <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-                  Store Cover
-                </label>
-                <label className="flex items-center justify-center w-full h-24 border-2 border-dashed border-gray-200 rounded-xl hover:border-brand/50 hover:bg-brand/5 transition-colors cursor-pointer group relative overflow-hidden bg-gray-50/50">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileChange(e, "coverImage")}
-                    className="hidden"
-                  />
-                  {coverImage ? (
-                    <img
-                      src={coverImage}
-                      alt="Cover Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center">
-                      <Upload className="w-5 h-5 text-gray-400 group-hover:text-brand mb-1" />
-                      <span className="text-[11px] text-gray-500 font-medium">
-                        Upload Cover
-                      </span>
-                    </div>
-                  )}
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {!editingStore && (
-            <div className="md:col-span-2 pb-2 border-b border-gray-100 mt-2">
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">
-                Store Owner (Initial Credentials)
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-                    Owner Email *
-                  </label>
-                  <input
-                    type="email"
-                    {...register("ownerEmail")}
-                    placeholder="owner@example.com"
-                    className={`w-full px-4 py-2.5 text-sm bg-white border ${errors.ownerEmail ? "border-red-500" : "border-gray-200"} rounded-xl placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all`}
-                  />
-                  {errors.ownerEmail && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.ownerEmail.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-                    Initial Password *
-                  </label>
-                  <input
-                    type="text"
-                    {...register("ownerPassword")}
-                    placeholder="Secure password..."
-                    className={`w-full px-4 py-2.5 text-sm bg-white border ${errors.ownerPassword ? "border-red-500" : "border-gray-200"} rounded-xl placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all`}
-                  />
-                  {errors.ownerPassword && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.ownerPassword.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="md:col-span-2 mt-2">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">
-              Store Information
-            </h3>
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-              Store Name *
-            </label>
-            <input
-              type="text"
-              {...register("name")}
-              placeholder="e.g. El-Shrook"
-              className={`w-full px-4 py-2.5 text-sm bg-gray-50/50 border ${errors.name ? "border-red-500" : "border-gray-200"} rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all`}
-            />
-            {errors.name && (
-              <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-              Legal Name
-            </label>
-            <input
-              type="text"
-              {...register("legalName")}
-              placeholder="e.g. El-Shrook LLC"
-              className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              {...register("phone")}
-              placeholder="+201xxxxxxxxx"
-              className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-              Store Email
-            </label>
-            <input
-              type="email"
-              {...register("email")}
-              placeholder="contact@store.com"
-              className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-            />
-          </div>
-
-          <div className="col-span-1 sm:col-span-2">
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-              Physical Address
-            </label>
-            <textarea
-              {...register("address")}
-              placeholder="123 Example Street, City Center..."
-              rows={2}
-              className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all resize-none"
-            />
-          </div>
-
-          <div className="col-span-1 sm:col-span-2">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-[13px] font-medium text-gray-700">
-                Store Location (Click on the map to set)
-              </label>
-              <button
-                type="button"
-                onClick={handleGetCurrentLocation}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-brand bg-brand/5 hover:bg-brand/10 rounded-lg transition-colors"
-              >
-                <Navigation className="w-3.5 h-3.5" />
-                Use My Current Location
-              </button>
-            </div>
-            <div className="mb-3">
-              <LocationPicker
-                latitude={lat || "30.0444"}
-                longitude={lng || "31.2357"}
-                onChange={(nLat, nLng, address) => {
-                  setValue("latitude", nLat);
-                  setValue("longitude", nLng);
-                  if (address) {
-                    setValue("address", address);
-                  }
-                }}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[11px] font-medium text-gray-500 mb-1 uppercase tracking-wider">
-                  Latitude
-                </label>
-                <input
-                  type="text"
-                  {...register("latitude")}
-                  placeholder="e.g. 30.0444"
-                  className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-gray-500 mb-1 uppercase tracking-wider">
-                  Longitude
-                </label>
-                <input
-                  type="text"
-                  {...register("longitude")}
-                  placeholder="e.g. 31.2357"
-                  className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-              Main Category *
-            </label>
-            <select
-              {...register("mainCategoryId")}
-              className={`w-full px-4 py-2.5 text-sm bg-gray-50/50 border ${errors.mainCategoryId ? "border-red-500" : "border-gray-200"} rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all`}
-            >
-              <option value="">Select category…</option>
-              {categories?.map((cat: Category) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-            {errors.mainCategoryId && (
-              <p className="text-red-500 text-xs mt-1">
-                {errors.mainCategoryId.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-              Store Type *
-            </label>
-            <input
-              type="text"
-              {...register("storeType")}
-              placeholder="e.g. RESTAURANT, ELECTRONICS..."
-              className={`w-full px-4 py-2.5 text-sm bg-gray-50/50 border ${errors.storeType ? "border-red-500" : "border-gray-200"} rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all`}
-            />
-            {errors.storeType && (
-              <p className="text-red-500 text-xs mt-1">
-                {errors.storeType.message}
-              </p>
-            )}
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-              Description
-            </label>
-            <textarea
-              {...register("description")}
-              rows={2}
-              placeholder="Brief store description..."
-              className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all resize-none"
-            />
-          </div>
-
-          <div className="md:col-span-2 mt-2 pt-2 border-t border-gray-100">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">
-              Operations &amp; Delivery
-            </h3>
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-              Delivery Type *
-            </label>
-            <select
-              {...register("deliveryType")}
-              className={`w-full px-4 py-2.5 text-sm bg-gray-50/50 border ${errors.deliveryType ? "border-red-500" : "border-gray-200"} rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all`}
-            >
-              <option value="">Select delivery type...</option>
-              <option value="TALABAT_DELIVERY">Platform Delivery</option>
-              <option value="STORE_DELIVERY">Store Delivery</option>
-            </select>
-            {errors.deliveryType && (
-              <p className="text-red-500 text-xs mt-1">
-                {errors.deliveryType.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-              Delivery Time (mins)
-            </label>
-            <input
-              type="number"
-              {...register("deliveryTimeMinutes", { valueAsNumber: true })}
-              placeholder="30"
-              className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-            />
-          </div>
-
-          {selectedDeliveryType === "STORE_DELIVERY" && (
-            <>
-              <div>
-                <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-                  Max Delivery Distance (KM)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  {...register("maxDeliveryDistanceKm", { valueAsNumber: true })}
-                  placeholder="e.g. 15"
-                  className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-                  Outside Zone Delivery Fees
-                </label>
-                <input
-                  type="number"
-                  {...register("outsideZoneDeliveryFees", { valueAsNumber: true })}
-                  placeholder="e.g. 50"
-                  className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-                />
-              </div>
-            </>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-                Opening Time
-              </label>
-              <input
-                type="time"
-                {...register("openTime")}
-                className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-                Closing Time
-              </label>
-              <input
-                type="time"
-                {...register("closeTime")}
-                className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-              Min Order (EGP)
-            </label>
-            <input
-              type="number"
-              {...register("minimumOrderCost", { valueAsNumber: true })}
-              placeholder="50"
-              className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-              Delivery Fees
-            </label>
-            <input
-              type="number"
-              {...register("deliveryFees", { valueAsNumber: true })}
-              placeholder="15"
-              className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-              Commission Rate (%)
-            </label>
-            <input
-              type="number"
-              step="0.1"
-              {...register("commissionRate", { valueAsNumber: true })}
-              placeholder="e.g. 15"
-              className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-            />
-            {errors.commissionRate && (
-              <p className="text-red-500 text-xs mt-1">
-                {errors.commissionRate.message}
-              </p>
-            )}
-          </div>
+    <SlideOver
+      isOpen={isOpen}
+      onClose={onClose}
+      title={editingStore ? "Edit Store" : "Create Store"}
+      description="Manage vendor registration and operational details."
+      footer={
+        <div className="flex w-full items-center justify-between">
+          <button
+            type="button"
+            onClick={currentStep === 1 ? onClose : handleBack}
+            className="text-sm font-semibold text-gray-500 hover:text-gray-900 px-4"
+          >
+            {currentStep === 1 ? "Cancel" : "Back"}
+          </button>
 
           <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="allowPreorder"
-              {...register("allowPreorder")}
-              className="w-4 h-4 text-brand border-gray-300 rounded focus:ring-brand"
-            />
-            <label
-              htmlFor="allowPreorder"
-              className="text-[13px] font-medium text-gray-700"
-            >
-              Allow Pre-orders
-            </label>
+            {currentStep < (editingStore ? 4 : 5) ? (
+              <button
+                type="button"
+                onClick={handleNext}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-brand text-white text-sm font-bold rounded-xl hover:bg-brand-dark transition-all shadow-md shadow-brand/10"
+              >
+                Next Step
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit(onSubmit)}
+                disabled={isPending}
+                className="inline-flex items-center gap-2 px-8 py-2.5 bg-brand text-white text-sm font-bold rounded-xl hover:bg-brand-dark transition-all shadow-md shadow-brand/10 disabled:opacity-70"
+              >
+                {isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                {editingStore ? "Save Changes" : "Create Store"}
+              </button>
+            )}
           </div>
+        </div>
+      }
+    >
+      <div className="space-y-8">
+        {/* Progress Tracker */}
+        <div className="flex items-center justify-between px-2">
+          {currentSteps.map((step, idx) => (
+            <div key={step.id} className="flex items-center">
+              <div
+                className={`
+                flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold transition-all duration-300
+                ${
+                  currentStep === step.id
+                    ? "bg-brand text-white ring-4 ring-brand/10"
+                    : currentStep > step.id
+                      ? "bg-emerald-500 text-white"
+                      : "bg-gray-100 text-gray-400"
+                }
+              `}
+              >
+                {currentStep > step.id ? (
+                  <Check className="w-5 h-5" />
+                ) : (
+                  <step.icon className="w-4 h-4" />
+                )}
+              </div>
+              {idx < currentSteps.length - 1 && (
+                <div
+                  className={`w-8 h-0.5 mx-2 ${currentStep > step.id ? "bg-emerald-500" : "bg-gray-100"}`}
+                />
+              )}
+            </div>
+          ))}
+        </div>
 
-          {/* Zone assignment — only for new stores */}
-          {!editingStore && (
-            <div className="md:col-span-2 mt-2 pt-4 border-t border-gray-100">
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-brand" />
-                Delivery Zone Assignment
-              </h3>
-              <div>
-                <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
-                  Assign to Zone <span className="text-gray-400 font-normal">(optional)</span>
+        <form className="animate-fade-in" onSubmit={(e) => e.preventDefault()}>
+          {/* STEP 1: GENERAL INFO */}
+          {currentStep === 1 && (
+            <div className="space-y-6 animate-slide-up">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Store Name *
+                  </label>
+                  <input
+                    {...register("name")}
+                    placeholder="e.g. Buffalo Burger"
+                    className={`w-full px-4 py-3 bg-gray-50 border ${errors.name ? "border-red-500" : "border-gray-100"} rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all`}
+                  />
+                  {errors.name && (
+                    <p className="text-red-500 text-[11px] mt-1 ml-2 font-medium">
+                      {errors.name.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Legal Entity Name
+                  </label>
+                  <input
+                    {...register("legalName")}
+                    placeholder="e.g. Buffalo Foods LLC"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                      Phone
+                    </label>
+                    <input
+                      {...register("phone")}
+                      placeholder="+201..."
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                      Email
+                    </label>
+                    <input
+                      {...register("email")}
+                      placeholder="store@email.com"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Category *
+                  </label>
+                  <select
+                    {...register("mainCategoryId")}
+                    className={`w-full px-4 py-3 bg-gray-50 border ${errors.mainCategoryId ? "border-red-500" : "border-gray-100"} rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all appearance-none`}
+                  >
+                    <option value="">Select category...</option>
+                    {categories?.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Store Type *
+                  </label>
+                  <input
+                    {...register("storeType")}
+                    placeholder="e.g. RESTAURANT"
+                    className={`w-full px-4 py-3 bg-gray-50 border ${errors.storeType ? "border-red-500" : "border-gray-100"} rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all`}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: BRANDING (RE-DESIGNED) */}
+          {currentStep === 2 && (
+            <div className="space-y-8 animate-slide-up">
+              <div className="relative">
+                <label className="block text-[13px] font-bold text-gray-700 mb-3 ml-1">
+                  Store Branding
                 </label>
-                <select
-                  value={selectedZoneId}
-                  onChange={(e) => setSelectedZoneId(e.target.value)}
-                  className="w-full px-4 py-2.5 text-sm bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
-                >
-                  <option value="">— No zone (auto-detect from location) —</option>
-                  {zones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name}{z.city ? ` · ${z.city.name}` : ""}{!z.isActive ? " (Inactive)" : ""}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-gray-400 mt-1.5 leading-relaxed">
-                  Select a zone to explicitly link this store to a delivery area. If left blank, the system will attempt to detect the zone from the store's map coordinates.
+                {/* Cover + Logo card — pb-8 reserves space so logo isn't clipped */}
+                <div className="relative h-48 w-full border-2 border-dashed border-gray-200 rounded-3xl overflow-visible group pb-8">
+                  <div className="absolute inset-0 rounded-3xl overflow-hidden">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      id="cover-upload"
+                      onChange={(e) => handleFileChange(e, "coverImage")}
+                    />
+                    <label
+                      htmlFor="cover-upload"
+                      className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-black/5 transition-all"
+                    >
+                      {coverImage ? (
+                        <img
+                          src={coverImage}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-center">
+                          <ImageIcon className="w-8 h-8 text-gray-300 mx-auto mb-1 group-hover:text-brand transition-colors" />
+                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                            Select Cover Image
+                          </span>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+
+                  {/* Logo Overlap — sits outside the clipping boundary */}
+                  <div className="absolute -bottom-10 left-8 z-10">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      id="logo-upload"
+                      onChange={(e) => handleFileChange(e, "logoUrl")}
+                    />
+                    <label
+                      htmlFor="logo-upload"
+                      className="block relative w-20 h-20 bg-white rounded-2xl border-4 border-white shadow-xl cursor-pointer hover:scale-105 transition-transform overflow-hidden"
+                    >
+                      {logoUrl ? (
+                        <img
+                          src={logoUrl}
+                          className="w-full h-full object-contain p-1.5"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full gap-1">
+                          <Upload className="w-5 h-5 text-gray-300" />
+                          <span className="text-[9px] text-gray-300 font-bold uppercase tracking-wider">
+                            Logo
+                          </span>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                        <Upload className="w-4 h-4 text-white" />
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                <p className="mt-14 text-[11px] text-gray-400 font-medium px-1">
+                  Upload your store's brand identity. Click the banner to set a
+                  cover, and the logo card to set an icon.
                 </p>
               </div>
             </div>
           )}
 
-          <div className="md:col-span-2 flex items-center justify-end gap-3 pt-6 border-t border-gray-100 mt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 rounded-xl transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="inline-flex items-center gap-2 px-8 py-2.5 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors shadow-sm disabled:opacity-70"
-            >
-              {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-              {editingStore ? "Update Store" : "Create Store"}
-            </button>
-          </div>
+          {/* STEP 3: LOCATION */}
+          {currentStep === 3 && (
+            <div className="space-y-6 animate-slide-up">
+              <div className="space-y-4">
+                <div className="h-[300px] rounded-3xl overflow-hidden border border-gray-100 shadow-inner">
+                  <LocationPicker
+                    latitude={lat}
+                    longitude={lng}
+                    onChange={(nLat, nLng, addr) => {
+                      setValue("latitude", nLat);
+                      setValue("longitude", nLng);
+                      if (addr) setValue("address", addr);
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (navigator.geolocation) {
+                      navigator.geolocation.getCurrentPosition((pos) => {
+                        setValue("latitude", String(pos.coords.latitude));
+                        setValue("longitude", String(pos.coords.longitude));
+                        toast.success("Coordinates updated!");
+                      });
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-brand/5 text-brand text-xs font-bold rounded-2xl hover:bg-brand/10 transition-all"
+                >
+                  <Navigation className="w-3.5 h-3.5" />
+                  Detect My Current Position
+                </button>
+
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Full Street Address *
+                  </label>
+                  <textarea
+                    {...register("address")}
+                    rows={2}
+                    className={`w-full px-4 py-3 bg-gray-50 border ${errors.address ? "border-red-500" : "border-gray-100"} rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all resize-none`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Assigned Zone
+                  </label>
+                  <select
+                    value={selectedZoneId}
+                    onChange={(e) => setSelectedZoneId(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all appearance-none"
+                  >
+                    <option value="">Auto-detect from coordinates</option>
+                    {zones.map((z) => (
+                      <option key={z.id} value={z.id}>
+                        {z.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: OPERATIONS */}
+          {currentStep === 4 && (
+            <div className="space-y-6 animate-slide-up">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Open Time
+                  </label>
+                  <input
+                    type="time"
+                    {...register("openTime")}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Close Time
+                  </label>
+                  <input
+                    type="time"
+                    {...register("closeTime")}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Delivery Time (min) *
+                  </label>
+                  <input
+                    type="number"
+                    {...register("deliveryTimeMinutes")}
+                    className={`w-full px-4 py-3 bg-gray-50 border ${errors.deliveryTimeMinutes ? "border-red-500" : "border-gray-100"} rounded-2xl`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Min Order (EGP) *
+                  </label>
+                  <input
+                    type="number"
+                    {...register("minimumOrderCost")}
+                    className={`w-full px-4 py-3 bg-gray-50 border ${errors.minimumOrderCost ? "border-red-500" : "border-gray-100"} rounded-2xl`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Delivery Fees *
+                  </label>
+                  <input
+                    type="number"
+                    {...register("deliveryFees")}
+                    className={`w-full px-4 py-3 bg-gray-50 border ${errors.deliveryFees ? "border-red-500" : "border-gray-100"} rounded-2xl`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Commission (%) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    {...register("commissionRate")}
+                    className={`w-full px-4 py-3 bg-gray-50 border ${errors.commissionRate ? "border-red-500" : "border-gray-100"} rounded-2xl`}
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 bg-gray-50 rounded-2xl flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-gray-900">Pre-orders</p>
+                  <p className="text-[11px] text-gray-500">
+                    Allow customers to order when closed
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  {...register("allowPreorder")}
+                  className="w-5 h-5 rounded text-brand focus:ring-brand"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                  Delivery Strategy
+                </label>
+                <select
+                  {...register("deliveryType")}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl appearance-none"
+                >
+                  <option value="TALABAT_DELIVERY">
+                    Talabat Fleet (Partner)
+                  </option>
+                  <option value="STORE_DELIVERY">Self Delivery</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 5: OWNER ACCOUNT */}
+          {currentStep === 5 && !editingStore && (
+            <div className="space-y-6 animate-slide-up">
+              <div className="p-5 bg-brand/5 border border-brand/10 rounded-3xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <ShieldCheck className="w-6 h-6 text-brand" />
+                  <h3 className="text-sm font-bold text-brand">
+                    Secure Owner Portal
+                  </h3>
+                </div>
+                <p className="text-[12px] text-gray-600 leading-relaxed">
+                  Set the initial login credentials for the store owner. They
+                  will use these to access their dedicated Partner Portal.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Owner Email *
+                  </label>
+                  <input
+                    {...register("ownerEmail")}
+                    type="email"
+                    placeholder="owner@example.com"
+                    className={`w-full px-4 py-3 bg-white border ${errors.ownerEmail ? "border-red-500" : "border-gray-100"} rounded-2xl focus:ring-4 focus:ring-brand/5 outline-none transition-all`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                    Initial Password *
+                  </label>
+                  <input
+                    {...register("ownerPassword")}
+                    type="text"
+                    placeholder="At least 6 characters"
+                    className={`w-full px-4 py-3 bg-white border ${errors.ownerPassword ? "border-red-500" : "border-gray-100"} rounded-2xl focus:ring-4 focus:ring-brand/5 outline-none transition-all`}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </form>
       </div>
-    </div>
+    </SlideOver>
   );
 }
