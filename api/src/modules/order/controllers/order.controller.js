@@ -248,8 +248,25 @@ export const getMyOrders = async (req, res, next) => {
             prisma.order.count({ where }),
         ]);
 
+        // Fetch items for each order from the tenant databases
+        const ordersWithItems = await Promise.all(
+            orders.map(async (order) => {
+                try {
+                    const items = await tenantQuery(order.store.id, `
+                        SELECT oi.name_snapshot, oi.price_snapshot, oi.quantity,
+                            (SELECT COALESCE(json_agg(row_to_json(o.*)), '[]'::json) FROM order_item_options o WHERE o.order_item_id = oi.id) as options
+                        FROM order_items oi WHERE oi.order_id = $1
+                    `, [order.id]);
+                    return { ...order, items };
+                } catch (e) {
+                    console.error("[getMyOrders] Failed to fetch items for order", order.id, e);
+                    return { ...order, items: [] };
+                }
+            })
+        );
+
         res.json(new ApiResponse(200, {
-            orders,
+            orders: ordersWithItems,
             pagination: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) },
         }, "Orders fetched."));
     } catch (err) {
@@ -342,14 +359,12 @@ export const cancelOrder = async (req, res, next) => {
                 data: { status: "DELIVERED" }, // Terminal state
             });
 
-            // 4. If a driver was assigned (PENDING or ACCEPTED), release them
+            // 4. If a driver was assigned, release them
             if (order.driverAssign?.driverId) {
                 await tx.orderDriverAssignment.update({
                     where: { orderId: id },
                     data: { status: "CANCELLED" },
                 });
-
-                // Set driver back to ONLINE so they can receive new orders
                 await tx.driver.update({
                     where: { id: order.driverAssign.driverId },
                     data: { status: "ONLINE" },
@@ -379,33 +394,69 @@ export const reorder = async (req, res, next) => {
 
         if (!order) throw new ApiError(404, "Order not found.");
 
-        let cart = await prisma.cart.findUnique({ where: { userId_storeId: { userId, storeId: order.storeId } } });
-        if (!cart) cart = await prisma.cart.create({ data: { userId, storeId: order.storeId } });
-
-        const storeType = order.store.storeType;
         const storeId = order.storeId;
 
+        // ── Get or create the cart for this store ──
+        let cart = await prisma.cart.findUnique({
+            where: { userId_storeId: { userId, storeId } },
+        });
+        if (!cart) {
+            cart = await prisma.cart.create({ data: { userId, storeId } });
+        }
+
         await tenantTransaction(storeId, async (client) => {
-            const { rows: items } = await client.query(`SELECT * FROM order_items WHERE order_id = $1`, [order.id]);
+            // 1. Fetch the original order items
+            const { rows: items } = await client.query(
+                `SELECT * FROM order_items WHERE order_id = $1`,
+                [order.id]
+            );
+
+            if (items.length === 0) {
+                throw new ApiError(400, "No items found in this order to reorder.");
+            }
+
+            // 2. Clear the cart to prevent duplicate-key errors on re-insert
+            await client.query(
+                `DELETE FROM cart_item_options WHERE cart_item_id IN (SELECT id FROM cart_items WHERE cart_id = $1)`,
+                [cart.id]
+            );
+            await client.query(
+                `DELETE FROM cart_items WHERE cart_id = $1`,
+                [cart.id]
+            );
+
+            // 3. Re-insert each item (skip products that no longer exist)
             for (const item of items) {
                 if (!item.product_id) continue;
-                const { rows: cRows } = await client.query(`
-                    INSERT INTO cart_items (cart_id, product_id, quantity, base_price)
-                    VALUES ($1, $2, $3, $4) RETURNING id
-                `, [cart.id, item.product_id, item.quantity, item.price_snapshot]);
 
-                const { rows: opts } = await client.query(`SELECT * FROM order_item_options WHERE order_item_id = $1`, [item.id]);
+                const { rows: productCheck } = await client.query(
+                    `SELECT id FROM products WHERE id = $1`,
+                    [item.product_id]
+                );
+                if (productCheck.length === 0) continue;
+
+                const { rows: cRows } = await client.query(
+                    `INSERT INTO cart_items (cart_id, product_id, quantity, base_price)
+                    VALUES ($1, $2, $3, $4) RETURNING id`,
+                    [cart.id, item.product_id, item.quantity, item.price_snapshot]
+                );
+
+                const { rows: opts } = await client.query(
+                    `SELECT * FROM order_item_options WHERE order_item_id = $1`,
+                    [item.id]
+                );
                 for (const opt of opts) {
                     if (!opt.option_value_id) continue;
-                    await client.query(`
-                        INSERT INTO cart_item_options (cart_item_id, option_value_id, extra_price)
-                        VALUES ($1, $2, $3)
-                    `, [cRows[0].id, opt.option_value_id, opt.extra_price_snapshot]);
+                    await client.query(
+                        `INSERT INTO cart_item_options (cart_item_id, option_value_id, extra_price)
+                         VALUES ($1, $2, $3)`,
+                        [cRows[0].id, opt.option_value_id, opt.extra_price_snapshot]
+                    );
                 }
             }
         });
 
-        res.json(new ApiResponse(200, { cartId: cart.id, storeId: order.storeId }, "Items added to cart for reorder."));
+        res.json(new ApiResponse(200, { cartId: cart.id, storeId }, "Items added to cart for reorder."));
     } catch (err) {
         next(err);
     }

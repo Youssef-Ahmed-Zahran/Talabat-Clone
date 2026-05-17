@@ -22,18 +22,33 @@ export const getCountries = async (req, res, next) => {
     try {
         const { search } = req.query;
 
-        const countries = await prisma.country.findMany({
-            where: search
-                ? { name: { contains: search, mode: "insensitive" } }
-                : undefined,
+        // Always restrict to the Middle East whitelist (even if DB has other countries)
+        const MIDDLE_EAST_CODES = STATIC_COUNTRIES.map(c => c.code);
+
+        const dbCountries = await prisma.country.findMany({
+            where: {
+                code: { in: MIDDLE_EAST_CODES },
+                ...(search ? { name: { contains: search, mode: "insensitive" } } : {}),
+            },
             orderBy: { name: "asc" },
             select: { id: true, name: true, code: true },
         });
 
+        // Deduplicate by code (safety net for bad seeds)
+        const seen = new Set();
+        const countries = dbCountries.filter(c => {
+            if (seen.has(c.code)) return false;
+            seen.add(c.code);
+            return true;
+        });
+
         // Nothing in DB yet — send the curated static list
-        if (!countries.length && !search) {
+        if (!countries.length) {
+            const filtered = search
+                ? STATIC_COUNTRIES.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+                : STATIC_COUNTRIES;
             return res.json(
-                new ApiResponse(200, STATIC_COUNTRIES, "Countries fetched (static fallback).")
+                new ApiResponse(200, filtered, "Countries fetched (static fallback).")
             );
         }
 

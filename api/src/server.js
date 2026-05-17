@@ -79,7 +79,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 
 // ─── Global rate limiter (applied to all API routes) ─────────────────────────
-app.use("/api", apiLimiter);
+// app.use("/api", apiLimiter); // Temporarily disabled for development
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ROUTES

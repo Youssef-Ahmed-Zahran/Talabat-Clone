@@ -1,6 +1,7 @@
 import prisma from "../../../config/db.js";
 import { ApiError } from "../../../utils/ApiError.js";
 import { ApiResponse } from "../../../utils/ApiResponse.js";
+import { getIO, orderRoom } from "../../../config/socket.js";
 
 // ═══════════════════════════════════════════════════════════════
 // GET CONVERSATION BY ORDER ID
@@ -147,7 +148,24 @@ export const sendMessage = async (req, res, next) => {
                 senderId,
                 body: messageBody.trim(),
             },
+            select: {
+                id: true,
+                senderType: true,
+                senderId: true,
+                body: true,
+                isRead: true,
+                createdAt: true,
+            },
         });
+
+        // Broadcast the new message to the socket room so real-time clients update instantly
+        try {
+            const io = getIO();
+            const room = orderRoom(conversation.orderId);
+            io.of("/chat").to(room).emit("chat:message", { orderId: conversation.orderId, message });
+        } catch (socketErr) {
+            console.error("[Chat HTTP] Failed to emit socket event:", socketErr);
+        }
 
         res.status(201).json(new ApiResponse(201, message, "Message sent."));
     } catch (err) {
