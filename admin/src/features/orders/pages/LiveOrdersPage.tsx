@@ -1,13 +1,8 @@
 import { RefreshCw, Search } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useLiveOrders, useUpdateOrderStatus } from "../api/order.api";
 import type { Order, OrderStatus } from "../../../types";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
-import toast from "react-hot-toast";
-import { getNotificationSocket } from "../../../config/socket";
-import { useDebounce } from "../../../hooks/useDebouncing";
-import { handleApiError } from "../../../utils/error";
+import { useLiveOrdersPage } from "../hooks/useLiveOrdersPage";
 
 const STATUS_CONFIG: Record<
   OrderStatus,
@@ -76,59 +71,17 @@ function StatusBadge({ status }: { status: OrderStatus }) {
 }
 
 export default function LiveOrdersPage() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearch = useDebounce(searchTerm, 500);
-
   const {
-    data: orders,
+    orders,
     isLoading,
     isError,
     refetch,
     isFetching,
-  } = useLiveOrders(debouncedSearch);
-
-  const { mutate: updateStatus, isPending: isUpdating } =
-    useUpdateOrderStatus();
-
-  // ── Listen for Real-Time Socket Notifications ──
-  useEffect(() => {
-    const socket = getNotificationSocket();
-    if (!socket) return;
-
-    const handleNewNotification = (data: {
-      notification: { type: string };
-    }) => {
-      const { notification } = data;
-      if (notification?.type === "ORDER_UPDATE") {
-        refetch();
-      }
-    };
-
-    socket.on("notification:new", handleNewNotification);
-
-    return () => {
-      socket.off("notification:new", handleNewNotification);
-      // We don't disconnect entirely here so other parts of the app can still receive notifications.
-    };
-  }, [refetch]);
-
-  const handleStatusChange = (orderId: string | number, status: string) => {
-    updateStatus(
-      { orderId, status },
-      {
-        onSuccess: () => {
-          toast.success(`Order #${orderId} status updated to ${status}`);
-        },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onError: (err: any) => {
-          handleApiError(
-            err,
-            "We couldn't update the order status. Please try again.",
-          );
-        },
-      },
-    );
-  };
+    searchTerm,
+    setSearchTerm,
+    handleStatusChange,
+    isUpdating,
+  } = useLiveOrdersPage();
 
   if (isLoading && !orders) return <PageLoader />;
   if (isError) return <ErrorFallback onRetry={refetch} />;
@@ -266,3 +219,4 @@ export default function LiveOrdersPage() {
     </div>
   );
 }
+

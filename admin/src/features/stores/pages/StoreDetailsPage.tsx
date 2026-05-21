@@ -1,20 +1,21 @@
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ArrowLeft, Package } from "lucide-react";
-import { useStoreDetails } from "../api/store.api";
-import { useAuthStore } from "../../../store/authStore";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
 import { StoreHero } from "../components/StoreHero";
 import { StoreInfoCards } from "../components/StoreInfoCards";
+import { useStoreDetailsPage } from "../hooks/useStoreDetailsPage";
 
 export default function StoreDetailsPage() {
-  const params = useParams();
-  const navigate = useNavigate();
-  const role = useAuthStore((s) => s.role);
-  const authStoreId = useAuthStore((s) => s.storeId);
-  const storeId = params.storeId || authStoreId;
-
-  const { data: store, isLoading, isError, refetch } = useStoreDetails(storeId);
+  const {
+    role,
+    storeId,
+    store,
+    isLoading,
+    isError,
+    refetch,
+    navigate,
+  } = useStoreDetailsPage();
 
   if (isLoading) return <PageLoader />;
   if (isError) return <ErrorFallback onRetry={refetch} />;

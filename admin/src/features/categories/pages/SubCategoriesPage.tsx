@@ -1,24 +1,21 @@
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Plus, ArrowLeft } from "lucide-react";
-import { useSubCategories } from "../api/category.api";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
 import SubCategoriesTable from "../components/SubCategoriesTable";
 import SubCategoryModal from "../components/SubCategoryModal";
+import { useSubCategoriesPage } from "../hooks/useSubCategoriesPage";
 
 export default function SubCategoriesPage() {
-  const { mainId } = useParams<{ mainId: string }>();
-  const categoryId = mainId || "";
-
   const {
-    data: subCategories,
+    categoryId,
+    subCategories,
     isLoading,
     isError,
     refetch,
-  } = useSubCategories(categoryId);
-
-  const [showCreateModal, setShowCreateModal] = useState(false);
+    showCreateModal,
+    setShowCreateModal,
+  } = useSubCategoriesPage();
 
   if (isLoading) return <PageLoader />;
   if (isError) return <ErrorFallback onRetry={refetch} />;
@@ -61,6 +58,7 @@ export default function SubCategoriesPage() {
       {/* Create modal — owned by the page (triggered from the header) */}
       {showCreateModal && (
         <SubCategoryModal
+          isOpen={showCreateModal}
           categoryId={categoryId}
           editingSub={null}
           onClose={() => setShowCreateModal(false)}

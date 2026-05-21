@@ -1,4 +1,3 @@
-import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   User as UserIcon,
@@ -9,58 +8,25 @@ import {
   ShieldOff,
   ShoppingBag,
 } from "lucide-react";
-import toast from "react-hot-toast";
-import {
-  useUser,
-  useUserOrders,
-  useBlockUser,
-  useUnblockUser,
-} from "../api/user.api";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
 import type { Order } from "../../../types";
+import { useUserDetails } from "../hooks/useUserDetails";
 
 export default function UserDetailsPage() {
-  const { userId } = useParams<{ userId: string }>();
-  const navigate = useNavigate();
-
   const {
-    data: user,
-    isLoading: isUserLoading,
-    isError: isUserError,
-    refetch: refetchUser,
-  } = useUser(userId!);
-  const {
-    data: orders,
-    isLoading: isOrdersLoading,
-    isError: isOrdersError,
-    refetch: refetchOrders,
-  } = useUserOrders(userId!);
-
-  const blockMutation = useBlockUser();
-  const unblockMutation = useUnblockUser();
-
-  const handleToggleBlock = () => {
-    if (!user) return;
-    const idStr = user.id.toString();
-    if (!user.isBlocked) {
-      blockMutation.mutate(idStr, {
-        onSuccess: () => {
-          toast.success("User blocked successfully");
-          refetchUser();
-        },
-        onError: () => toast.error("Failed to block user"),
-      });
-    } else {
-      unblockMutation.mutate(idStr, {
-        onSuccess: () => {
-          toast.success("User unblocked successfully");
-          refetchUser();
-        },
-        onError: () => toast.error("Failed to unblock user"),
-      });
-    }
-  };
+    user,
+    orders,
+    isUserLoading,
+    isUserError,
+    refetchUser,
+    isOrdersLoading,
+    isOrdersError,
+    refetchOrders,
+    handleToggleBlock,
+    isPendingToggle,
+    navigate,
+  } = useUserDetails();
 
   if (isUserLoading) return <PageLoader />;
   if (isUserError || !user) return <ErrorFallback onRetry={refetchUser} />;
@@ -87,7 +53,7 @@ export default function UserDetailsPage() {
 
         <button
           onClick={handleToggleBlock}
-          disabled={blockMutation.isPending || unblockMutation.isPending}
+          disabled={isPendingToggle}
           className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-colors ${
             !user.isBlocked
               ? "text-red-600 bg-red-50 hover:bg-red-100"

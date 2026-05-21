@@ -1,11 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  fetchAllZones,
-  deleteZone,
-  updateZone,
-  type Zone,
-} from "../api/zones.api";
+import React from "react";
 import {
   MapPin,
   Plus,
@@ -19,59 +12,22 @@ import {
   AlertTriangle,
   Loader2,
 } from "lucide-react";
+import { useZonesPage } from "../hooks/useZonesPage";
 
 const ZonesPage: React.FC = () => {
-  const navigate = useNavigate();
-  const [zones, setZones] = useState<Zone[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
-
-  const loadZones = useCallback(async () => {
-    try {
-      const data = await fetchAllZones();
-      setZones(data);
-      setError(null);
-    } catch {
-      setError("Failed to load zones.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadZones();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [loadZones]);
-
-  const handleToggleActive = async (zone: Zone) => {
-    setTogglingId(zone.id);
-    try {
-      await updateZone(zone.id, { isActive: !zone.isActive });
-      setZones((prev) =>
-        prev.map((z) =>
-          z.id === zone.id ? { ...z, isActive: !z.isActive } : z,
-        ),
-      );
-    } catch {
-      alert("Failed to toggle zone status.");
-    } finally {
-      setTogglingId(null);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteZone(id);
-      setZones((prev) => prev.filter((z) => z.id !== id));
-      setDeleteConfirm(null);
-    } catch {
-      alert("Failed to delete zone.");
-    }
-  };
+  const {
+    zones,
+    isLoading,
+    error,
+    refetch,
+    deleteConfirm,
+    setDeleteConfirm,
+    togglingId,
+    handleToggleActive,
+    handleDelete,
+    goToNewZone,
+    goToEditZone,
+  } = useZonesPage();
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -92,7 +48,7 @@ const ZonesPage: React.FC = () => {
         </div>
         <button
           className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand text-white font-semibold rounded-xl hover:bg-brand-dark transition-all shadow-sm shadow-brand/20 active:scale-[0.98]"
-          onClick={() => navigate("/zones/new")}
+          onClick={goToNewZone}
         >
           <Plus size={18} />
           New Zone
@@ -135,7 +91,7 @@ const ZonesPage: React.FC = () => {
       </div>
 
       {/* Content */}
-      {loading ? (
+      {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-gray-100 border-dashed">
           <Loader2 className="w-10 h-10 text-brand animate-spin mb-4" />
           <p className="text-gray-500 font-medium tracking-tight">
@@ -147,12 +103,11 @@ const ZonesPage: React.FC = () => {
           <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center text-red-600 mb-4">
             <AlertTriangle size={28} />
           </div>
-          <p className="text-red-800 font-semibold text-lg mb-2">{error}</p>
+          <p className="text-red-800 font-semibold text-lg mb-2">
+            Failed to load zones.
+          </p>
           <button
-            onClick={() => {
-              setLoading(true);
-              loadZones();
-            }}
+            onClick={() => refetch()}
             className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
           >
             Retry
@@ -171,7 +126,7 @@ const ZonesPage: React.FC = () => {
             define where your drivers operate.
           </p>
           <button
-            onClick={() => navigate("/zones/new")}
+            onClick={goToNewZone}
             className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-dark transition-all active:scale-[0.98]"
           >
             <Plus size={18} /> Create First Zone
@@ -255,7 +210,7 @@ const ZonesPage: React.FC = () => {
 
                     <button
                       className="p-2 text-gray-400 hover:text-brand hover:bg-brand/5 rounded-lg transition-colors"
-                      onClick={() => navigate(`/zones/${zone.id}/edit`)}
+                      onClick={() => goToEditZone(zone.id)}
                       title="Edit zone"
                     >
                       <Pencil size={16} />
@@ -272,7 +227,7 @@ const ZonesPage: React.FC = () => {
 
                   <button
                     className="flex items-center gap-1 text-[13px] font-bold text-gray-900 hover:text-brand transition-colors"
-                    onClick={() => navigate(`/zones/${zone.id}/edit`)}
+                    onClick={() => goToEditZone(zone.id)}
                   >
                     Details <ChevronRight size={14} />
                   </button>

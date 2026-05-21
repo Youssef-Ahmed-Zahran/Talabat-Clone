@@ -1,28 +1,30 @@
-import { useState } from "react";
 import { Plus, Layers3, ChevronRight, LayoutGrid } from "lucide-react";
-import { useMainCategories, useSubCategories } from "../api/category.api";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
 import SubCategoriesTable from "../components/SubCategoriesTable";
 import CategoryModal from "../components/CategoryModal";
 import SubCategoryModal from "../components/SubCategoryModal";
+import { useMainCategoriesPage } from "../hooks/useMainCategoriesPage";
 
 export default function MainCategoriesPage() {
-  const { data: categories, isLoading, isError, refetch } = useMainCategories();
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
-    null,
-  );
-  const { data: subCategories, isLoading: subLoading } = useSubCategories(
-    selectedCategoryId || "",
-  );
-
-  const [showMainModal, setShowMainModal] = useState(false);
-  const [showSubModal, setShowSubModal] = useState(false);
+  const {
+    categories,
+    isLoading,
+    isError,
+    refetch,
+    selectedCategoryId,
+    setSelectedCategoryId,
+    subCategories,
+    subLoading,
+    showMainModal,
+    setShowMainModal,
+    showSubModal,
+    setShowSubModal,
+    selectedCategory,
+  } = useMainCategoriesPage();
 
   if (isLoading && !categories) return <PageLoader />;
   if (isError) return <ErrorFallback onRetry={refetch} />;
-
-  const selectedCategory = categories?.find((c) => c.id === selectedCategoryId);
 
   return (
     <div className="space-y-6">
@@ -143,7 +145,7 @@ export default function MainCategoriesPage() {
           ) : (
             <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-200">
               <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4">
-                <Layers3 className="w-8 h-8 text-gray-200" />
+                <Layers3 className="w-8 h-8 text-gray-300" />
               </div>
               <h3 className="text-sm font-bold text-gray-600">
                 No Category Selected

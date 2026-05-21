@@ -1,3 +1,4 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../../config/axios";
 
 // ── Types ─────────────────────────────────────────────────────
@@ -156,3 +157,111 @@ export const fetchDrivers = async (search?: string): Promise<ZoneDriver[]> => {
   // Admin response shape: { drivers: [...], pagination: {...} }
   return res.data.data?.drivers || res.data.data || [];
 };
+
+// ── React Query Hooks ──────────────────────────────────────────
+
+export const useZones = (cityId?: string) => {
+  return useQuery<Zone[]>({
+    queryKey: ["zones", { cityId }],
+    queryFn: () => fetchAllZones(cityId),
+  });
+};
+
+export const useZone = (id: string) => {
+  return useQuery<Zone>({
+    queryKey: ["zones", "detail", id],
+    queryFn: () => fetchZoneById(id),
+    enabled: !!id,
+  });
+};
+
+export const useCreateZone = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createZone,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["zones"] });
+    },
+  });
+};
+
+export const useUpdateZone = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...data
+    }: {
+      id: string;
+      name?: string;
+      description?: string;
+      color?: string;
+      isActive?: boolean;
+      geojson?: GeoJSONPolygon;
+    }) => updateZone(id, data),
+    onSuccess: (data, variables) => {
+      qc.invalidateQueries({ queryKey: ["zones"] });
+      qc.invalidateQueries({ queryKey: ["zones", "detail", variables.id] });
+    },
+  });
+};
+
+export const useDeleteZone = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteZone(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["zones"] });
+    },
+  });
+};
+
+export const useAssignStoresToZone = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ zoneId, storeIds }: { zoneId: string; storeIds: string[] }) =>
+      assignStoresToZone(zoneId, storeIds),
+    onSuccess: (data, variables) => {
+      qc.invalidateQueries({ queryKey: ["zones"] });
+      qc.invalidateQueries({ queryKey: ["zones", "detail", variables.zoneId] });
+    },
+  });
+};
+
+export const useRemoveStoreFromZone = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ zoneId, storeId }: { zoneId: string; storeId: string }) =>
+      removeStoreFromZone(zoneId, storeId),
+    onSuccess: (data, variables) => {
+      qc.invalidateQueries({ queryKey: ["zones"] });
+      qc.invalidateQueries({ queryKey: ["zones", "detail", variables.zoneId] });
+    },
+  });
+};
+
+export const useAssignDriversToZone = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ zoneId, driverIds }: { zoneId: string; driverIds: string[] }) =>
+      assignDriversToZone(zoneId, driverIds),
+    onSuccess: (data, variables) => {
+      qc.invalidateQueries({ queryKey: ["zones"] });
+      qc.invalidateQueries({ queryKey: ["zones", "detail", variables.zoneId] });
+    },
+  });
+};
+
+export const useRemoveDriverFromZone = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ zoneId, driverId }: { zoneId: string; driverId: string }) =>
+      removeDriverFromZone(zoneId, driverId),
+    onSuccess: (data, variables) => {
+      qc.invalidateQueries({ queryKey: ["zones"] });
+      qc.invalidateQueries({ queryKey: ["zones", "detail", variables.zoneId] });
+    },
+  });
+};
+
+

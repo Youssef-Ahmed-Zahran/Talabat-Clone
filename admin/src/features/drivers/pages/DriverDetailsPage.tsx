@@ -1,4 +1,3 @@
-import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   ShieldCheck,
@@ -8,16 +7,6 @@ import {
   Clock,
   Wallet,
 } from "lucide-react";
-import toast from "react-hot-toast";
-import {
-  useDriver,
-  useApproveDriver,
-  useRejectDriver,
-  useSuspendDriver,
-  useUnsuspendDriver,
-  useVerifyDocument,
-  useRejectDocument,
-} from "../api/driver.api";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
 import type { DriverStatus } from "../../../types";
@@ -25,6 +14,7 @@ import { DriverProfileCard } from "../components/DriverProfileCard";
 import { DriverApplicationDetails } from "../components/DriverApplicationDetails";
 import { DriverDocumentsList } from "../components/DriverDocumentsList";
 import { DriverWalletDetails } from "../components/DriverWalletDetails";
+import { useDriverDetails } from "../hooks/useDriverDetails";
 
 const APP_STATUS_CONFIG: Record<
   DriverStatus,
@@ -87,17 +77,24 @@ const ONLINE_STATUS_CONFIG: Record<
 };
 
 export default function DriverDetailsPage() {
-  const { driverId } = useParams<{ driverId: string }>();
-  const navigate = useNavigate();
-
-  const { data: driver, isLoading, isError, refetch } = useDriver(driverId!);
-
-  const approveMutation = useApproveDriver();
-  const rejectMutation = useRejectDriver();
-  const suspendMutation = useSuspendDriver();
-  const unsuspendMutation = useUnsuspendDriver();
-  const verifyDocMutation = useVerifyDocument(driverId!);
-  const rejectDocMutation = useRejectDocument(driverId!);
+  const {
+    driverId,
+    driver,
+    isLoading,
+    isError,
+    refetch,
+    navigate,
+    handleApprove,
+    handleReject,
+    handleSuspend,
+    handleUnsuspend,
+    handleVerifyDoc,
+    handleRejectDoc,
+    isApproving,
+    isRejecting,
+    isSuspending,
+    isUnsuspending,
+  } = useDriverDetails();
 
   if (isLoading) return <PageLoader />;
   if (isError || !driver) return <ErrorFallback onRetry={refetch} />;
@@ -107,58 +104,6 @@ export default function DriverDetailsPage() {
   const appCfg = APP_STATUS_CONFIG[appStatus];
   const onlineCfg =
     ONLINE_STATUS_CONFIG[driver.status] || ONLINE_STATUS_CONFIG.OFFLINE;
-
-  const handleApprove = () => {
-    approveMutation.mutate(driverId!, {
-      onSuccess: () =>
-        toast.success("Driver application approved successfully!"),
-      onError: () => toast.error("Failed to approve driver application."),
-    });
-  };
-
-  const handleReject = () => {
-    const reason = window.prompt("Enter rejection reason:");
-    if (reason === null) return;
-    rejectMutation.mutate(driverId!, {
-      onSuccess: () => toast.success("Driver application rejected."),
-      onError: () => toast.error("Failed to reject driver application."),
-    });
-  };
-
-  const handleSuspend = () => {
-    if (!window.confirm("Are you sure you want to suspend this driver?"))
-      return;
-    suspendMutation.mutate(driverId!, {
-      onSuccess: () => toast.success("Driver suspended."),
-      onError: () => toast.error("Failed to suspend driver."),
-    });
-  };
-
-  const handleUnsuspend = () => {
-    unsuspendMutation.mutate(driverId!, {
-      onSuccess: () => toast.success("Driver unsuspended."),
-      onError: () => toast.error("Failed to unsuspend driver."),
-    });
-  };
-
-  const handleVerifyDoc = (docId: string) => {
-    verifyDocMutation.mutate(docId, {
-      onSuccess: () => toast.success("Document verified."),
-      onError: () => toast.error("Failed to verify document."),
-    });
-  };
-
-  const handleRejectDoc = (docId: string) => {
-    const reason = window.prompt("Enter rejection reason for this document:");
-    if (reason === null) return;
-    rejectDocMutation.mutate(
-      { docId, reason },
-      {
-        onSuccess: () => toast.success("Document rejected."),
-        onError: () => toast.error("Failed to reject document."),
-      },
-    );
-  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
@@ -179,7 +124,7 @@ export default function DriverDetailsPage() {
             <>
               <button
                 onClick={handleApprove}
-                disabled={approveMutation.isPending}
+                disabled={isApproving}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-emerald-500 rounded-xl hover:bg-emerald-600 transition-all disabled:opacity-50"
               >
                 <CheckCircle className="w-4 h-4" />
@@ -187,7 +132,7 @@ export default function DriverDetailsPage() {
               </button>
               <button
                 onClick={handleReject}
-                disabled={rejectMutation.isPending}
+                disabled={isRejecting}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-all disabled:opacity-50"
               >
                 <XCircle className="w-4 h-4" />
@@ -199,7 +144,7 @@ export default function DriverDetailsPage() {
           {driver.status !== "SUSPENDED" ? (
             <button
               onClick={handleSuspend}
-              disabled={suspendMutation.isPending}
+              disabled={isSuspending}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-amber-600 bg-amber-50 rounded-xl hover:bg-amber-100 transition-all disabled:opacity-50"
             >
               <ShieldOff className="w-4 h-4" />
@@ -208,7 +153,7 @@ export default function DriverDetailsPage() {
           ) : (
             <button
               onClick={handleUnsuspend}
-              disabled={unsuspendMutation.isPending}
+              disabled={isUnsuspending}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-emerald-600 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-all disabled:opacity-50"
             >
               <ShieldCheck className="w-4 h-4" />

@@ -2,13 +2,13 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
-  createZone,
-  updateZone,
+  useCreateZone,
+  useUpdateZone,
+  useAssignStoresToZone,
+  useRemoveStoreFromZone,
+  useAssignDriversToZone,
+  useRemoveDriverFromZone,
   fetchZoneById,
-  assignStoresToZone,
-  removeStoreFromZone,
-  assignDriversToZone,
-  removeDriverFromZone,
   fetchStores,
   fetchDrivers,
   fetchCities,
@@ -48,6 +48,13 @@ const ZoneEditorPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const mode: Mode = id ? "edit" : "create";
+
+  const createZoneMutation = useCreateZone();
+  const updateZoneMutation = useUpdateZone();
+  const assignStoresMutation = useAssignStoresToZone();
+  const removeStoreMutation = useRemoveStoreFromZone();
+  const assignDriversMutation = useAssignDriversToZone();
+  const removeDriverMutation = useRemoveDriverFromZone();
 
   // Form state
   const [name, setName] = useState("");
@@ -202,7 +209,10 @@ const ZoneEditorPage: React.FC = () => {
   const handleAddStore = async (store: ZoneStore) => {
     if (!id) return;
     try {
-      await assignStoresToZone(id, [store.id]);
+      await assignStoresMutation.mutateAsync({
+        zoneId: id,
+        storeIds: [store.id],
+      });
       setAssignedStores((prev) => [
         ...(prev || []),
         {
@@ -213,22 +223,24 @@ const ZoneEditorPage: React.FC = () => {
       ]);
       setStoreSearch("");
       setStoreResults([]);
+      toast.success(`Store "${store.name}" assigned successfully.`);
     } catch {
-      alert("Failed to assign store.");
+      toast.error("Failed to assign store.");
     }
   };
 
   const handleRemoveStore = async (storeId: string) => {
     if (!id) return;
     try {
-      await removeStoreFromZone(id, storeId);
+      await removeStoreMutation.mutateAsync({ zoneId: id, storeId });
       setAssignedStores((prev) =>
         (prev || []).filter(
           (s) => s.storeId !== storeId && s.store?.id !== storeId,
         ),
       );
+      toast.success("Store removed successfully.");
     } catch {
-      alert("Failed to remove store.");
+      toast.error("Failed to remove store.");
     }
   };
 
@@ -255,7 +267,10 @@ const ZoneEditorPage: React.FC = () => {
   const handleAddDriver = async (driver: ZoneDriver) => {
     if (!id) return;
     try {
-      await assignDriversToZone(id, [driver.id]);
+      await assignDriversMutation.mutateAsync({
+        zoneId: id,
+        driverIds: [driver.id],
+      });
       setAssignedDrivers((prev) => [
         ...(prev || []),
         {
@@ -266,22 +281,27 @@ const ZoneEditorPage: React.FC = () => {
       ]);
       setDriverSearch("");
       setDriverResults([]);
+      const driverName = driver.application
+        ? `${driver.application.firstName} ${driver.application.familyName}`
+        : driver.phone;
+      toast.success(`Driver "${driverName}" assigned successfully.`);
     } catch {
-      alert("Failed to assign driver.");
+      toast.error("Failed to assign driver.");
     }
   };
 
   const handleRemoveDriver = async (driverId: string) => {
     if (!id) return;
     try {
-      await removeDriverFromZone(id, driverId);
+      await removeDriverMutation.mutateAsync({ zoneId: id, driverId });
       setAssignedDrivers((prev) =>
         (prev || []).filter(
           (d) => d.driverId !== driverId && d.driver?.id !== driverId,
         ),
       );
+      toast.success("Driver removed successfully.");
     } catch {
-      alert("Failed to remove driver.");
+      toast.error("Failed to remove driver.");
     }
   };
 
@@ -301,21 +321,24 @@ const ZoneEditorPage: React.FC = () => {
           setSaving(false);
           return;
         }
-        const newZone = await createZone({
+        const newZone = await createZoneMutation.mutateAsync({
           name,
           cityId,
           description,
           color,
           geojson,
         });
+        toast.success("Zone created successfully.");
         navigate(`/zones/${newZone.id}/edit`);
       } else if (id) {
-        await updateZone(id, {
+        await updateZoneMutation.mutateAsync({
+          id,
           name,
           description,
           color,
           ...(geojson ? { geojson } : {}),
         });
+        toast.success("Zone updated successfully.");
         navigate("/zones");
       }
     } catch (err: unknown) {

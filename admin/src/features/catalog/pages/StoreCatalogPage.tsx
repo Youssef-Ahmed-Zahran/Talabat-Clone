@@ -1,6 +1,4 @@
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { useAuthStore } from "../../../store/authStore";
+import { Link } from "react-router-dom";
 import {
   ArrowLeft,
   Plus,
@@ -9,126 +7,42 @@ import {
   Search,
   Loader2,
 } from "lucide-react";
-import toast from "react-hot-toast";
-import {
-  useSections,
-  useDeleteSection,
-  useProducts,
-  useUpdateProduct,
-  useDeleteProduct,
-} from "../api/catalog.api";
-import type { Section, Product } from "../../../types";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
-import { handleApiError } from "../../../utils/error";
 import { SectionModal } from "../components/SectionModal";
 import { ProductModal } from "../components/ProductModal";
 import { ProductCard } from "../components/ProductCard";
 import { SectionNav } from "../components/SectionTabs";
+import { useStoreCatalog } from "../hooks/useStoreCatalog";
 
 export default function StoreCatalogPage() {
-  const params = useParams<{ storeId: string }>();
-  const authStoreId = useAuthStore((s) => s.storeId);
-  const role = useAuthStore((s) => s.role);
-  const sid = params.storeId || authStoreId || "";
-
-  // ── Sections ─────────────────────────────────────────────────
   const {
-    data: sections,
-    isLoading: sectionsLoading,
-    isError: sectionsError,
-    refetch: refetchSections,
-  } = useSections(sid);
-  // ✅ Only delete stays here — triggered from SectionTabs, not a modal
-  const deleteSectionMut = useDeleteSection(sid);
-
-  // ── Products ─────────────────────────────────────────────────
-  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
-  const [productSearch, setProductSearch] = useState("");
-  const { data: productsData, isLoading: productsLoading } = useProducts(sid, {
-    sectionId: activeSectionId || undefined,
-    search: productSearch || undefined,
-  });
-  const products = productsData?.products ?? [];
-  // ✅ updateProductMut stays here for toggle — delete stays for card action
-  const updateProductMut = useUpdateProduct(sid);
-  const deleteProductMut = useDeleteProduct(sid);
-
-  // ── Modal state ──────────────────────────────────────────────
-  const [showSectionModal, setShowSectionModal] = useState(false);
-  const [editingSection, setEditingSection] = useState<Section | null>(null);
-
-  const [showProductModal, setShowProductModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-
-  // ── Handlers ─────────────────────────────────────────────────
-  const openCreateSection = () => {
-    setEditingSection(null);
-    setShowSectionModal(true);
-  };
-
-  const openEditSection = (s: Section) => {
-    setEditingSection(s);
-    setShowSectionModal(true);
-  };
-
-  const handleDeleteSection = (s: Section) => {
-    if (
-      !confirm(
-        `Delete section "${s.name}"? All products inside will be orphaned.`,
-      )
-    )
-      return;
-    deleteSectionMut.mutate(s.id, {
-      onSuccess: () => {
-        toast.success("Section deleted");
-        if (activeSectionId === s.id) setActiveSectionId(null);
-      },
-      onError: (err) =>
-        handleApiError(
-          err,
-          "We couldn't delete the section. Please try again.",
-        ),
-    });
-  };
-
-  const openCreateProduct = () => {
-    setEditingProduct(null);
-    setShowProductModal(true);
-  };
-
-  const openEditProduct = (p: Product) => {
-    setEditingProduct(p);
-    setShowProductModal(true);
-  };
-
-  const handleDeleteProduct = (p: Product) => {
-    if (!confirm(`Delete product "${p.name}"? This cannot be undone.`)) return;
-    deleteProductMut.mutate(p.id, {
-      onSuccess: () => toast.success("Product deleted"),
-      onError: (err) =>
-        handleApiError(
-          err,
-          "We couldn't remove the product. Please try again.",
-        ),
-    });
-  };
-
-  // ✅ Stays here — toggle is a page-level card action, not a modal action
-  const handleToggleAvailability = (p: Product) => {
-    updateProductMut.mutate(
-      { productId: p.id, isAvailable: !p.is_available },
-      {
-        onSuccess: () =>
-          toast.success(p.is_available ? "Product hidden" : "Product visible"),
-        onError: (err) =>
-          handleApiError(
-            err,
-            "We couldn't update the product availability. Please try again.",
-          ),
-      },
-    );
-  };
+    sid,
+    role,
+    sections,
+    sectionsLoading,
+    sectionsError,
+    refetchSections,
+    activeSectionId,
+    setActiveSectionId,
+    productSearch,
+    setProductSearch,
+    products,
+    productsLoading,
+    showSectionModal,
+    setShowSectionModal,
+    editingSection,
+    showProductModal,
+    setShowProductModal,
+    editingProduct,
+    openCreateSection,
+    openEditSection,
+    handleDeleteSection,
+    openCreateProduct,
+    openEditProduct,
+    handleDeleteProduct,
+    handleToggleAvailability,
+  } = useStoreCatalog();
 
   // ── Loading / Error ──────────────────────────────────────────
   if (sectionsLoading && !sections) return <PageLoader />;

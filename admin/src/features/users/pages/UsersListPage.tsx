@@ -1,48 +1,21 @@
 import { Search, Users as UsersIcon, ShieldOff, Shield } from "lucide-react";
-import { useState } from "react";
 import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
-import { useUsers, useBlockUser, useUnblockUser } from "../api/user.api";
-import { useDebounce } from "../../../hooks/useDebouncing";
 import type { User } from "../../../types";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
-import { handleApiError } from "../../../utils/error";
+import { useUsersList } from "../hooks/useUsersList";
 
 export default function UsersListPage() {
-  const { data: usersData, isLoading, isError, refetch } = useUsers();
-  const blockMutation = useBlockUser();
-  const unblockMutation = useUnblockUser();
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
-
-  const handleToggle = (userId: number | string, isActive: boolean) => {
-    const idStr = userId.toString();
-    if (isActive) {
-      blockMutation.mutate(idStr, {
-        onSuccess: () => toast.success("User blocked"),
-        onError: (err) =>
-          handleApiError(err, "We couldn't block this user. Please try again."),
-      });
-    } else {
-      unblockMutation.mutate(idStr, {
-        onSuccess: () => toast.success("User unblocked"),
-        onError: (err) =>
-          handleApiError(
-            err,
-            "We couldn't unblock this user. Please try again.",
-          ),
-      });
-    }
-  };
-
-  const filtered = usersData?.users?.filter(
-    (u: User) =>
-      (u.fullName || "")
-        .toLowerCase()
-        .includes(debouncedSearch.toLowerCase()) ||
-      (u.email || "").toLowerCase().includes(debouncedSearch.toLowerCase()),
-  );
+  const {
+    users,
+    isLoading,
+    isError,
+    refetch,
+    search,
+    setSearch,
+    handleToggle,
+    isToggling,
+  } = useUsersList();
 
   if (isLoading) return <PageLoader />;
   if (isError) return <ErrorFallback onRetry={refetch} />;
@@ -94,8 +67,8 @@ export default function UsersListPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {filtered && filtered.length > 0 ? (
-              filtered.map((u: User) => (
+            {users && users.length > 0 ? (
+              users.map((u: User) => (
                 <tr
                   key={u.id}
                   className="hover:bg-gray-50/50 transition-colors"
@@ -130,9 +103,7 @@ export default function UsersListPage() {
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => handleToggle(u.id, !u.isBlocked)}
-                      disabled={
-                        blockMutation.isPending || unblockMutation.isPending
-                      }
+                      disabled={isToggling}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-colors ${!u.isBlocked ? "text-red-600 bg-red-50 hover:bg-red-100" : "text-emerald-600 bg-emerald-50 hover:bg-emerald-100"}`}
                     >
                       {!u.isBlocked ? (

@@ -8,10 +8,9 @@ import {
   DollarSign,
   Wallet,
 } from "lucide-react";
-import { useDashboardStats } from "../api/dashboard.api";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
-import { useAuthStore } from "../../../store/authStore";
+import { useDashboard } from "../hooks/useDashboard";
 
 // ── Stat Card ──────────────────────────────────────────────────────────
 interface StatCardProps {
@@ -78,13 +77,10 @@ function timeAgo(dateString: string) {
 
 // ── Dashboard Page ─────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { data: stats, isLoading, isError, refetch } = useDashboardStats();
-  const role = useAuthStore((s) => s.role);
+  const { stats, isLoading, isError, refetch, isAdmin } = useDashboard();
 
   if (isLoading) return <PageLoader />;
   if (isError) return <ErrorFallback onRetry={refetch} />;
-
-  const isAdmin = role === "admin";
 
   return (
     <div className="space-y-8">
@@ -136,14 +132,34 @@ export default function DashboardPage() {
         />
         <StatCard
           label={isAdmin ? "Registered Users" : "Pending Orders"}
-          value={isAdmin ? stats?.users?.toLocaleString() : stats?.orders?.pending?.toLocaleString() || "0"}
-          icon={isAdmin ? <Users className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+          value={
+            isAdmin
+              ? stats?.users?.toLocaleString()
+              : stats?.orders?.pending?.toLocaleString() || "0"
+          }
+          icon={
+            isAdmin ? (
+              <Users className="w-5 h-5" />
+            ) : (
+              <Clock className="w-5 h-5" />
+            )
+          }
           color="#06B6D4"
         />
         <StatCard
           label={isAdmin ? "Active Drivers" : "Average Rating"}
-          value={isAdmin ? stats?.drivers?.toLocaleString() : Number(stats?.reviews?.averageRating || 0).toFixed(1)}
-          icon={isAdmin ? <Truck className="w-5 h-5" /> : <TrendingUp className="w-5 h-5" />}
+          value={
+            isAdmin
+              ? stats?.drivers?.toLocaleString()
+              : Number(stats?.reviews?.averageRating || 0).toFixed(1)
+          }
+          icon={
+            isAdmin ? (
+              <Truck className="w-5 h-5" />
+            ) : (
+              <TrendingUp className="w-5 h-5" />
+            )
+          }
           color="#10B981"
         />
       </div>
