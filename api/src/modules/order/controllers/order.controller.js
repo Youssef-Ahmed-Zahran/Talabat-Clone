@@ -4,6 +4,7 @@ import { ApiResponse } from "../../../utils/ApiResponse.js";
 import { tenantQuery, tenantTransaction } from "../../../lib/tenantDb.js";
 import { getIO } from "../../../config/socket.js";
 import { dispatchToNearestDriver } from "../../../sockets/dispatch.socket.js";
+import { queue } from "../../../lib/queue.js";
 
 // ═══════════════════════════════════════════════════════════════
 // HELPER: Fetch Cart Items from Tenant Schema
@@ -166,48 +167,23 @@ export const placeOrder = async (req, res, next) => {
             }
         });
 
-        // ── Dispatch to nearest driver (async — don't block the response) ──
-        // Only if the store uses our platform delivery
-        const io = getIO();
+        // ── Queue background tasks (driver dispatch & store notifications) ──
+        // This decouples the core checkout response from slow external processes/database scans.
+        
+        // 1. Dispatch to nearest driver (if platform delivery is used)
         if (store.deliveryType !== 'STORE_DELIVERY' && store.deliveryType !== 'STORE') {
-            setImmediate(async () => {
-                try {
-                    await dispatchToNearestDriver(io, order.id, store, address);
-                } catch (err) {
-                    console.error("[PlaceOrder] Dispatch error (non-blocking):", err);
-                }
-            });
+            await queue.add("driver_dispatch", {
+                orderId: order.id,
+                store,
+                address
+            }, { retries: 3 }); // Auto-retry up to 3 times with exponential backoff if failed!
         }
 
-        // ── Notify Store Owner & Admins ──
-        try {
-            const { emitToAdmins, emitToOwner } = await import("../../../sockets/notifications.socket.js");
-            
-            // 1. Broadcast to all admins (Real-time only)
-            emitToAdmins(io, {
-                title: "New Order! 🚀",
-                body: `A new order (#${order.id}) was just placed at ${store.name}!`,
-                type: "ORDER_UPDATE",
-                meta: { orderId: order.id, storeId: store.id }
-            });
-
-            // 2. Persist notification for the specific Store Owner
-            const owner = await prisma.ownerAccount.findFirst({
-                where: { storeId: store.id, isActive: true }
-            });
-
-            if (owner) {
-                await emitToOwner(io, owner.id, {
-                    title: "New Order Received! 🍕",
-                    body: `Order #${order.id} is waiting for preparation.`,
-                    type: "ORDER_UPDATE",
-                    relatedOrderId: order.id,
-                    meta: { orderId: order.id }
-                });
-            }
-        } catch (err) {
-            console.error("[PlaceOrder] Notification error:", err);
-        }
+        // 2. Queue the notifications sending task
+        await queue.add("order_notification", {
+            order,
+            store
+        }, { retries: 2 });
 
         const fullOrder = await prisma.order.findUnique({
             where: { id: order.id },

@@ -1,5 +1,6 @@
 import prisma from "../../../config/db.js";
 import { ApiResponse } from "../../../utils/ApiResponse.js";
+import { cache } from "../../../lib/cache.js";
 
 // Static fallback list — used when DB has no countries seeded yet
 const STATIC_COUNTRIES = [
@@ -21,10 +22,13 @@ const STATIC_COUNTRIES = [
 export const getCountries = async (req, res, next) => {
     try {
         const { search } = req.query;
+        const cacheKey = search ? null : "geography:countries:all";
+        if (cacheKey) {
+            const cached = await cache.get(cacheKey);
+            if (cached) return res.json(new ApiResponse(200, cached, "Countries fetched (cached)."));
+        }
 
-        // Always restrict to the Middle East whitelist (even if DB has other countries)
         const MIDDLE_EAST_CODES = STATIC_COUNTRIES.map(c => c.code);
-
         const dbCountries = await prisma.country.findMany({
             where: {
                 code: { in: MIDDLE_EAST_CODES },
@@ -34,7 +38,6 @@ export const getCountries = async (req, res, next) => {
             select: { id: true, name: true, code: true },
         });
 
-        // Deduplicate by code (safety net for bad seeds)
         const seen = new Set();
         const countries = dbCountries.filter(c => {
             if (seen.has(c.code)) return false;
@@ -42,16 +45,14 @@ export const getCountries = async (req, res, next) => {
             return true;
         });
 
-        // Nothing in DB yet — send the curated static list
         if (!countries.length) {
             const filtered = search
                 ? STATIC_COUNTRIES.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
                 : STATIC_COUNTRIES;
-            return res.json(
-                new ApiResponse(200, filtered, "Countries fetched (static fallback).")
-            );
+            return res.json(new ApiResponse(200, filtered, "Countries fetched (static fallback)."));
         }
 
+        if (cacheKey) await cache.set(cacheKey, countries, 1800); // 30 minutes
         res.json(new ApiResponse(200, countries, "Countries fetched."));
     } catch (err) {
         next(err);
@@ -64,19 +65,23 @@ export const getCountries = async (req, res, next) => {
 export const getCountryByCode = async (req, res, next) => {
     try {
         const { code } = req.params;
+        const upperCode = code.toUpperCase();
+        const cacheKey = `geography:country:${upperCode}`;
+        const cached = await cache.get(cacheKey);
+        if (cached) return res.json(new ApiResponse(200, cached, "Country fetched (cached)."));
 
         const country = await prisma.country.findUnique({
-            where: { code: code.toUpperCase() },
+            where: { code: upperCode },
             select: { id: true, name: true, code: true },
         });
 
         if (!country) {
-            // Check static fallback
-            const fallback = STATIC_COUNTRIES.find(c => c.code === code.toUpperCase());
+            const fallback = STATIC_COUNTRIES.find(c => c.code === upperCode);
             if (fallback) return res.json(new ApiResponse(200, fallback, "Country fetched (static)."));
             return res.status(404).json({ success: false, message: "Country not found." });
         }
 
+        await cache.set(cacheKey, country, 1800);
         res.json(new ApiResponse(200, country, "Country fetched."));
     } catch (err) {
         next(err);
@@ -90,14 +95,19 @@ export const getCitiesByCountry = async (req, res, next) => {
     try {
         const { code } = req.params;
         const { search } = req.query;
+        const upperCode = code.toUpperCase();
+        const cacheKey = search ? null : `geography:cities:country_${upperCode}`;
+        if (cacheKey) {
+            const cached = await cache.get(cacheKey);
+            if (cached) return res.json(new ApiResponse(200, cached, "Cities fetched (cached)."));
+        }
 
         const country = await prisma.country.findUnique({
-            where: { code: code.toUpperCase() },
+            where: { code: upperCode },
             select: { id: true, name: true, code: true },
         });
 
         if (!country) {
-            // Country hasn't been seeded yet — empty list is valid
             return res.json(new ApiResponse(200, [], "No cities found for this country yet."));
         }
 
@@ -114,6 +124,7 @@ export const getCitiesByCountry = async (req, res, next) => {
             },
         });
 
+        if (cacheKey) await cache.set(cacheKey, cities, 1800); // 30 minutes
         res.json(new ApiResponse(200, cities, "Cities fetched."));
     } catch (err) {
         next(err);

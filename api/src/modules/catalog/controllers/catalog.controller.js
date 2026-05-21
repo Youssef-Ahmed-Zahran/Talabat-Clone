@@ -8,6 +8,7 @@ import {
 } from "../../../utils/cloudinaryUpload.js";
 import { tenantQuery, tenantTransaction } from "../../../lib/tenantDb.js";
 import prisma from "../../../config/db.js"; // Needed to fetch store info if necessary
+import { cache } from "../../../lib/cache.js";
 
 // ═══════════════════════════════════════════════════════════════
 // HELPER — get storeId for tenant routing
@@ -60,6 +61,8 @@ export const createSection = async (req, res, next) => {
             RETURNING *
         `, [storeId, name, sortOrder || 0]);
 
+        await cache.del(`catalog:sections:store_${storeId}`);
+
         res.status(201).json(new ApiResponse(201, section, "Section created."));
     } catch (err) {
         next(err);
@@ -69,6 +72,12 @@ export const createSection = async (req, res, next) => {
 export const getSections = async (req, res, next) => {
     try {
         const storeId = await getStoreId(req);
+
+        const cacheKey = `catalog:sections:store_${storeId}`;
+        const cachedResponse = await cache.get(cacheKey);
+        if (cachedResponse) {
+            return res.json(new ApiResponse(200, cachedResponse, "Sections fetched (cached)."));
+        }
 
         const sections = await tenantQuery(storeId, `
             SELECT 
@@ -126,6 +135,8 @@ export const getSections = async (req, res, next) => {
             ORDER BY s.sort_order ASC
         `, [storeId]);
 
+        await cache.set(cacheKey, sections, 600); // Cache for 10 minutes since menus change infrequently
+
         res.json(new ApiResponse(200, sections, "Sections fetched."));
     } catch (err) {
         next(err);
@@ -162,6 +173,8 @@ export const updateSection = async (req, res, next) => {
             RETURNING *
         `, params);
 
+        await cache.del(`catalog:sections:store_${storeId}`);
+
         res.json(new ApiResponse(200, section, "Section updated."));
     } catch (err) {
         next(err);
@@ -178,6 +191,8 @@ export const deleteSection = async (req, res, next) => {
         if (!existing) throw new ApiError(404, "Section not found.");
 
         await tenantQuery(storeId, `DELETE FROM store_sections WHERE id = $1`, [sectionId]);
+
+        await cache.del(`catalog:sections:store_${storeId}`);
 
         res.json(new ApiResponse(200, null, "Section deleted."));
     } catch (err) {
@@ -198,6 +213,8 @@ export const reorderSections = async (req, res, next) => {
                 await client.query(`UPDATE store_sections SET sort_order = $1 WHERE id = $2`, [i, orderedIds[i]]);
             }
         });
+
+        await cache.del(`catalog:sections:store_${storeId}`);
 
         res.json(new ApiResponse(200, null, "Sections reordered."));
     } catch (err) {
@@ -286,6 +303,8 @@ export const createProduct = async (req, res, next) => {
 
             return p;
         });
+
+        await cache.del(`catalog:sections:store_${storeId}`);
 
         res.status(201).json(new ApiResponse(201, product, "Product created with all associations."));
     } catch (err) {
@@ -416,6 +435,8 @@ export const updateProduct = async (req, res, next) => {
             RETURNING *
         `, params);
 
+        await cache.del(`catalog:sections:store_${storeId}`);
+
         res.json(new ApiResponse(200, product, "Product updated."));
     } catch (err) {
         next(err);
@@ -438,6 +459,8 @@ export const deleteProduct = async (req, res, next) => {
         if (urlsToDelete.length) await deleteMultipleFromCloudinary(urlsToDelete);
 
         await tenantQuery(storeId, `DELETE FROM products WHERE id = $1`, [productId]);
+
+        await cache.del(`catalog:sections:store_${storeId}`);
 
         res.json(new ApiResponse(200, null, "Product deleted."));
     } catch (err) {
@@ -490,6 +513,8 @@ export const createOptionGroup = async (req, res, next) => {
             }
             return g;
         });
+
+        await cache.del(`catalog:sections:store_${storeId}`);
 
         res.status(201).json(new ApiResponse(201, group, "Option group created."));
     } catch (err) {
@@ -545,6 +570,8 @@ export const updateOptionGroup = async (req, res, next) => {
             RETURNING *
         `, params);
 
+        await cache.del(`catalog:sections:store_${storeId}`);
+
         res.json(new ApiResponse(200, group, "Option group updated."));
     } catch (err) {
         next(err);
@@ -558,6 +585,8 @@ export const deleteOptionGroup = async (req, res, next) => {
         verifyOwnership(req, storeId);
 
         await tenantQuery(storeId, `DELETE FROM product_option_groups WHERE id = $1`, [groupId]);
+
+        await cache.del(`catalog:sections:store_${storeId}`);
 
         res.json(new ApiResponse(200, null, "Option group deleted."));
     } catch (err) {
@@ -579,6 +608,8 @@ export const createOptionValue = async (req, res, next) => {
             VALUES ($1, $2, $3)
             RETURNING *
         `, [groupId, name, extraPrice || 0]);
+
+        await cache.del(`catalog:sections:store_${storeId}`);
 
         res.status(201).json(new ApiResponse(201, value, "Option value created."));
     } catch (err) {
@@ -624,6 +655,8 @@ export const updateOptionValue = async (req, res, next) => {
             RETURNING *
         `, params);
 
+        await cache.del(`catalog:sections:store_${storeId}`);
+
         res.json(new ApiResponse(200, value, "Option value updated."));
     } catch (err) {
         next(err);
@@ -637,6 +670,8 @@ export const deleteOptionValue = async (req, res, next) => {
         verifyOwnership(req, storeId);
 
         await tenantQuery(storeId, `DELETE FROM product_option_values WHERE id = $1`, [valueId]);
+
+        await cache.del(`catalog:sections:store_${storeId}`);
 
         res.json(new ApiResponse(200, null, "Option value deleted."));
     } catch (err) {
@@ -683,6 +718,8 @@ export const bulkAddSections = async (req, res, next) => {
             }
             return createdSections;
         });
+
+        await cache.del(`catalog:sections:store_${storeId}`);
 
         res.status(201).json(new ApiResponse(201, result, `Bulk created ${result.length} section(s) with products.`));
     } catch (err) {

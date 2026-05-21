@@ -1,6 +1,7 @@
 import prisma from "../../../config/db.js";
 import { ApiError } from "../../../utils/ApiError.js";
 import { ApiResponse } from "../../../utils/ApiResponse.js";
+import { cache } from "../../../lib/cache.js";
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITY — Detect which zone a lat/lng falls inside
@@ -15,6 +16,14 @@ import { ApiResponse } from "../../../utils/ApiResponse.js";
  * @returns {Promise<{id:string, name:string}|null>}
  */
 export const detectZone = async (lat, lng) => {
+    // Round to 3 decimal places (~111m grid) — users within the same block hit the same cache entry
+    const latKey = Number(lat).toFixed(3);
+    const lngKey = Number(lng).toFixed(3);
+    const cacheKey = `zones:detect:${latKey}_${lngKey}`;
+
+    const cached = await cache.get(cacheKey);
+    if (cached !== null) return cached; // cached value may be the zone object OR null (outside zones)
+
     const rows = await prisma.$queryRaw`
         SELECT id, name, color
         FROM public.zones
@@ -25,7 +34,12 @@ export const detectZone = async (lat, lng) => {
           )
         LIMIT 1
     `;
-    return rows[0] ?? null;
+    const zone = rows[0] ?? null;
+
+    // Cache for 5 minutes — zones don't change during a user session
+    // We store null explicitly so we don't re-query for users outside all zones
+    await cache.set(cacheKey, zone, 300);
+    return zone;
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -65,6 +79,10 @@ export const createZone = async (req, res, next) => {
         `;
 
         res.status(201).json(new ApiResponse(201, zone, "Zone created."));
+
+        // New zone affects delivery coverage — invalidate nearby stores and zone list caches
+        await cache.delPattern("zones:*");
+        await cache.delPattern("stores:nearby:*");
     } catch (err) {
         next(err);
     }
@@ -79,6 +97,13 @@ export const getAllZones = async (req, res, next) => {
     try {
         const { cityId, includeGeometry = "false" } = req.query;
 
+        // Only cache non-geometry requests — geometry payloads are large and vary by cityId
+        const cacheKey = includeGeometry === "true" ? null : `zones:all:city_${cityId || "any"}`;
+        if (cacheKey) {
+            const cached = await cache.get(cacheKey);
+            if (cached) return res.json(new ApiResponse(200, cached, "Zones fetched (cached)."));
+        }
+
         const where = {};
         if (cityId) where.cityId = cityId;
 
@@ -91,7 +116,6 @@ export const getAllZones = async (req, res, next) => {
             orderBy: { createdAt: "asc" },
         });
 
-        // Optionally attach GeoJSON geometry for map rendering
         let result = zones;
         if (includeGeometry === "true") {
             const geoRows = cityId
@@ -100,6 +124,8 @@ export const getAllZones = async (req, res, next) => {
             const geoMap = Object.fromEntries(geoRows.map((r) => [r.id, r.geojson ? JSON.parse(r.geojson) : null]));
             result = zones.map((z) => ({ ...z, boundary: geoMap[z.id] ?? null }));
         }
+
+        if (cacheKey) await cache.set(cacheKey, result, 300); // 5 minutes
 
         res.json(new ApiResponse(200, result, "Zones fetched."));
     } catch (err) {
@@ -115,6 +141,11 @@ export const getAllZones = async (req, res, next) => {
 export const getZoneById = async (req, res, next) => {
     try {
         const { id } = req.params;
+
+        // Cache zone detail for 5 minutes (geometry included)
+        const cacheKey = `zones:detail:${id}`;
+        const cached = await cache.get(cacheKey);
+        if (cached) return res.json(new ApiResponse(200, cached, "Zone fetched (cached)."));
 
         const zone = await prisma.zone.findUnique({
             where: { id },
@@ -151,7 +182,6 @@ export const getZoneById = async (req, res, next) => {
 
         console.log(`[getZoneById] Fetched zone: ${zone.name}, Stores: ${zone.storeZones?.length}`);
 
-        // Attach GeoJSON boundary
         const geoRows = await prisma.$queryRaw`
             SELECT ST_AsGeoJSON(boundary)::text AS geojson FROM public.zones WHERE id = ${id}
         `;
@@ -164,6 +194,8 @@ export const getZoneById = async (req, res, next) => {
             driverZones: zone.driverZones || [],
             _count: zone._count
         };
+
+        await cache.set(cacheKey, responseData, 300);
 
         res.json(new ApiResponse(200, responseData, "Zone fetched."));
     } catch (err) {
@@ -232,6 +264,10 @@ export const updateZone = async (req, res, next) => {
         }
 
         res.json(new ApiResponse(200, zone, "Zone updated."));
+
+        // Invalidate all zone and nearby store caches — updated polygon changes delivery coverage
+        await cache.delPattern("zones:*");
+        await cache.delPattern("stores:nearby:*");
     } catch (err) {
         next(err);
     }
@@ -251,6 +287,9 @@ export const deleteZone = async (req, res, next) => {
         if (!existing) throw new ApiError(404, "Zone not found.");
 
         await prisma.zone.delete({ where: { id } });
+
+        await cache.delPattern("zones:*");
+        await cache.delPattern("stores:nearby:*");
 
         res.json(new ApiResponse(200, null, "Zone deleted."));
     } catch (err) {
@@ -281,6 +320,10 @@ export const assignStoresToZone = async (req, res, next) => {
         });
 
         res.json(new ApiResponse(200, { count: result.count }, `${result.count} store(s) assigned to zone.`));
+
+        // Zone membership change invalidates nearby store results
+        await cache.del(`zones:detail:${id}`);
+        await cache.delPattern("stores:nearby:*");
     } catch (err) {
         next(err);
     }
@@ -296,6 +339,9 @@ export const removeStoreFromZone = async (req, res, next) => {
         const { id, storeId } = req.params;
 
         await prisma.storeZone.deleteMany({ where: { zoneId: id, storeId } });
+
+        await cache.del(`zones:detail:${id}`);
+        await cache.delPattern("stores:nearby:*");
 
         res.json(new ApiResponse(200, null, "Store removed from zone."));
     } catch (err) {
@@ -325,6 +371,8 @@ export const assignDriversToZone = async (req, res, next) => {
         });
 
         res.json(new ApiResponse(200, { count: result.count }, `${result.count} driver(s) assigned to zone.`));
+
+        await cache.del(`zones:detail:${id}`);
     } catch (err) {
         next(err);
     }
@@ -340,6 +388,8 @@ export const removeDriverFromZone = async (req, res, next) => {
         const { id, driverId } = req.params;
 
         await prisma.driverZone.deleteMany({ where: { zoneId: id, driverId } });
+
+        await cache.del(`zones:detail:${id}`);
 
         res.json(new ApiResponse(200, null, "Driver removed from zone."));
     } catch (err) {

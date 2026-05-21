@@ -1,6 +1,7 @@
 import prisma from "../../../config/db.js";
 import { ApiError } from "../../../utils/ApiError.js";
 import { ApiResponse } from "../../../utils/ApiResponse.js";
+import { cache } from "../../../lib/cache.js";
 
 /**
  * Toggle a store in the user's wishlist
@@ -30,21 +31,17 @@ export const toggleWishlist = async (req, res, next) => {
 
         if (existing) {
             await prisma.storeWishlist.delete({
-                where: {
-                    userId_storeId: {
-                        userId,
-                        storeId,
-                    },
-                },
+                where: { userId_storeId: { userId, storeId } },
             });
+            await cache.del(`wishlist:user_${userId}`);
+            await cache.del(`wishlist:check:user_${userId}:store_${storeId}`);
             return res.status(200).json(new ApiResponse(200, { isWishlisted: false }, "Removed from wishlist."));
         } else {
             const entry = await prisma.storeWishlist.create({
-                data: {
-                    userId,
-                    storeId,
-                },
+                data: { userId, storeId },
             });
+            await cache.del(`wishlist:user_${userId}`);
+            await cache.del(`wishlist:check:user_${userId}:store_${storeId}`);
             return res.status(201).json(new ApiResponse(201, { isWishlisted: true, entry }, "Added to wishlist."));
         }
     } catch (err) {
@@ -59,22 +56,19 @@ export const toggleWishlist = async (req, res, next) => {
 export const getWishlist = async (req, res, next) => {
     try {
         const userId = req.user.id;
+        const cacheKey = `wishlist:user_${userId}`;
+        const cached = await cache.get(cacheKey);
+        if (cached) return res.status(200).json(new ApiResponse(200, cached, "Wishlist fetched (cached)."));
 
         const wishlist = await prisma.storeWishlist.findMany({
             where: { userId },
             include: {
-                store: {
-                    include: {
-                        mainCategory: true,
-                        city: true,
-                    },
-                },
+                store: { include: { mainCategory: true, city: true } },
             },
-            orderBy: {
-                createdAt: "desc",
-            },
+            orderBy: { createdAt: "desc" },
         });
 
+        await cache.set(cacheKey, wishlist, 120); // 2 minutes
         res.status(200).json(new ApiResponse(200, wishlist, "Wishlist fetched successfully."));
     } catch (err) {
         next(err);
@@ -89,17 +83,16 @@ export const checkWishlistStatus = async (req, res, next) => {
     try {
         const { storeId } = req.params;
         const userId = req.user.id;
+        const cacheKey = `wishlist:check:user_${userId}:store_${storeId}`;
+        const cached = await cache.get(cacheKey);
+        if (cached !== null) return res.status(200).json(new ApiResponse(200, cached, "Wishlist status (cached)."));
 
         const existing = await prisma.storeWishlist.findUnique({
-            where: {
-                userId_storeId: {
-                    userId,
-                    storeId,
-                },
-            },
+            where: { userId_storeId: { userId, storeId } },
         });
-
-        res.status(200).json(new ApiResponse(200, { isWishlisted: !!existing }, "Wishlist status checked."));
+        const result = { isWishlisted: !!existing };
+        await cache.set(cacheKey, result, 120);
+        res.status(200).json(new ApiResponse(200, result, "Wishlist status checked."));
     } catch (err) {
         next(err);
     }
@@ -112,11 +105,9 @@ export const checkWishlistStatus = async (req, res, next) => {
 export const clearWishlist = async (req, res, next) => {
     try {
         const userId = req.user.id;
-
-        await prisma.storeWishlist.deleteMany({
-            where: { userId },
-        });
-
+        await prisma.storeWishlist.deleteMany({ where: { userId } });
+        await cache.del(`wishlist:user_${userId}`);
+        await cache.delPattern(`wishlist:check:user_${userId}:*`);
         res.status(200).json(new ApiResponse(200, null, "Wishlist cleared."));
     } catch (err) {
         next(err);

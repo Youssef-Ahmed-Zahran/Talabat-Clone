@@ -1,6 +1,7 @@
 import prisma from "../../../config/db.js";
 import { ApiError } from "../../../utils/ApiError.js";
 import { ApiResponse } from "../../../utils/ApiResponse.js";
+import { cache } from "../../../lib/cache.js";
 
 /**
  * POST /api/reviews/stores/:storeId/orders/:orderId
@@ -59,6 +60,12 @@ export const createReview = async (req, res, next) => {
         });
 
         res.status(201).json(new ApiResponse(201, review, "Review created."));
+
+        // Bust the store's review cache so next read reflects the new review
+        await cache.delPattern(`reviews:store_${storeId}:*`);
+        // Also bust the store detail cache since averageRating changed
+        await cache.del(`stores:detail:${storeId}`);
+        await cache.delPattern("stores:all:*");
     } catch (err) {
         next(err);
     }
@@ -72,6 +79,12 @@ export const getStoreReviews = async (req, res, next) => {
         const { storeId } = req.params;
         const { page = 1, limit = 10 } = req.query;
         const skip = (Number(page) - 1) * Number(limit);
+
+        const cacheKey = `reviews:store_${storeId}:p_${page}:l_${limit}`;
+        const cached = await cache.get(cacheKey);
+        if (cached) {
+            return res.json(new ApiResponse(200, cached, "Reviews fetched (cached)."));
+        }
 
         const [reviews, total] = await Promise.all([
             prisma.storeReview.findMany({
@@ -92,13 +105,15 @@ export const getStoreReviews = async (req, res, next) => {
             select: { averageRating: true, totalReviews: true },
         });
 
-        res.json(
-            new ApiResponse(200, {
-                reviews,
-                summary: store,
-                pagination: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) },
-            }, "Reviews fetched.")
-        );
+        const responseData = {
+            reviews,
+            summary: store,
+            pagination: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) },
+        };
+
+        await cache.set(cacheKey, responseData, 120); // 2 minutes
+
+        res.json(new ApiResponse(200, responseData, "Reviews fetched."));
     } catch (err) {
         next(err);
     }
@@ -140,6 +155,11 @@ export const deleteReview = async (req, res, next) => {
                 },
             });
         });
+
+        // Invalidate review and store detail caches
+        await cache.delPattern(`reviews:store_${review.storeId}:*`);
+        await cache.del(`stores:detail:${review.storeId}`);
+        await cache.delPattern("stores:all:*");
 
         res.json(new ApiResponse(200, null, "Review deleted."));
     } catch (err) {

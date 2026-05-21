@@ -5,6 +5,7 @@ import {
   uploadToCloudinary,
   deleteFromCloudinary,
 } from "../../../utils/cloudinaryUpload.js";
+import { cache } from "../../../lib/cache.js";
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN CATEGORIES
@@ -13,12 +14,20 @@ import {
 /** GET /api/categories */
 export const getAllMainCategories = async (req, res, next) => {
   try {
+    const cacheKey = "categories:main:all";
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      return res.json(new ApiResponse(200, cached, "Main categories fetched (cached)."));
+    }
+
     const categories = await prisma.mainCategory.findMany({
       orderBy: { name: "asc" },
       include: {
         _count: { select: { subCategories: true, stores: true } },
       },
     });
+
+    await cache.set(cacheKey, categories, 600); // 10 minutes — categories rarely change
 
     res.json(new ApiResponse(200, categories, "Main categories fetched."));
   } catch (err) {
@@ -30,6 +39,12 @@ export const getAllMainCategories = async (req, res, next) => {
 export const getMainCategoryById = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    const cacheKey = `categories:main:${id}`;
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      return res.json(new ApiResponse(200, cached, "Main category fetched (cached)."));
+    }
 
     const category = await prisma.mainCategory.findUnique({
       where: { id },
@@ -43,6 +58,8 @@ export const getMainCategoryById = async (req, res, next) => {
       throw new ApiError(404, "Main category not found.");
     }
 
+    await cache.set(cacheKey, category, 600);
+
     res.json(new ApiResponse(200, category, "Main category fetched."));
   } catch (err) {
     next(err);
@@ -54,6 +71,12 @@ export const getSubCategories = async (req, res, next) => {
   try {
     const { id } = req.params;
 
+    const cacheKey = `categories:sub:parent_${id}`;
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      return res.json(new ApiResponse(200, cached, "Sub-categories fetched (cached)."));
+    }
+
     const subCategories = await prisma.subCategory.findMany({
       where: { mainCategoryId: id },
       orderBy: { name: "asc" },
@@ -61,6 +84,8 @@ export const getSubCategories = async (req, res, next) => {
         _count: { select: { storeLinks: true } },
       },
     });
+
+    await cache.set(cacheKey, subCategories, 600);
 
     res.json(new ApiResponse(200, subCategories, "Sub-categories fetched."));
   } catch (err) {
@@ -85,6 +110,8 @@ export const createMainCategory = async (req, res, next) => {
     const category = await prisma.mainCategory.create({
       data: { name, imageUrl },
     });
+
+    await cache.delPattern("categories:*");
 
     res
       .status(201)
@@ -118,6 +145,8 @@ export const updateMainCategory = async (req, res, next) => {
       data: { ...(name && { name }), imageUrl },
     });
 
+    await cache.delPattern("categories:*");
+
     res.json(new ApiResponse(200, category, "Main category updated."));
   } catch (err) {
     next(err);
@@ -139,6 +168,8 @@ export const deleteMainCategory = async (req, res, next) => {
     }
 
     await prisma.mainCategory.delete({ where: { id } });
+
+    await cache.delPattern("categories:*");
 
     res.json(new ApiResponse(200, null, "Main category deleted."));
   } catch (err) {
@@ -176,6 +207,8 @@ export const createSubCategory = async (req, res, next) => {
       data: { name, mainCategoryId, imageUrl },
     });
 
+    await cache.delPattern("categories:*");
+
     res
       .status(201)
       .json(new ApiResponse(201, subCategory, "Sub-category created."));
@@ -210,6 +243,8 @@ export const updateSubCategory = async (req, res, next) => {
       data: { ...(name && { name }), imageUrl },
     });
 
+    await cache.delPattern("categories:*");
+
     res.json(new ApiResponse(200, subCategory, "Sub-category updated."));
   } catch (err) {
     next(err);
@@ -233,6 +268,8 @@ export const deleteSubCategory = async (req, res, next) => {
     }
 
     await prisma.subCategory.delete({ where: { id: subId } });
+
+    await cache.delPattern("categories:*");
 
     res.json(new ApiResponse(200, null, "Sub-category deleted."));
   } catch (err) {
@@ -275,6 +312,10 @@ export const linkStoreToSubCategory = async (req, res, next) => {
       },
     });
 
+    // Linking a store changes sub-category store counts
+    await cache.delPattern("categories:*");
+    await cache.delPattern("stores:*"); // store detail includes its categories
+
     res
       .status(201)
       .json(new ApiResponse(201, link, "Store linked to sub-category."));
@@ -294,6 +335,9 @@ export const unlinkStoreFromSubCategory = async (req, res, next) => {
     if (!link) throw new ApiError(404, "Link not found.");
 
     await prisma.storeSubCategory.delete({ where: { id: link.id } });
+
+    await cache.delPattern("categories:*");
+    await cache.delPattern("stores:*");
 
     res.json(new ApiResponse(200, null, "Store unlinked from sub-category."));
   } catch (err) {

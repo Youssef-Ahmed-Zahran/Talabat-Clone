@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import prisma from "../../../config/db.js";
 import { ApiError } from "../../../utils/ApiError.js";
 import { ApiResponse } from "../../../utils/ApiResponse.js";
+import { cache } from "../../../lib/cache.js";
 
 // ═══════════════════════════════════════════════════════════════
 // CUSTOMER MANAGEMENT
@@ -438,6 +439,12 @@ export const getAllAdmins = async (req, res, next) => {
 /** GET /api/admin/dashboard */
 export const getDashboardStats = async (req, res, next) => {
     try {
+        // Dashboard stats are expensive (14+ parallel queries + 7 daily aggregations).
+        // Cache for 2 minutes — admins see near-real-time data without hammering the DB.
+        const cacheKey = "admin:dashboard:stats";
+        const cached = await cache.get(cacheKey);
+        if (cached) return res.json(new ApiResponse(200, cached, "Dashboard stats fetched (cached)."));
+
         const [
             totalUsers,
             totalDrivers,
@@ -509,7 +516,6 @@ export const getDashboardStats = async (req, res, next) => {
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
         sevenDaysAgo.setHours(0, 0, 0, 0);
 
-        // Fetch daily revenue for last 7 days
         const days = Array.from({ length: 7 }, (_, i) => {
             const date = new Date();
             date.setDate(date.getDate() - (6 - i));
@@ -535,21 +541,23 @@ export const getDashboardStats = async (req, res, next) => {
             };
         }));
 
-        res.json(
-            new ApiResponse(200, {
-                users: totalUsers,
-                drivers: totalDrivers,
-                stores: totalStores,
-                orders: { total: totalOrders, pending: pendingOrders, delivered: deliveredOrders },
-                revenue: Number(revenue._sum.totalAmount || 0),
-                totalAppProfit: Number(appProfitsData._sum.appFee || 0),
-                platformWallet: { balance: Number(pWallet.balance) },
-                pendingApplications,
-                activities,
-                revenueHistory,
-                storeEarningsBreakdown
-            }, "Dashboard stats fetched.")
-        );
+        const responseData = {
+            users: totalUsers,
+            drivers: totalDrivers,
+            stores: totalStores,
+            orders: { total: totalOrders, pending: pendingOrders, delivered: deliveredOrders },
+            revenue: Number(revenue._sum.totalAmount || 0),
+            totalAppProfit: Number(appProfitsData._sum.appFee || 0),
+            platformWallet: { balance: Number(pWallet.balance) },
+            pendingApplications,
+            activities,
+            revenueHistory,
+            storeEarningsBreakdown
+        };
+
+        await cache.set(cacheKey, responseData, 120); // 2 minutes
+
+        res.json(new ApiResponse(200, responseData, "Dashboard stats fetched."));
     } catch (err) {
         next(err);
     }

@@ -2,6 +2,7 @@ import prisma from "../../../config/db.js";
 import { ApiError } from "../../../utils/ApiError.js";
 import { ApiResponse } from "../../../utils/ApiResponse.js";
 import { emitToUser, emitToDriver, emitToAdmins } from "../../../sockets/notifications.socket.js";
+import { cache } from "../../../lib/cache.js";
 
 // ═══════════════════════════════════════════════════════════════
 // GET NOTIFICATIONS
@@ -12,6 +13,15 @@ export const getMyNotifications = async (req, res, next) => {
     try {
         const { page = 1, limit = 20 } = req.query;
         const skip = (Number(page) - 1) * Number(limit);
+
+        // Build a per-actor cache key
+        const actorKey = req.user ? `user_${req.user.id}` : req.driver ? `driver_${req.driver.id}` : null;
+        const cacheKey = actorKey ? `notifications:${actorKey}:p_${page}:l_${limit}` : null;
+
+        if (cacheKey) {
+            const cached = await cache.get(cacheKey);
+            if (cached) return res.json(new ApiResponse(200, cached, "Notifications fetched (cached)."));
+        }
 
         let notifications = [];
         let total = 0;
@@ -42,10 +52,14 @@ export const getMyNotifications = async (req, res, next) => {
             throw new ApiError(401, "Unauthorized recipient.");
         }
 
-        res.json(new ApiResponse(200, {
+        const responseData = {
             notifications,
             pagination: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) },
-        }, "Notifications fetched."));
+        };
+
+        if (cacheKey) await cache.set(cacheKey, responseData, 30); // 30 seconds
+
+        res.json(new ApiResponse(200, responseData, "Notifications fetched."));
     } catch (err) {
         next(err);
     }
@@ -65,10 +79,12 @@ export const markAsRead = async (req, res, next) => {
             const notification = await prisma.userNotification.findUnique({ where: { id } });
             if (!notification || notification.userId !== req.user.id) throw new ApiError(404, "Notification not found.");
             updated = await prisma.userNotification.update({ where: { id }, data: { isRead: true } });
+            await cache.delPattern(`notifications:user_${req.user.id}:*`);
         } else if (req.driver) {
             const notification = await prisma.driverNotification.findUnique({ where: { id } });
             if (!notification || notification.driverId !== req.driver.id) throw new ApiError(404, "Notification not found.");
             updated = await prisma.driverNotification.update({ where: { id }, data: { isRead: true } });
+            await cache.delPattern(`notifications:driver_${req.driver.id}:*`);
         } else {
             throw new ApiError(401, "Unauthorized recipient.");
         }
@@ -87,11 +103,13 @@ export const markAllAsRead = async (req, res, next) => {
                 where: { userId: req.user.id, isRead: false },
                 data: { isRead: true },
             });
+            await cache.delPattern(`notifications:user_${req.user.id}:*`);
         } else if (req.driver) {
             await prisma.driverNotification.updateMany({
                 where: { driverId: req.driver.id, isRead: false },
                 data: { isRead: true },
             });
+            await cache.delPattern(`notifications:driver_${req.driver.id}:*`);
         } else {
             throw new ApiError(401, "Unauthorized recipient.");
         }
@@ -115,10 +133,12 @@ export const deleteNotification = async (req, res, next) => {
             const notification = await prisma.userNotification.findUnique({ where: { id } });
             if (!notification || notification.userId !== req.user.id) throw new ApiError(404, "Notification not found.");
             await prisma.userNotification.delete({ where: { id } });
+            await cache.delPattern(`notifications:user_${req.user.id}:*`);
         } else if (req.driver) {
             const notification = await prisma.driverNotification.findUnique({ where: { id } });
             if (!notification || notification.driverId !== req.driver.id) throw new ApiError(404, "Notification not found.");
             await prisma.driverNotification.delete({ where: { id } });
+            await cache.delPattern(`notifications:driver_${req.driver.id}:*`);
         } else {
             throw new ApiError(401, "Unauthorized recipient.");
         }

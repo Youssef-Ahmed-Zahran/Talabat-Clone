@@ -6,6 +6,7 @@ import { uploadToCloudinary, deleteFromCloudinary } from "../../../utils/cloudin
 import { resolveGeographyData } from "../../../utils/geography.util.js";
 import { provisionTenantSchema, dropTenantSchema, tenantQuery } from "../../../lib/tenantDb.js";
 import { detectZone } from "../../zone/controllers/zone.controller.js";
+import { cache } from "../../../lib/cache.js";
 
 // ═══════════════════════════════════════════════════════════════
 // CREATE STORE (Admin) — also creates OwnerAccount
@@ -171,6 +172,9 @@ export const createStore = async (req, res, next) => {
             throw new ApiError(500, `Store was created but we failed to provision its database schema: ${provisionErr.message}`);
         }
 
+        // Clear cached stores lists since a new store is created
+        await cache.delPattern("stores:*");
+
         res.status(201).json(
             new ApiResponse(201, result, "Store created with owner account and isolated schema.")
         );
@@ -197,6 +201,14 @@ export const getAllStores = async (req, res, next) => {
             page = 1,
             limit = 20,
         } = req.query;
+
+        // Generate dynamic cache key
+        const cacheKey = `stores:all:cat_${mainCategoryId || 'any'}:sub_${subCategoryId || 'any'}:city_${cityId || 'any'}:type_${storeType || 'any'}:search_${search || 'none'}:p_${page}:l_${limit}:admin_${!!req.admin}`;
+        
+        const cachedResponse = await cache.get(cacheKey);
+        if (cachedResponse) {
+            return res.json(new ApiResponse(200, cachedResponse, "Stores fetched (cached)."));
+        }
 
         const skip = (Number(page) - 1) * Number(limit);
 
@@ -261,17 +273,20 @@ export const getAllStores = async (req, res, next) => {
 
         const formattedStores = stores.map(s => ({ ...s, storeType: s.storeType?.name || s.storeType }));
 
-        res.json(
-            new ApiResponse(200, {
-                stores: formattedStores,
-                pagination: {
-                    total,
-                    page: Number(page),
-                    limit: Number(limit),
-                    totalPages: Math.ceil(total / Number(limit)),
-                },
-            }, "Stores fetched.")
-        );
+        const responseData = {
+            stores: formattedStores,
+            pagination: {
+                total,
+                page: Number(page),
+                limit: Number(limit),
+                totalPages: Math.ceil(total / Number(limit)),
+            },
+        };
+
+        // Cache the result for 2 minutes (120 seconds)
+        await cache.set(cacheKey, responseData, 120);
+
+        res.json(new ApiResponse(200, responseData, "Stores fetched."));
     } catch (err) {
         next(err);
     }
@@ -308,6 +323,16 @@ export const getNearbyStores = async (req, res, next) => {
 
         // ── Step 1: Find which delivery zone the user is in ──────────────────
         const zone = await detectZone(userLat, userLng);
+
+        // Generate dynamic cache key using the zone ID if found, otherwise fall back to 3-decimal rounded coordinates
+        const zoneCacheKey = zone 
+            ? `stores:nearby:zone_${zone.id}:cat_${mainCategoryId || 'any'}:sub_${subCategoryId || 'any'}:type_${storeType || 'any'}:l_${limit}`
+            : `stores:nearby:coords_${userLat.toFixed(3)}_${userLng.toFixed(3)}:cat_${mainCategoryId || 'any'}:sub_${subCategoryId || 'any'}:type_${storeType || 'any'}:l_${limit}`;
+
+        const cachedResponse = await cache.get(zoneCacheKey);
+        if (cachedResponse) {
+            return res.json(new ApiResponse(200, cachedResponse, "Nearby stores fetched (cached)."));
+        }
 
         // ── Step 2: Get all storeIds assigned to this zone ───────────────────
         let zoneStoreIds = [];
@@ -394,23 +419,30 @@ export const getNearbyStores = async (req, res, next) => {
             .slice(0, take);
 
         if (withDistance.length === 0) {
+            const emptyResponse = {
+                stores: [],
+                zone: zone || null,
+                userLocation: { lat: userLat, lng: userLng },
+            };
+            // Cache empty results too (for a shorter duration, e.g. 30 seconds) to avoid spamming the database
+            await cache.set(zoneCacheKey, emptyResponse, 30);
+
             return res.status(404).json(
-                new ApiResponse(404, {
-                    stores: [],
-                    zone: zone || null,
-                    userLocation: { lat: userLat, lng: userLng },
-                }, "We don't deliver to your location yet.")
+                new ApiResponse(404, emptyResponse, "We don't deliver to your location yet.")
             );
         }
 
-        res.json(
-            new ApiResponse(200, {
-                stores: withDistance,
-                total: withDistance.length,
-                zone,
-                userLocation: { lat: userLat, lng: userLng },
-            }, "Nearby stores fetched.")
-        );
+        const successResponse = {
+            stores: withDistance,
+            total: withDistance.length,
+            zone,
+            userLocation: { lat: userLat, lng: userLng },
+        };
+
+        // Cache the successful nearby query for 1 minute (60 seconds)
+        await cache.set(zoneCacheKey, successResponse, 60);
+
+        res.json(new ApiResponse(200, successResponse, "Nearby stores fetched."));
     } catch (err) {
         next(err);
     }
@@ -437,6 +469,13 @@ export const getStoreById = async (req, res, next) => {
                 throw new ApiError(404, "Store not found for this owner email.");
             }
             id = ownerAccount.storeId;
+        }
+
+        // Try getting from cache
+        const cacheKey = `stores:detail:${id}`;
+        const cachedStore = await cache.get(cacheKey);
+        if (cachedStore) {
+            return res.json(new ApiResponse(200, cachedStore, "Store fetched (cached)."));
         }
 
         // Run Prisma fetch and tenant data fetch in parallel to reduce latency
@@ -511,6 +550,9 @@ export const getStoreById = async (req, res, next) => {
         }
 
         const storeResponse = { ...store, sections: tenantData.sections, _count };
+
+        // Cache the store detail for 5 minutes (300 seconds)
+        await cache.set(cacheKey, storeResponse, 300);
 
         res.json(new ApiResponse(200, storeResponse, "Store fetched."));
     } catch (err) {
@@ -636,6 +678,10 @@ export const updateStore = async (req, res, next) => {
             }
         }
 
+        // Invalidate caches
+        await cache.del(`stores:detail:${id}`);
+        await cache.delPattern("stores:*");
+
         res.json(new ApiResponse(200, store, "Store updated."));
     } catch (err) {
         next(err);
@@ -665,6 +711,10 @@ export const deleteStore = async (req, res, next) => {
 
         await prisma.store.delete({ where: { id } });
 
+        // Invalidate caches
+        await cache.del(`stores:detail:${id}`);
+        await cache.delPattern("stores:*");
+
         res.json(new ApiResponse(200, null, "Store deleted."));
     } catch (err) {
         next(err);
@@ -690,6 +740,10 @@ export const toggleStoreActive = async (req, res, next) => {
             data: { isActive: !existing.isActive },
             select: { id: true, name: true, isActive: true },
         });
+
+        // Invalidate caches
+        await cache.del(`stores:detail:${id}`);
+        await cache.delPattern("stores:*");
 
         res.json(new ApiResponse(200, store, `Store ${store.isActive ? "activated" : "deactivated"}.`));
     } catch (err) {

@@ -20,6 +20,7 @@ import { registerTrackingSocket } from "./sockets/tracking.socket.js";
 import { registerChatSocket } from "./sockets/chat.socket.js";
 import { registerNotificationsSocket } from "./sockets/notifications.socket.js";
 import { registerDispatchSocket } from "./sockets/dispatch.socket.js";
+import { initQueueWorkers } from "./sockets/queueWorkers.js";
 
 // ─── Route modules ────────────────────────────────────────────────────────────
 import authRoutes from "./modules/auth/routes/auth.routes.js";
@@ -134,6 +135,9 @@ registerTrackingSocket(io.of("/tracking"));
 registerChatSocket(io.of("/chat"));
 registerNotificationsSocket(io.of("/notifications"));
 registerDispatchSocket(io.of("/dispatch"));
+
+// Initialize background job queues
+initQueueWorkers(io);
 
 // ═════════════════════════════════════════════════════════════════════════════
 // START SERVER
