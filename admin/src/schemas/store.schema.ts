@@ -14,17 +14,17 @@ export const storeSchema = z.object({
   deliveryType: z.enum(["TALABAT_DELIVERY", "STORE_DELIVERY", ""]),
   openTime: z.string().optional(),
   closeTime: z.string().optional(),
-  deliveryTimeMinutes: z.number().min(0).optional(),
-  minimumOrderCost: z.number().min(0).optional(),
-  deliveryFees: z.number().min(0).optional(),
+  deliveryTimeMinutes: z.coerce.number().min(0).optional(),
+  minimumOrderCost: z.coerce.number().min(0).optional(),
+  deliveryFees: z.coerce.number().min(0).optional(),
   allowPreorder: z.boolean().optional(),
   ownerEmail: z.string().email("Invalid email").optional().or(z.literal("")),
   ownerPassword: z.string().optional(),
   logoUrl: z.string().optional(),
   coverImage: z.string().optional(),
-  maxDeliveryDistanceKm: z.number().min(0).optional(),
-  outsideZoneDeliveryFees: z.number().min(0).optional(),
-  commissionRate: z.number().min(0).max(100).optional(),
+  maxDeliveryDistanceKm: z.coerce.number().min(0).optional(),
+  outsideZoneDeliveryFees: z.coerce.number().min(0).optional(),
+  commissionRate: z.coerce.number().min(0).max(100).optional(),
 });
 
 export type StoreFormValues = z.infer<typeof storeSchema>;
