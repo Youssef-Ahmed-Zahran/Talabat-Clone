@@ -50,15 +50,6 @@ export function getTenantPool(storeId) {
             max: 5, // keep a small pool per tenant
         });
 
-        // Neon / pgBouncer workaround:
-        // pooled connections reject the `search_path` connection option.
-        // Instead, we must execute SET search_path on each client connection.
-        pool.on("connect", (client) => {
-            client.query(`SET search_path TO "${schema}", public`).catch(err => {
-                console.error(`[TenantDB] Failed to set search_path for ${schema}:`, err.message);
-            });
-        });
-
         pool.on("error", (err) => {
             console.error(`[TenantDB] Pool error for schema ${schema}:`, err.message);
         });
@@ -70,14 +61,23 @@ export function getTenantPool(storeId) {
 }
 
 /**
- * Acquires a PoolClient from the tenant pool.
- * Always call client.release() when done.
+ * Acquires a PoolClient from the tenant pool with the correct search_path
+ * explicitly set and AWAITED before the client is returned.
+ *
+ * This prevents the race condition where pool.on("connect") fires an async
+ * SET search_path that isn't awaited, causing queries to run against the
+ * wrong (public) schema.
  *
  * @param {string} storeId
  * @returns {Promise<import('pg').PoolClient>}
  */
 export async function getTenantClient(storeId) {
-    return getTenantPool(storeId).connect();
+    const schema = schemaName(storeId);
+    const client = await getTenantPool(storeId).connect();
+    // Always explicitly set search_path and AWAIT it before returning.
+    // This is the correct fix for the race condition with pool.on("connect").
+    await client.query(`SET search_path TO "${schema}", public`);
+    return client;
 }
 
 /**
@@ -90,9 +90,16 @@ export async function getTenantClient(storeId) {
  * @returns {Promise<any[]>}
  */
 export async function tenantQuery(storeId, sql, params = []) {
-    const pool = getTenantPool(storeId);
-    const { rows } = await pool.query(sql, params);
-    return rows;
+    const schema = schemaName(storeId);
+    const client = await getTenantPool(storeId).connect();
+    try {
+        // Explicitly await search_path before running user query
+        await client.query(`SET search_path TO "${schema}", public`);
+        const { rows } = await client.query(sql, params);
+        return rows;
+    } finally {
+        client.release();
+    }
 }
 
 /**

@@ -166,6 +166,14 @@ export const getAllDrivers = async (req, res, next) => {
             where.OR = [
                 { email: { contains: search, mode: "insensitive" } },
                 { phone: { contains: search, mode: "insensitive" } },
+                {
+                    application: {
+                        OR: [
+                            { firstName: { contains: search, mode: "insensitive" } },
+                            { familyName: { contains: search, mode: "insensitive" } },
+                        ]
+                    }
+                }
             ];
         }
 

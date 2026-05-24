@@ -20,6 +20,11 @@ const haversine = (lat1, lon1, lat2, lon2) => {
 // ─── Auto-reject timeout (seconds) ───────────────────────────────────────────
 const DISPATCH_TIMEOUT_SEC = 60;
 
+// ─── Maximum dispatch radius from store (km) ─────────────────────────────────
+// Drivers whose current GPS is beyond this distance from the store are skipped.
+// This prevents dispatching to a driver who is online but has physically left the zone.
+const MAX_DISPATCH_RADIUS_KM = 10;
+
 // Track active dispatch timers so we can cancel them on accept/reject
 const dispatchTimers = new Map(); // orderId → timeoutId
 
@@ -124,6 +129,19 @@ export const dispatchToNearestDriver = async (io, orderId, store, userAddress, e
         status: "ONLINE",
         application: { status: "APPROVED" },
         id: { notIn: excludeDriverIds },
+        OR: [
+            {
+                cityId: store.cityId,
+                driverZones: {
+                    none: {} // General city-wide driver (no specific zone assigned)
+                }
+            },
+            ...(storeZoneId ? [{
+                driverZones: {
+                    some: { zoneId: storeZoneId } // Driver is registered to this store's zone (regardless of home city)
+                }
+            }] : [])
+        ]
     };
 
     let availableDrivers = [];
@@ -180,26 +198,41 @@ export const dispatchToNearestDriver = async (io, orderId, store, userAddress, e
         return null;
     }
 
-    // 2. Sort by distance to store
+    // ── 5. Filter out drivers with no GPS or beyond the dispatch radius ───────
     const storeLat = Number(store.latitude);
     const storeLng = Number(store.longitude);
 
-    availableDrivers.sort((a, b) => {
-        const hasLocA = a.latitude !== null && a.longitude !== null;
-        const hasLocB = b.latitude !== null && b.longitude !== null;
-        if (!hasLocA && !hasLocB) return 0;
-        if (!hasLocA) return 1;
-        if (!hasLocB) return -1;
-        return (
-            haversine(Number(a.latitude), Number(a.longitude), storeLat, storeLng) -
-            haversine(Number(b.latitude), Number(b.longitude), storeLat, storeLng)
-        );
+    const reachableDrivers = availableDrivers.filter((d) => {
+        if (d.latitude === null || d.longitude === null) {
+            console.log(`[Dispatch] Skipping driver ${d.id} — no live GPS.`);
+            return false;
+        }
+        const dist = haversine(Number(d.latitude), Number(d.longitude), storeLat, storeLng);
+        if (dist > MAX_DISPATCH_RADIUS_KM) {
+            console.log(`[Dispatch] Skipping driver ${d.id} — ${dist.toFixed(1)} km from store (limit: ${MAX_DISPATCH_RADIUS_KM} km).`);
+            return false;
+        }
+        return true;
     });
 
-    const nearestDriver = availableDrivers[0];
-    const distanceKm = (nearestDriver.latitude && nearestDriver.longitude)
-        ? haversine(Number(nearestDriver.latitude), Number(nearestDriver.longitude), storeLat, storeLng).toFixed(2)
-        : null;
+    if (reachableDrivers.length === 0) {
+        console.log(`[Dispatch] No reachable drivers within ${MAX_DISPATCH_RADIUS_KM} km for order ${orderId}`);
+        await prisma.liveTracking.upsert({
+            where: { orderId },
+            update: { status: "WAITING_FOR_DRIVER", driverId: null },
+            create: { orderId, status: "WAITING_FOR_DRIVER" },
+        });
+        return null;
+    }
+
+    // Sort by distance to store (closest first)
+    reachableDrivers.sort((a, b) =>
+        haversine(Number(a.latitude), Number(a.longitude), storeLat, storeLng) -
+        haversine(Number(b.latitude), Number(b.longitude), storeLat, storeLng)
+    );
+
+    const nearestDriver = reachableDrivers[0];
+    const distanceKm = haversine(Number(nearestDriver.latitude), Number(nearestDriver.longitude), storeLat, storeLng).toFixed(2);
 
     console.log(`[Dispatch] Nearest driver: ${nearestDriver.id} (${distanceKm} km from store)`);
 

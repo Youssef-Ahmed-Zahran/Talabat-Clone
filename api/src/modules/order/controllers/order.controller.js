@@ -219,7 +219,7 @@ export const getMyOrders = async (req, res, next) => {
                 skip,
                 take: Number(limit),
                 orderBy: { createdAt: "desc" },
-                include: { store: { select: { id: true, name: true, logoUrl: true, storeType: true } } },
+                include: { store: { select: { id: true, name: true, logoUrl: true, storeType: true, latitude: true, longitude: true, maxDeliveryDistanceKm: true } } },
             }),
             prisma.order.count({ where }),
         ]);
@@ -262,7 +262,7 @@ export const getOrderById = async (req, res, next) => {
         const order = await prisma.order.findFirst({
             where: { id, userId },
             include: {
-                store: { select: { id: true, name: true, logoUrl: true, storeType: true } },
+                store: { select: { id: true, name: true, logoUrl: true, storeType: true, latitude: true, longitude: true, maxDeliveryDistanceKm: true } },
                 address: { include: { city: { include: { country: { select: { name: true } } } } } },
                 paymentMethod: true, statusHistory: { orderBy: { createdAt: "asc" } },
                 payment: true, liveTracking: true, delivery: { include: { driver: { select: { id: true, email: true, phone: true } } } }, review: true,

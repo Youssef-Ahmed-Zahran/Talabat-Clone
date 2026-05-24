@@ -177,14 +177,35 @@ export const registerDriver = async (req, res, next) => {
                 cityId: resolvedGeo.cityId,
                 wallet: { create: {} } // Create default wallet
             },
-            select: { id: true, email: true, phone: true, cityId: true, status: true, createdAt: true },
+            select: {
+                id: true, email: true, phone: true, cityId: true,
+                status: true, isOnline: true, createdAt: true,
+                application: {
+                    select: { status: true, vehicleType: true, vehiclePlateNumber: true, firstName: true, familyName: true }
+                }
+            },
         });
 
         const token = createDriverToken(driver.id);
         setTokenCookie(res, token);
 
         res.status(201).json(
-            new ApiResponse(201, { driver, token }, "Driver registration successful.")
+            new ApiResponse(201, {
+                driver: {
+                    id: driver.id,
+                    email: driver.email,
+                    phone: driver.phone,
+                    status: driver.status,
+                    isOnline: driver.isOnline,
+                    createdAt: driver.createdAt,
+                    applicationStatus: driver.application?.status ?? null,
+                    vehicleType: driver.application?.vehicleType ?? null,
+                    vehiclePlateNumber: driver.application?.vehiclePlateNumber ?? null,
+                    firstName: driver.application?.firstName ?? null,
+                    familyName: driver.application?.familyName ?? null,
+                },
+                token
+            }, "Driver registration successful.")
         );
     } catch (err) {
         next(err);
@@ -202,7 +223,14 @@ export const loginDriver = async (req, res, next) => {
             throw new ApiError(400, "Email and password are required.");
         }
 
-        const driver = await prisma.driver.findUnique({ where: { email } });
+        const driver = await prisma.driver.findUnique({
+            where: { email },
+            include: {
+                application: {
+                    select: { status: true, vehicleType: true, vehiclePlateNumber: true, firstName: true, familyName: true }
+                }
+            }
+        });
         if (!driver) {
             throw new ApiError(401, "Invalid email or password.");
         }
@@ -226,6 +254,13 @@ export const loginDriver = async (req, res, next) => {
                     email: driver.email,
                     phone: driver.phone,
                     status: driver.status,
+                    isOnline: driver.isOnline,
+                    createdAt: driver.createdAt,
+                    applicationStatus: driver.application?.status ?? null,
+                    vehicleType: driver.application?.vehicleType ?? null,
+                    vehiclePlateNumber: driver.application?.vehiclePlateNumber ?? null,
+                    firstName: driver.application?.firstName ?? null,
+                    familyName: driver.application?.familyName ?? null,
                 },
                 token,
             }, "Login successful.")

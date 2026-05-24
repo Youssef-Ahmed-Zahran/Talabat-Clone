@@ -1,4 +1,4 @@
- import prisma from "../../../config/db.js";
+import prisma from "../../../config/db.js";
 import { ApiError } from "../../../utils/ApiError.js";
 import { ApiResponse } from "../../../utils/ApiResponse.js";
 import { uploadToCloudinary } from "../../../utils/cloudinaryUpload.js";
@@ -62,6 +62,12 @@ export const submitApplication = async (req, res, next) => {
             finalGovernorateId = resolvedGeo.governorateId;
         }
 
+        const safeDate = (val) => {
+            if (!val || typeof val !== 'string' || val.trim() === '') return null;
+            const d = new Date(val);
+            return isNaN(d.getTime()) ? null : d;
+        };
+
         const data = {
             vehicleType,
             firstName,
@@ -72,14 +78,14 @@ export const submitApplication = async (req, res, next) => {
             nationalId: nationalId || null,
             nationality: nationality || null,
             gender: gender || null,
-            dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+            dateOfBirth: safeDate(dateOfBirth),
             idNumber: idNumber || null,
-            idExpiryDate: idExpiryDate ? new Date(idExpiryDate) : null,
+            idExpiryDate: safeDate(idExpiryDate),
             governorateId: finalGovernorateId,
             residenceGovernorate: residenceGovernorate || null,
-            drivingLicenseExpiry: drivingLicenseExpiry ? new Date(drivingLicenseExpiry) : null,
+            drivingLicenseExpiry: safeDate(drivingLicenseExpiry),
             vehiclePlateNumber: vehiclePlateNumber || null,
-            vehicleRegistrationExpiry: vehicleRegistrationExpiry ? new Date(vehicleRegistrationExpiry) : null,
+            vehicleRegistrationExpiry: safeDate(vehicleRegistrationExpiry),
             interestedInTobacco: interestedInTobacco || false,
             shirtSize: shirtSize || null,
         };
@@ -287,7 +293,7 @@ export const toggleOnline = async (req, res, next) => {
     try {
         const driver = await prisma.driver.findUnique({ where: { id: req.driver.id } });
 
-        // Check if application is approved before going online
+        // ── 1. Application approval gate ────────────────────────────────
         if (!driver.isOnline) {
             const application = await prisma.driverApplication.findUnique({
                 where: { driverId: driver.id },
@@ -297,6 +303,55 @@ export const toggleOnline = async (req, res, next) => {
             }
         }
 
+        // ── 2. Strict Geofencing check (only when going ONLINE) ─────────
+        if (!driver.isOnline) {
+            const { latitude, longitude } = req.body;
+
+            if (latitude === undefined || longitude === undefined) {
+                throw new ApiError(400, "Your current location (latitude & longitude) is required to go online.");
+            }
+
+            // Check if the driver's city has any active zones with boundaries defined
+            const cityZones = await prisma.$queryRaw`
+                SELECT id, name
+                FROM zones
+                WHERE "cityId" = ${driver.cityId}
+                AND "isActive" = true
+                AND boundary IS NOT NULL
+                LIMIT 1;
+            `;
+
+            // Only enforce geofencing if the city actually has zones defined
+            if (cityZones.length > 0) {
+                const insideZone = await prisma.$queryRaw`
+                    SELECT z.id, z.name
+                    FROM zones z
+                    WHERE z."cityId" = ${driver.cityId}
+                    AND z."isActive" = true
+                    AND z.boundary IS NOT NULL
+                    AND ST_Contains(
+                        z.boundary,
+                        ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)
+                    )
+                    LIMIT 1;
+                `;
+
+                if (insideZone.length === 0) {
+                    // Fetch the city name for a friendly error message
+                    const city = await prisma.city.findUnique({
+                        where: { id: driver.cityId ?? "" },
+                        select: { name: true },
+                    });
+                    const cityName = city?.name ?? "your registered city";
+                    throw new ApiError(
+                        403,
+                        `You are outside your registered working zone (${cityName}). Please move to your zone to go online.`
+                    );
+                }
+            }
+        }
+
+        // ── 3. Toggle the online status ──────────────────────────────────
         const newOnline = !driver.isOnline;
         const newStatus = newOnline ? "ONLINE" : "OFFLINE";
 
@@ -415,7 +470,15 @@ export const getActiveDelivery = async (req, res, next) => {
         const driverId = req.driver.id;
 
         const assignment = await prisma.orderDriverAssignment.findFirst({
-            where: { driverId, status: "ACCEPTED" },
+            where: {
+                driverId,
+                status: "ACCEPTED",
+                order: {
+                    status: {
+                        notIn: ["DELIVERED", "CANCELLED"]
+                    }
+                }
+            },
             include: {
                 order: {
                     select: {
@@ -540,9 +603,9 @@ export const updateDeliveryStatus = async (req, res, next) => {
         }
 
         const liveStatusMap = {
-            PICKED_UP:  "DRIVER_HEADING_TO_CUSTOMER",
+            PICKED_UP: "DRIVER_HEADING_TO_CUSTOMER",
             ON_THE_WAY: "DRIVER_HEADING_TO_CUSTOMER",
-            DELIVERED:  "DELIVERED",
+            DELIVERED: "DELIVERED",
         };
 
         const result = await prisma.$transaction(async (tx) => {
@@ -566,7 +629,7 @@ export const updateDeliveryStatus = async (req, res, next) => {
             const deliveryData = {};
             if (status === "PICKED_UP") deliveryData.pickedUpAt = new Date();
             if (status === "DELIVERED") deliveryData.deliveredAt = new Date();
-            
+
             await tx.delivery.update({
                 where: { orderId },
                 data: deliveryData
@@ -607,7 +670,7 @@ export const updateDeliveryStatus = async (req, res, next) => {
                 if (order.paymentMethod.name === "CASH") {
                     // Driver collected total cash. They now owe this to the platform.
                     // We debit the Total Amount from their wallet.
-                    
+
                     let wallet = await tx.driverWallet.findUnique({ where: { driverId } });
                     if (!wallet) {
                         wallet = await tx.driverWallet.create({ data: { driverId } });

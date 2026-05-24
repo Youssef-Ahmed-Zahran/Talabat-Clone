@@ -343,13 +343,10 @@ export const registerTrackingSocket = (namespace) => {
         socket.on("disconnect", (reason) => {
             console.log(`[Tracking] Disconnected — role: ${role}, id: ${actor.id}, reason: ${reason}`);
 
-            // If driver disconnects mid-delivery, mark them offline but DON'T cancel the order.
-            // The order will be handled by a heartbeat / timeout job on the server.
-            if (role === "driver") {
-                prisma.driver
-                    .update({ where: { id: actor.id }, data: { isOnline: false } })
-                    .catch((e) => console.error("[Tracking] driver offline update failed:", e));
-            }
+            // NOTE: We DO NOT mark the driver as offline (isOnline: false) in the database on socket disconnect.
+            // In a mobile environment, transient socket disconnects are extremely frequent (e.g. app in background,
+            // lock screen, network transitions). Changing database online status on socket drop forces drivers offline
+            // unexpectedly. The driver's online/offline status must only be changed via their explicit toggle in the app.
         });
     });
 };

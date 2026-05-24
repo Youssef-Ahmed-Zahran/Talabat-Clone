@@ -6,10 +6,11 @@ import { ApiResponse } from "../../../utils/ApiResponse.js";
 // HELPER: Get or create wallet for a driver
 // ═══════════════════════════════════════════════════════════════
 
-export const ensureWallet = async (driverId) => {
-    let wallet = await prisma.driverWallet.findUnique({ where: { driverId } });
+export const ensureWallet = async (driverId, tx) => {
+    const prismaClient = tx || prisma;
+    let wallet = await prismaClient.driverWallet.findUnique({ where: { driverId } });
     if (!wallet) {
-        wallet = await prisma.driverWallet.create({ data: { driverId } });
+        wallet = await prismaClient.driverWallet.create({ data: { driverId } });
     }
     return wallet;
 };
@@ -381,7 +382,7 @@ export const handleWalletOnDelivery = async (orderId, tx) => {
     }
 
     const { subtotal, deliveryFees, tipAmount, appFee, storeEarnings, totalAmount, paymentMethod, store, driverAssign } = order;
-    
+
     // Amounts as numbers
     const numSubtotal = Number(subtotal);
     const numDeliveryFees = Number(deliveryFees);
@@ -389,7 +390,7 @@ export const handleWalletOnDelivery = async (orderId, tx) => {
     const numAppFee = Number(appFee); // This is the Platform Commission
     const numStoreEarnings = Number(storeEarnings);
     const numTotal = Number(totalAmount);
-    
+
     const isCash = paymentMethod.name === "CASH";
 
     // ─── A. DRIVER WALLET ───────────────────────────────────────────
@@ -424,17 +425,17 @@ export const handleWalletOnDelivery = async (orderId, tx) => {
         await prismaClient.driverWallet.update({ where: { id: dWallet.id }, data: { balance: dBalance } });
         await prismaClient.driverEarning.upsert({
             where: { orderId },
-            update: { 
+            update: {
                 baseAmount: numDeliveryFees,
                 tipAmount: numTip,
-                totalAmount: driverEarning 
+                totalAmount: driverEarning
             },
-            create: { 
-                driverId, 
-                orderId, 
+            create: {
+                driverId,
+                orderId,
                 baseAmount: numDeliveryFees,
                 tipAmount: numTip,
-                totalAmount: driverEarning 
+                totalAmount: driverEarning
             }
         });
 
@@ -447,7 +448,7 @@ export const handleWalletOnDelivery = async (orderId, tx) => {
     // ─── B. STORE WALLET ────────────────────────────────────────────
     const sWallet = await ensureStoreWallet(store.id, prismaClient);
     let sBalance = Number(sWallet.balance);
-    
+
     // Store always gets their earnings (net of commission)
     sBalance += numStoreEarnings;
     await prismaClient.storeWalletTransaction.create({
@@ -462,7 +463,7 @@ export const handleWalletOnDelivery = async (orderId, tx) => {
     // ─── C. PLATFORM WALLET ─────────────────────────────────────────
     const pWallet = await ensurePlatformWallet(prismaClient);
     let pBalance = Number(pWallet.balance);
-    
+
     // Platform gets the App Fee (Commission)
     pBalance += numAppFee;
     await prismaClient.platformWalletTransaction.create({
