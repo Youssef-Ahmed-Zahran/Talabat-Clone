@@ -151,11 +151,11 @@ enum StatusChangedByType {
 }
 
 enum WalletTransactionType {
-  CASH_ORDER_DEBIT     // Deducted when driver collects cash from a customer
-  DELIVERY_FEE_CREDIT  // Credited when driver completes an online-paid order
-  ADMIN_TOP_UP         // Admin clears debt after driver deposits cash
-  ADMIN_DEBIT          // Manual deduction by admin
-  PAYOUT               // Driver earnings payout
+  CASH_ORDER_DEBIT // Deducted when driver collects cash from a customer
+  DELIVERY_FEE_CREDIT // Credited when driver completes an online-paid order
+  ADMIN_TOP_UP // Admin clears debt after driver deposits cash
+  ADMIN_DEBIT // Manual deduction by admin
+  PAYOUT // Driver earnings payout
 }
 
 enum WalletTransactionStatus {
@@ -583,6 +583,9 @@ model Store {
   openTime  String?
   closeTime String?
 
+  overtimeOpenTime  String?
+  overtimeCloseTime String?
+
   deliveryTimeMinutes Int?
   minimumOrderCost    Decimal? @default(0)
   deliveryFees        Decimal? @default(0)
@@ -617,7 +620,7 @@ model Store {
   carts           Cart[]
   storeZones      StoreZone[]
   wallet          StoreWallet?
-  storeWishlists StoreWishlist[]
+  storeWishlists  StoreWishlist[]
 
   @@index([mainCategoryId])
   @@index([cityId])
@@ -650,12 +653,12 @@ model StoreSubCategory {
 /// The `boundary` column (geometry(Polygon,4326)) is NOT managed by Prisma;
 /// it is added by a separate raw SQL migration file.
 model Zone {
-  id          String  @id @default(uuid())
+  id          String                   @id @default(uuid())
   cityId      String
   name        String
   description String?
   color       String? // hex color for admin map, e.g. "#FF5733"
-  isActive    Boolean @default(true)
+  isActive    Boolean                  @default(true)
   boundary    Unsupported("geometry")?
 
   createdAt DateTime @default(now())
@@ -783,13 +786,13 @@ model Order {
 
   paymentMethodId String
 
-  subtotal     Decimal
-  deliveryFees Decimal
-  tipAmount    Decimal      @default(0)
-  appFee       Decimal      @default(0)
-  storeEarnings Decimal     @default(0)
-  totalAmount  Decimal
-  deliveryType DeliveryType @default(TALABAT)
+  subtotal      Decimal
+  deliveryFees  Decimal
+  tipAmount     Decimal      @default(0)
+  appFee        Decimal      @default(0)
+  storeEarnings Decimal      @default(0)
+  totalAmount   Decimal
+  deliveryType  DeliveryType @default(TALABAT)
 
   deliveryInstructions String?
   scheduledTime        DateTime?
@@ -990,13 +993,13 @@ model DriverWallet {
   id       String @id @default(uuid())
   driverId String @unique
 
-  balance     Decimal @default(0)    // current balance (can be negative)
+  balance     Decimal @default(0) // current balance (can be negative)
   creditLimit Decimal @default(1500) // max debt allowed before suspension
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  driver       Driver                   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  driver       Driver                    @relation(fields: [driverId], references: [id], onDelete: Cascade)
   transactions DriverWalletTransaction[]
 
   @@index([driverId])
@@ -1005,17 +1008,17 @@ model DriverWallet {
 
 /// Ledger: every single movement in the wallet is recorded here
 model DriverWalletTransaction {
-  id       String @id @default(uuid())
+  id       String  @id @default(uuid())
   walletId String
   orderId  String? // linked to a specific order if applicable
 
-  type    WalletTransactionType   @default(CASH_ORDER_DEBIT)
-  status  WalletTransactionStatus @default(COMPLETED)
+  type   WalletTransactionType   @default(CASH_ORDER_DEBIT)
+  status WalletTransactionStatus @default(COMPLETED)
 
   amount       Decimal // positive = credit, negative = debit
   balanceAfter Decimal // balance snapshot after this transaction
 
-  note      String?  // optional note (e.g. "cash collected from customer")
+  note      String? // optional note (e.g. "cash collected from customer")
   createdAt DateTime @default(now())
 
   wallet DriverWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
@@ -1033,8 +1036,8 @@ model DriverWalletTransaction {
 // ============================================================
 
 model UserWallet {
-  id     String  @id @default(uuid())
-  userId String  @unique
+  id      String  @id @default(uuid())
+  userId  String  @unique
   balance Decimal @default(0)
 
   createdAt DateTime @default(now())
@@ -1047,12 +1050,12 @@ model UserWallet {
 }
 
 model UserWalletTransaction {
-  id       String @id @default(uuid())
+  id       String  @id @default(uuid())
   walletId String
   orderId  String?
 
-  type   String  @default("REFUND") // REFUND, TOPUP, PAYMENT
-  amount Decimal 
+  type         String  @default("REFUND") // REFUND, TOPUP, PAYMENT
+  amount       Decimal
   balanceAfter Decimal
 
   note      String?
@@ -1084,12 +1087,12 @@ model StoreWallet {
 }
 
 model StoreWalletTransaction {
-  id       String @id @default(uuid())
+  id       String  @id @default(uuid())
   walletId String
   orderId  String?
 
-  type   String  @default("ORDER_EARNING") // ORDER_EARNING, WITHDRAWAL, ADJUSTMENT
-  amount Decimal 
+  type         String  @default("ORDER_EARNING") // ORDER_EARNING, WITHDRAWAL, ADJUSTMENT
+  amount       Decimal
   balanceAfter Decimal
 
   note      String?
@@ -1120,12 +1123,12 @@ model PlatformWallet {
 }
 
 model PlatformWalletTransaction {
-  id       String @id @default(uuid())
+  id       String  @id @default(uuid())
   walletId String
   orderId  String?
 
-  type   String  @default("COMMISSION") // COMMISSION, AD_REVENUE, PAYOUT
-  amount Decimal 
+  type         String  @default("COMMISSION") // COMMISSION, AD_REVENUE, PAYOUT
+  amount       Decimal
   balanceAfter Decimal
 
   note      String?

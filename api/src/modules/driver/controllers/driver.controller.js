@@ -583,7 +583,7 @@ export const updateDeliveryStatus = async (req, res, next) => {
         const { orderId } = req.params;
         const { status } = req.body;
 
-        const validStatuses = ["PICKED_UP", "ON_THE_WAY", "DELIVERED"];
+        const validStatuses = ["READY_FOR_PICKUP", "PICKED_UP", "ON_THE_WAY", "DELIVERED"];
         if (!validStatuses.includes(status)) {
             throw new ApiError(400, "Invalid status for driver update.");
         }
@@ -603,6 +603,7 @@ export const updateDeliveryStatus = async (req, res, next) => {
         }
 
         const liveStatusMap = {
+            READY_FOR_PICKUP: "DRIVER_AT_STORE",
             PICKED_UP: "DRIVER_HEADING_TO_CUSTOMER",
             ON_THE_WAY: "DRIVER_HEADING_TO_CUSTOMER",
             DELIVERED: "DELIVERED",
@@ -745,6 +746,7 @@ export const updateDeliveryStatus = async (req, res, next) => {
 
             const { emitToUser } = await import("../../../sockets/notifications.socket.js");
             const userNotifs = {
+                READY_FOR_PICKUP: { title: "Driver at store 📍", body: "Your driver has arrived at the store and is picking up your order." },
                 PICKED_UP: { title: "Picked up! 🚀", body: "Your driver has picked up your order and is heading to you." },
                 DELIVERED: { title: "Delivered! 😋", body: "Enjoy your meal! Don't forget to rate the store." }
             };
