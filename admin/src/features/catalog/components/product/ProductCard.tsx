@@ -8,7 +8,7 @@ import {
   ChevronRight,
   Trash2,
 } from "lucide-react";
-import type { Product } from "../../../types";
+import type { Product } from "../../../../types";
 
 interface ProductCardProps {
   product: Product;

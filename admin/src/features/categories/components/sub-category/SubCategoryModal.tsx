@@ -1,29 +1,34 @@
-import { Loader2, Upload, Tag } from "lucide-react";
+import { Loader2, Upload, LayoutGrid } from "lucide-react";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  categorySchema,
-  type CategoryFormValues,
-} from "../../../schemas/category.schema";
-import { useCreateCategory, useUpdateCategory } from "../api/category.api";
-import type { Category } from "../../../types";
-import { SlideOver } from "../../../components/layout/SlideOver";
+  subCategorySchema,
+  type SubCategoryFormValues,
+} from "../../../../schemas/subCategory.schema";
+import {
+  useCreateSubCategory,
+  useUpdateSubCategory,
+} from "../../api/category.api";
+import type { Category } from "../../../../types";
+import { SlideOver } from "../../../../components/layout/SlideOver";
 
-interface CategoryModalProps {
+interface SubCategoryModalProps {
   isOpen: boolean;
-  editingCategory: Category | null;
+  categoryId: string;
+  editingSub: Category | null;
   onClose: () => void;
 }
 
-export default function CategoryModal({
+export default function SubCategoryModal({
   isOpen,
-  editingCategory,
+  categoryId,
+  editingSub,
   onClose,
-}: CategoryModalProps) {
-  const createMutation = useCreateCategory();
-  const updateMutation = useUpdateCategory();
-  const isPending = createMutation.isPending || updateMutation.isPending;
+}: SubCategoryModalProps) {
+  const createSubMutation = useCreateSubCategory();
+  const updateSubMutation = useUpdateSubCategory();
+  const isPending = createSubMutation.isPending || updateSubMutation.isPending;
 
   const {
     register,
@@ -31,11 +36,11 @@ export default function CategoryModal({
     setValue,
     watch,
     formState: { errors },
-  } = useForm<CategoryFormValues>({
-    resolver: zodResolver(categorySchema),
-    values: {
-      name: editingCategory?.name || "",
-      image: editingCategory?.imageUrl || editingCategory?.image || "",
+  } = useForm<SubCategoryFormValues>({
+    resolver: zodResolver(subCategorySchema),
+    defaultValues: {
+      name: editingSub?.name || "",
+      image: editingSub?.imageUrl || editingSub?.image || "",
     },
   });
 
@@ -50,31 +55,35 @@ export default function CategoryModal({
     }
   };
 
-  const onSubmit = (data: CategoryFormValues) => {
-    if (editingCategory) {
-      updateMutation.mutate(
+  const onSave = (data: SubCategoryFormValues) => {
+    if (editingSub) {
+      updateSubMutation.mutate(
         {
-          categoryId: editingCategory.id,
+          subCategoryId: editingSub.id,
           name: data.name.trim(),
           image: data.image || undefined,
         },
         {
           onSuccess: () => {
-            toast.success("Category updated");
+            toast.success("Sub-category updated");
             onClose();
           },
-          onError: () => toast.error("Failed to update category"),
+          onError: () => toast.error("Failed to update sub-category"),
         },
       );
     } else {
-      createMutation.mutate(
-        { name: data.name.trim(), image: data.image || undefined },
+      createSubMutation.mutate(
+        {
+          name: data.name.trim(),
+          parentId: categoryId,
+          image: data.image || undefined,
+        },
         {
           onSuccess: () => {
-            toast.success("Category created");
+            toast.success("Sub-category created");
             onClose();
           },
-          onError: () => toast.error("Failed to create category"),
+          onError: () => toast.error("Failed to create sub-category"),
         },
       );
     }
@@ -84,8 +93,8 @@ export default function CategoryModal({
     <SlideOver
       isOpen={isOpen}
       onClose={onClose}
-      title={editingCategory ? "Edit Category" : "Add Category"}
-      description="Main categories define the top-level structure of the marketplace."
+      title={editingSub ? "Edit Sub-Category" : "New Sub-Category"}
+      description="Sub-categories help narrow down choices for customers within a main category."
       footer={
         <div className="flex justify-end gap-3 w-full">
           <button
@@ -96,33 +105,33 @@ export default function CategoryModal({
             Cancel
           </button>
           <button
-            onClick={handleSubmit(onSubmit)}
+            onClick={handleSubmit(onSave)}
             disabled={isPending}
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-brand text-white text-sm font-bold rounded-xl hover:bg-brand-dark transition-all disabled:opacity-70"
           >
             {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            {editingCategory ? "Save Changes" : "Create Category"}
+            {editingSub ? "Save Changes" : "Create Sub-Category"}
           </button>
         </div>
       }
     >
       <div className="space-y-8">
         <div className="p-4 bg-gray-50 rounded-2xl flex items-start gap-3">
-          <Tag className="w-5 h-5 text-gray-400 mt-0.5" />
+          <LayoutGrid className="w-5 h-5 text-gray-400 mt-0.5" />
           <p className="text-[12px] text-gray-500 leading-relaxed">
-            Examples: Restaurants, Grocery, Pharmacy. This category will appear
-            on the homepage.
+            For example, under 'Restaurants', you might have 'Burgers', 'Pizza',
+            or 'Sushi'.
           </p>
         </div>
 
         <div className="space-y-6">
           <div>
             <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
-              Category Name *
+              Sub-Category Name *
             </label>
             <input
               {...register("name")}
-              placeholder="e.g. Restaurants"
+              placeholder="e.g. Burgers"
               className={`w-full px-4 py-3 bg-gray-50 border ${errors.name ? "border-red-500" : "border-gray-100"} rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all font-medium`}
               autoFocus
             />
@@ -154,7 +163,7 @@ export default function CategoryModal({
                 <div className="text-center">
                   <Upload className="w-8 h-8 text-gray-300 mx-auto mb-2 group-hover:text-brand transition-colors" />
                   <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">
-                    Upload Category Image
+                    Upload Sub-Category Image
                   </span>
                 </div>
               )}

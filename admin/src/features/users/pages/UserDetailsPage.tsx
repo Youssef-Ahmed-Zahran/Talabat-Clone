@@ -14,29 +14,18 @@ import type { Order } from "../../../types";
 import { useUserDetails } from "../hooks/useUserDetails";
 
 export default function UserDetailsPage() {
-  const {
-    user,
-    orders,
-    isUserLoading,
-    isUserError,
-    refetchUser,
-    isOrdersLoading,
-    isOrdersError,
-    refetchOrders,
-    handleToggleBlock,
-    isPendingToggle,
-    navigate,
-  } = useUserDetails();
+  const { query, actions, router } = useUserDetails();
 
-  if (isUserLoading) return <PageLoader />;
-  if (isUserError || !user) return <ErrorFallback onRetry={refetchUser} />;
+  if (query.isUserLoading) return <PageLoader />;
+  if (query.isUserError || !query.user)
+    return <ErrorFallback onRetry={query.refetchUser} />;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate("/users")}
+            onClick={() => router.navigate("/users")}
             className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -52,15 +41,15 @@ export default function UserDetailsPage() {
         </div>
 
         <button
-          onClick={handleToggleBlock}
-          disabled={isPendingToggle}
+          onClick={actions.handleToggleBlock}
+          disabled={actions.isPendingToggle}
           className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-colors ${
-            !user.isBlocked
+            !query.user.isBlocked
               ? "text-red-600 bg-red-50 hover:bg-red-100"
               : "text-emerald-600 bg-emerald-50 hover:bg-emerald-100"
           }`}
         >
-          {!user.isBlocked ? (
+          {!query.user.isBlocked ? (
             <>
               <ShieldOff className="w-4 h-4" /> Block User
             </>
@@ -81,16 +70,16 @@ export default function UserDetailsPage() {
                 <UserIcon className="w-10 h-10 text-brand" />
               </div>
               <h2 className="text-xl font-bold text-gray-900">
-                {user.fullName}
+                {query.user.fullName}
               </h2>
               <span
                 className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                  !user.isBlocked
+                  !query.user.isBlocked
                     ? "bg-emerald-50 text-emerald-700"
                     : "bg-red-50 text-red-600"
                 }`}
               >
-                {!user.isBlocked ? "Active" : "Blocked"}
+                {!query.user.isBlocked ? "Active" : "Blocked"}
               </span>
             </div>
 
@@ -103,7 +92,7 @@ export default function UserDetailsPage() {
                   <span className="text-gray-500 text-xs font-medium">
                     Email
                   </span>
-                  <span className="text-gray-900">{user.email}</span>
+                  <span className="text-gray-900">{query.user.email}</span>
                 </div>
               </div>
 
@@ -115,7 +104,9 @@ export default function UserDetailsPage() {
                   <span className="text-gray-500 text-xs font-medium">
                     Phone
                   </span>
-                  <span className="text-gray-900">{user.phone || "—"}</span>
+                  <span className="text-gray-900">
+                    {query.user.phone || "—"}
+                  </span>
                 </div>
               </div>
 
@@ -128,7 +119,7 @@ export default function UserDetailsPage() {
                     Joined
                   </span>
                   <span className="text-gray-900">
-                    {new Date(user.createdAt).toLocaleDateString()}
+                    {new Date(query.user.createdAt).toLocaleDateString()}
                   </span>
                 </div>
               </div>
@@ -145,25 +136,25 @@ export default function UserDetailsPage() {
                 Order History
               </h3>
               <span className="text-sm text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full font-medium">
-                {orders?.orders?.length || 0} Orders
+                {query.orders?.orders?.length || 0} Orders
               </span>
             </div>
 
-            {isOrdersLoading ? (
+            {query.isOrdersLoading ? (
               <div className="p-12 flex justify-center">
                 <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : isOrdersError ? (
+            ) : query.isOrdersError ? (
               <div className="p-12 text-center text-sm text-red-500">
                 Failed to load orders
                 <button
-                  onClick={() => refetchOrders()}
+                  onClick={() => query.refetchOrders()}
                   className="ml-2 text-brand hover:underline font-medium"
                 >
                   Retry
                 </button>
               </div>
-            ) : orders?.orders && orders.orders.length > 0 ? (
+            ) : query.orders?.orders && query.orders.orders.length > 0 ? (
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-50 bg-gray-50/50">
@@ -182,11 +173,13 @@ export default function UserDetailsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {orders.orders.map((order: Order) => (
+                  {query.orders.orders.map((order: Order) => (
                     <tr
                       key={order.id}
                       className="hover:bg-gray-50/50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/orders?search=${order.id}`)}
+                      onClick={() =>
+                        router.navigate(`/orders?search=${order.id}`)
+                      }
                     >
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         #{order.id}

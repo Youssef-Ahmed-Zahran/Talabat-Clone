@@ -76,21 +76,29 @@ export function useDriverDetails() {
   };
 
   return {
-    driverId,
-    driver,
-    isLoading,
-    isError,
-    refetch,
-    navigate,
-    handleApprove,
-    handleReject,
-    handleSuspend,
-    handleUnsuspend,
-    handleVerifyDoc,
-    handleRejectDoc,
-    isApproving: approveMutation.isPending,
-    isRejecting: rejectMutation.isPending,
-    isSuspending: suspendMutation.isPending,
-    isUnsuspending: unsuspendMutation.isPending,
+    query: {
+      driverId,
+      driver,
+      isLoading,
+      isError,
+      refetch,
+    },
+    actions: {
+      handleApprove,
+      handleReject,
+      handleSuspend,
+      handleUnsuspend,
+      handleVerifyDoc,
+      handleRejectDoc,
+    },
+    loadingStates: {
+      isApproving: approveMutation.isPending,
+      isRejecting: rejectMutation.isPending,
+      isSuspending: suspendMutation.isPending,
+      isUnsuspending: unsuspendMutation.isPending,
+    },
+    router: {
+      navigate,
+    },
   };
 }

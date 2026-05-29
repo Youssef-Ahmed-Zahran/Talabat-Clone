@@ -2,23 +2,15 @@ import { Link } from "react-router-dom";
 import { Plus, ArrowLeft } from "lucide-react";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
-import SubCategoriesTable from "../components/SubCategoriesTable";
-import SubCategoryModal from "../components/SubCategoryModal";
+import SubCategoriesTable from "../components/sub-category/SubCategoriesTable";
+import SubCategoryModal from "../components/sub-category/SubCategoryModal";
 import { useSubCategoriesPage } from "../hooks/useSubCategoriesPage";
 
 export default function SubCategoriesPage() {
-  const {
-    categoryId,
-    subCategories,
-    isLoading,
-    isError,
-    refetch,
-    showCreateModal,
-    setShowCreateModal,
-  } = useSubCategoriesPage();
+  const { query, modal } = useSubCategoriesPage();
 
-  if (isLoading) return <PageLoader />;
-  if (isError) return <ErrorFallback onRetry={refetch} />;
+  if (query.isLoading) return <PageLoader />;
+  if (query.isError) return <ErrorFallback onRetry={query.refetch} />;
 
   return (
     <div className="space-y-6">
@@ -41,7 +33,7 @@ export default function SubCategoriesPage() {
           </div>
         </div>
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => modal.setShowCreateModal(true)}
           className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" />
@@ -51,17 +43,17 @@ export default function SubCategoriesPage() {
 
       {/* Table — owns all row-level state & modals */}
       <SubCategoriesTable
-        subCategories={subCategories ?? []}
-        categoryId={categoryId}
+        subCategories={query.subCategories ?? []}
+        categoryId={query.categoryId}
       />
 
       {/* Create modal — owned by the page (triggered from the header) */}
-      {showCreateModal && (
+      {modal.showCreateModal && (
         <SubCategoryModal
-          isOpen={showCreateModal}
-          categoryId={categoryId}
+          isOpen={modal.showCreateModal}
+          categoryId={query.categoryId}
           editingSub={null}
-          onClose={() => setShowCreateModal(false)}
+          onClose={() => modal.setShowCreateModal(false)}
         />
       )}
     </div>

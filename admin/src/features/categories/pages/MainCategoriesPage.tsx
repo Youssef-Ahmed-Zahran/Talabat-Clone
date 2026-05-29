@@ -1,30 +1,16 @@
 import { Plus, Layers3, ChevronRight, LayoutGrid } from "lucide-react";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
-import SubCategoriesTable from "../components/SubCategoriesTable";
-import CategoryModal from "../components/CategoryModal";
-import SubCategoryModal from "../components/SubCategoryModal";
+import SubCategoriesTable from "../components/sub-category/SubCategoriesTable";
+import CategoryModal from "../components/main-category/CategoryModal";
+import SubCategoryModal from "../components/sub-category/SubCategoryModal";
 import { useMainCategoriesPage } from "../hooks/useMainCategoriesPage";
 
 export default function MainCategoriesPage() {
-  const {
-    categories,
-    isLoading,
-    isError,
-    refetch,
-    selectedCategoryId,
-    setSelectedCategoryId,
-    subCategories,
-    subLoading,
-    showMainModal,
-    setShowMainModal,
-    showSubModal,
-    setShowSubModal,
-    selectedCategory,
-  } = useMainCategoriesPage();
+  const { query, state, modal } = useMainCategoriesPage();
 
-  if (isLoading && !categories) return <PageLoader />;
-  if (isError) return <ErrorFallback onRetry={refetch} />;
+  if (query.isLoading && !query.categories) return <PageLoader />;
+  if (query.isError) return <ErrorFallback onRetry={query.refetch} />;
 
   return (
     <div className="space-y-6">
@@ -39,7 +25,7 @@ export default function MainCategoriesPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowMainModal(true)}
+            onClick={() => modal.setShowMainModal(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
@@ -58,19 +44,19 @@ export default function MainCategoriesPage() {
               </h2>
             </div>
             <div className="divide-y divide-gray-50 max-h-[700px] overflow-y-auto">
-              {categories?.map((cat) => (
+              {query.categories?.map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => setSelectedCategoryId(cat.id)}
+                  onClick={() => state.setSelectedCategoryId(cat.id)}
                   className={`w-full flex items-center justify-between p-4 text-left transition-all group ${
-                    selectedCategoryId === cat.id
+                    state.selectedCategoryId === cat.id
                       ? "bg-brand/5"
                       : "hover:bg-gray-50"
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0 border ${selectedCategoryId === cat.id ? "border-brand/20 bg-white" : "border-gray-100 bg-gray-50"}`}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0 border ${state.selectedCategoryId === cat.id ? "border-brand/20 bg-white" : "border-gray-100 bg-gray-50"}`}
                     >
                       {cat.imageUrl || cat.image ? (
                         <img
@@ -80,13 +66,13 @@ export default function MainCategoriesPage() {
                         />
                       ) : (
                         <Layers3
-                          className={`w-5 h-5 ${selectedCategoryId === cat.id ? "text-brand" : "text-gray-400"}`}
+                          className={`w-5 h-5 ${state.selectedCategoryId === cat.id ? "text-brand" : "text-gray-400"}`}
                         />
                       )}
                     </div>
                     <div className="min-w-0">
                       <p
-                        className={`text-sm font-bold truncate ${selectedCategoryId === cat.id ? "text-brand" : "text-gray-900"}`}
+                        className={`text-sm font-bold truncate ${state.selectedCategoryId === cat.id ? "text-brand" : "text-gray-900"}`}
                       >
                         {cat.name}
                       </p>
@@ -96,7 +82,7 @@ export default function MainCategoriesPage() {
                     </div>
                   </div>
                   <ChevronRight
-                    className={`w-4 h-4 transition-transform ${selectedCategoryId === cat.id ? "text-brand translate-x-1" : "text-gray-300 group-hover:text-gray-400"}`}
+                    className={`w-4 h-4 transition-transform ${state.selectedCategoryId === cat.id ? "text-brand translate-x-1" : "text-gray-300 group-hover:text-gray-400"}`}
                   />
                 </button>
               ))}
@@ -106,7 +92,7 @@ export default function MainCategoriesPage() {
 
         {/* ── Sub-Categories Content (Right) ────────────────────────── */}
         <div className="flex-1 min-w-0">
-          {selectedCategoryId ? (
+          {state.selectedCategoryId ? (
             <div className="space-y-6 animate-fade-in">
               <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                 <div className="flex items-center gap-3">
@@ -115,7 +101,7 @@ export default function MainCategoriesPage() {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-gray-900">
-                      {selectedCategory?.name}
+                      {query.selectedCategory?.name}
                     </h3>
                     <p className="text-xs text-gray-500">
                       Sub-categories under this group
@@ -123,7 +109,7 @@ export default function MainCategoriesPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setShowSubModal(true)}
+                  onClick={() => modal.setShowSubModal(true)}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
@@ -131,14 +117,14 @@ export default function MainCategoriesPage() {
                 </button>
               </div>
 
-              {subLoading ? (
+              {query.subLoading ? (
                 <div className="py-20 flex justify-center">
                   <PageLoader />
                 </div>
               ) : (
                 <SubCategoriesTable
-                  subCategories={subCategories ?? []}
-                  categoryId={selectedCategoryId}
+                  subCategories={query.subCategories ?? []}
+                  categoryId={state.selectedCategoryId}
                 />
               )}
             </div>
@@ -159,20 +145,20 @@ export default function MainCategoriesPage() {
         </div>
       </div>
 
-      {showMainModal && (
+      {modal.showMainModal && (
         <CategoryModal
           isOpen={true}
           editingCategory={null}
-          onClose={() => setShowMainModal(false)}
+          onClose={() => modal.setShowMainModal(false)}
         />
       )}
 
-      {showSubModal && selectedCategoryId && (
+      {modal.showSubModal && state.selectedCategoryId && (
         <SubCategoryModal
           isOpen={true}
-          categoryId={selectedCategoryId}
+          categoryId={state.selectedCategoryId}
           editingSub={null}
-          onClose={() => setShowSubModal(false)}
+          onClose={() => modal.setShowSubModal(false)}
         />
       )}
     </div>

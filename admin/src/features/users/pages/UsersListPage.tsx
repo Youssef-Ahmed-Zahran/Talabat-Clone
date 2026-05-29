@@ -6,19 +6,10 @@ import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
 import { useUsersList } from "../hooks/useUsersList";
 
 export default function UsersListPage() {
-  const {
-    users,
-    isLoading,
-    isError,
-    refetch,
-    search,
-    setSearch,
-    handleToggle,
-    isToggling,
-  } = useUsersList();
+  const { filters, query, actions } = useUsersList();
 
-  if (isLoading) return <PageLoader />;
-  if (isError) return <ErrorFallback onRetry={refetch} />;
+  if (query.isLoading) return <PageLoader />;
+  if (query.isError) return <ErrorFallback onRetry={query.refetch} />;
 
   return (
     <div className="space-y-6">
@@ -35,8 +26,8 @@ export default function UsersListPage() {
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
         <input
           type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={filters.search}
+          onChange={(e) => filters.setSearch(e.target.value)}
           placeholder="Search users…"
           className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl placeholder:text-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all"
         />
@@ -67,8 +58,8 @@ export default function UsersListPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {users && users.length > 0 ? (
-              users.map((u: User) => (
+            {query.users && query.users.length > 0 ? (
+              query.users.map((u: User) => (
                 <tr
                   key={u.id}
                   className="hover:bg-gray-50/50 transition-colors"
@@ -102,8 +93,8 @@ export default function UsersListPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <button
-                      onClick={() => handleToggle(u.id, !u.isBlocked)}
-                      disabled={isToggling}
+                      onClick={() => actions.handleToggle(u.id, !u.isBlocked)}
+                      disabled={actions.isToggling}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-colors ${!u.isBlocked ? "text-red-600 bg-red-50 hover:bg-red-100" : "text-emerald-600 bg-emerald-50 hover:bg-emerald-100"}`}
                     >
                       {!u.isBlocked ? (

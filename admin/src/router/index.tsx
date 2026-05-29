@@ -58,6 +58,14 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: "my-store",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <StoreDetailsPage />
+          </Suspense>
+        ),
+      },
+      {
         path: "stores/:storeId/catalog",
         element: (
           <Suspense fallback={<PageLoader />}>
@@ -66,7 +74,23 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: "my-store/catalog",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <StoreCatalogPage />
+          </Suspense>
+        ),
+      },
+      {
         path: "stores/:storeId/catalog/products/:productId",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ProductOptionsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "my-store/catalog/products/:productId",
         element: (
           <Suspense fallback={<PageLoader />}>
             <ProductOptionsPage />

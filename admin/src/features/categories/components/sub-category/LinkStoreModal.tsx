@@ -1,4 +1,4 @@
-import { useClearTimeout } from "../../../hooks/useClearTimeout";
+import { useClearTimeout } from "../../../../hooks/useClearTimeout";
 import { Loader2 } from "lucide-react";
 
 import toast from "react-hot-toast";
@@ -7,9 +7,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   linkStoreSchema,
   type LinkStoreFormValues,
-} from "../../../schemas/subCategory.schema";
-import { useLinkStore } from "../api/category.api";
-import { useStores } from "../../stores/api/store.api";
+} from "../../../../schemas/subCategory.schema";
+import { useLinkStore } from "../../api/category.api";
+import { useStores } from "../../../stores/api/store.api";
 
 interface LinkStoreModalProps {
   subCategoryId: string;

@@ -1,5 +1,5 @@
 import { GripVertical, Pencil, Trash2, LayoutGrid } from "lucide-react";
-import type { Section } from "../../../types";
+import type { Section } from "../../../../types";
 
 interface SectionTabsProps {
   sections?: Section[];
@@ -40,9 +40,17 @@ export function SectionNav({
 
       {sections?.map((s) => (
         <div key={s.id} className="relative group">
-          <button
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => onSectionChange(s.id)}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSectionChange(s.id);
+              }
+            }}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
               activeSectionId === s.id
                 ? "bg-brand text-white shadow-sm"
                 : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
@@ -72,6 +80,7 @@ export function SectionNav({
                 className={`flex items-center gap-0.5 transition-opacity duration-200 ${activeSectionId === s.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
               >
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onEditSection(s);
@@ -83,6 +92,7 @@ export function SectionNav({
                   />
                 </button>
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDeleteSection(s);
@@ -95,7 +105,7 @@ export function SectionNav({
                 </button>
               </div>
             </div>
-          </button>
+          </div>
         </div>
       ))}
     </div>

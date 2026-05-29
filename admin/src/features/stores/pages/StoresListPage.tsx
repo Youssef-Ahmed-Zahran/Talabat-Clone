@@ -6,33 +6,11 @@ import { StoresTable } from "../components/StoresTable";
 import { useStoresList } from "../hooks/useStoresList";
 
 export default function StoresListPage() {
-  const {
-    categories,
-    activeTab,
-    setActiveTab,
-    activeSubTab,
-    setActiveSubTab,
-    search,
-    setSearch,
-    showCreateModal,
-    setShowCreateModal,
-    editingStore,
-    subCategories,
-    isLoading,
-    isFetching,
-    isPlaceholderData,
-    isError,
-    refetch,
-    handleToggle,
-    openCreateStore,
-    openEditStore,
-    filteredStores,
-    isToggling,
-  } = useStoresList();
+  const { filters, query, modal, actions } = useStoresList();
 
   // Only show full page loader on initial mount if categories aren't ready
-  if (isLoading && !categories) return <PageLoader />;
-  if (isError) return <ErrorFallback onRetry={refetch} />;
+  if (query.isLoading && !query.categories) return <PageLoader />;
+  if (query.isError) return <ErrorFallback onRetry={query.refetch} />;
 
   return (
     <div className="space-y-6">
@@ -46,7 +24,7 @@ export default function StoresListPage() {
           </p>
         </div>
         <button
-          onClick={openCreateStore}
+          onClick={modal.openCreateStore}
           className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" />
@@ -66,8 +44,8 @@ export default function StoresListPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
                 <input
                   type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  value={filters.search}
+                  onChange={(e) => filters.setSearch(e.target.value)}
                   placeholder="Store name..."
                   className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border-none rounded-xl placeholder:text-gray-400 text-gray-900 focus:ring-2 focus:ring-brand/20 transition-all"
                 />
@@ -81,28 +59,28 @@ export default function StoresListPage() {
               <div className="space-y-1">
                 <button
                   onClick={() => {
-                    setActiveTab(undefined);
-                    setActiveSubTab(undefined);
+                    filters.setActiveTab(undefined);
+                    filters.setActiveSubTab(undefined);
                   }}
                   className={`w-full flex items-center px-3 py-2 rounded-xl text-[13px] font-medium transition-all ${
-                    activeTab === undefined
+                    filters.activeTab === undefined
                       ? "bg-brand text-white shadow-sm"
                       : "text-gray-600 hover:bg-gray-50"
                   }`}
                 >
                   All Categories
                 </button>
-                {categories?.map((cat) => (
+                {query.categories?.map((cat) => (
                   <div key={cat.id} className="space-y-1">
                     <button
                       onClick={() => {
-                        setActiveTab(cat.id);
-                        setActiveSubTab(undefined);
+                        filters.setActiveTab(cat.id);
+                        filters.setActiveSubTab(undefined);
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition-all ${
-                        activeTab === cat.id && !activeSubTab
+                        filters.activeTab === cat.id && !filters.activeSubTab
                           ? "bg-brand/10 text-brand"
-                          : activeTab === cat.id
+                          : filters.activeTab === cat.id
                             ? "text-brand font-bold"
                             : "text-gray-600 hover:bg-gray-50"
                       }`}
@@ -110,16 +88,16 @@ export default function StoresListPage() {
                       {cat.name}
                     </button>
 
-                    {activeTab === cat.id &&
-                      subCategories &&
-                      subCategories.length > 0 && (
+                    {filters.activeTab === cat.id &&
+                      query.subCategories &&
+                      query.subCategories.length > 0 && (
                         <div className="ml-3 pl-3 border-l border-gray-100 space-y-1 py-1">
-                          {subCategories.map((sub) => (
+                          {query.subCategories.map((sub) => (
                             <button
                               key={sub.id}
-                              onClick={() => setActiveSubTab(sub.id)}
+                              onClick={() => filters.setActiveSubTab(sub.id)}
                               className={`w-full text-left px-3 py-1.5 rounded-lg text-[12px] transition-all ${
-                                activeSubTab === sub.id
+                                filters.activeSubTab === sub.id
                                   ? "bg-brand text-white shadow-sm font-semibold"
                                   : "text-gray-500 hover:text-brand hover:bg-brand-50"
                               }`}
@@ -139,20 +117,20 @@ export default function StoresListPage() {
         {/* ── Table Content ─────────────────────────────────────────── */}
         <div className="flex-1 min-w-0">
           <StoresTable
-            stores={filteredStores}
-            onToggleStatus={handleToggle}
-            onEdit={openEditStore}
-            isToggling={isToggling}
-            isLoading={isFetching || isPlaceholderData}
+            stores={query.stores}
+            onToggleStatus={actions.handleToggle}
+            onEdit={modal.openEditStore}
+            isToggling={actions.isToggling}
+            isLoading={query.isLoading}
           />
         </div>
       </div>
 
       <StoreFormModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        editingStore={editingStore}
-        categories={categories}
+        isOpen={modal.isOpen}
+        onClose={() => modal.setIsOpen(false)}
+        editingStore={modal.editingStore}
+        categories={query.categories}
       />
     </div>
   );

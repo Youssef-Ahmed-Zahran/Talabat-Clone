@@ -48,16 +48,24 @@ export function useZonesPage() {
   const goToEditZone = (id: string) => navigate(`/zones/${id}/edit`);
 
   return {
-    zones,
-    isLoading,
-    error,
-    refetch,
-    deleteConfirm,
-    setDeleteConfirm,
-    togglingId,
-    handleToggleActive,
-    handleDelete,
-    goToNewZone,
-    goToEditZone,
+    query: {
+      zones,
+      isLoading,
+      error,
+      refetch,
+    },
+    state: {
+      deleteConfirm,
+      setDeleteConfirm,
+      togglingId,
+    },
+    actions: {
+      handleToggleActive,
+      handleDelete,
+    },
+    router: {
+      goToNewZone,
+      goToEditZone,
+    },
   };
 }

@@ -1,9 +1,9 @@
-import { useClearTimeout } from "../../../hooks/useClearTimeout";
+import { useClearTimeout } from "../../../../hooks/useClearTimeout";
 import { X, Loader2, Store as StoreIcon, Trash2 } from "lucide-react";
 
 import toast from "react-hot-toast";
-import { useStoresInSubCategory, useUnlinkStore } from "../api/category.api";
-import type { Store } from "../../../types";
+import { useStoresInSubCategory, useUnlinkStore } from "../../api/category.api";
+import type { Store } from "../../../../types";
 
 interface LinkedStoresModalProps {
   subCategoryId: string;

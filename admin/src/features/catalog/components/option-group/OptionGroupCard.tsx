@@ -7,7 +7,7 @@ import {
   ChevronDown,
   DollarSign,
 } from "lucide-react";
-import type { OptionGroup, OptionValue } from "../../../types";
+import type { OptionGroup, OptionValue } from "../../../../types";
 
 interface OptionGroupCardProps {
   group: OptionGroup;

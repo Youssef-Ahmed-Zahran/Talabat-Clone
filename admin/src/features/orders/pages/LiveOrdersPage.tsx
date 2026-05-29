@@ -4,87 +4,14 @@ import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
 import { useLiveOrdersPage } from "../hooks/useLiveOrdersPage";
 
-const STATUS_CONFIG: Record<
-  OrderStatus,
-  { label: string; bg: string; text: string; dot: string }
-> = {
-  PENDING: {
-    label: "Pending",
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    dot: "bg-amber-400",
-  },
-  CONFIRMED: {
-    label: "Confirmed",
-    bg: "bg-blue-50",
-    text: "text-blue-700",
-    dot: "bg-blue-400",
-  },
-  PREPARING: {
-    label: "Preparing",
-    bg: "bg-orange-50",
-    text: "text-orange-700",
-    dot: "bg-orange-400",
-  },
-  WAITING_FOR_DRIVER: {
-    label: "Awaiting Driver",
-    bg: "bg-purple-50",
-    text: "text-purple-700",
-    dot: "bg-purple-400",
-  },
-  PICKED_UP: {
-    label: "Picked Up",
-    bg: "bg-cyan-50",
-    text: "text-cyan-700",
-    dot: "bg-cyan-400",
-  },
-  ON_THE_WAY: {
-    label: "On the Way",
-    bg: "bg-indigo-50",
-    text: "text-indigo-700",
-    dot: "bg-indigo-400",
-  },
-  DELIVERED: {
-    label: "Delivered",
-    bg: "bg-emerald-50",
-    text: "text-emerald-700",
-    dot: "bg-emerald-400",
-  },
-  CANCELLED: {
-    label: "Cancelled",
-    bg: "bg-red-50",
-    text: "text-red-600",
-    dot: "bg-red-400",
-  },
-};
-
-function StatusBadge({ status }: { status: OrderStatus }) {
-  const c = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING;
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${c.bg} ${c.text}`}
-    >
-      <span className={`w-1.5 h-1.5 rounded-full ${c.dot} animate-pulse`} />
-      {c.label}
-    </span>
-  );
-}
+import { StatusBadge } from "../components/StatusBadge";
+import { STATUS_CONFIG } from "../components/constants";
 
 export default function LiveOrdersPage() {
-  const {
-    orders,
-    isLoading,
-    isError,
-    refetch,
-    isFetching,
-    searchTerm,
-    setSearchTerm,
-    handleStatusChange,
-    isUpdating,
-  } = useLiveOrdersPage();
+  const { query, filters, actions } = useLiveOrdersPage();
 
-  if (isLoading && !orders) return <PageLoader />;
-  if (isError) return <ErrorFallback onRetry={refetch} />;
+  if (query.isLoading && !query.orders) return <PageLoader />;
+  if (query.isError) return <ErrorFallback onRetry={query.refetch} />;
 
   return (
     <div className="space-y-6">
@@ -103,18 +30,18 @@ export default function LiveOrdersPage() {
             <input
               type="text"
               placeholder="Search by ID or customer..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={filters.searchTerm}
+              onChange={(e) => filters.setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all w-64 shadow-sm"
             />
           </div>
           <button
-            onClick={() => refetch()}
-            disabled={isFetching}
+            onClick={() => query.refetch()}
+            disabled={query.isFetching}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
           >
             <RefreshCw
-              className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`}
+              className={`w-4 h-4 ${query.isFetching ? "animate-spin" : ""}`}
             />
             Refresh
           </button>
@@ -127,7 +54,7 @@ export default function LiveOrdersPage() {
           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
         </span>
         <span className="text-[13px] text-emerald-700 font-medium">
-          {orders?.length || 0} active orders
+          {query.orders?.length || 0} active orders
         </span>
       </div>
 
@@ -159,8 +86,8 @@ export default function LiveOrdersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {orders && orders.length > 0 ? (
-              orders.map((o: Order) => (
+            {query.orders && query.orders.length > 0 ? (
+              query.orders.map((o: Order) => (
                 <tr
                   key={o.id}
                   className="hover:bg-gray-50/50 transition-colors"
@@ -190,8 +117,8 @@ export default function LiveOrdersPage() {
                   <td className="px-6 py-4 text-right">
                     <select
                       value={o.status}
-                      onChange={(e) => handleStatusChange(o.id, e.target.value)}
-                      disabled={isUpdating}
+                      onChange={(e) => actions.handleStatusChange(o.id, e.target.value)}
+                      disabled={actions.isUpdating}
                       className="text-[12px] font-medium bg-white border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:opacity-50"
                     >
                       {Object.keys(STATUS_CONFIG).map((status) => (

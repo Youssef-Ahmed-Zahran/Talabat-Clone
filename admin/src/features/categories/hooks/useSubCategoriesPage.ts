@@ -16,12 +16,16 @@ export function useSubCategoriesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   return {
-    categoryId,
-    subCategories,
-    isLoading,
-    isError,
-    refetch,
-    showCreateModal,
-    setShowCreateModal,
+    query: {
+      categoryId,
+      subCategories,
+      isLoading,
+      isError,
+      refetch,
+    },
+    modal: {
+      showCreateModal,
+      setShowCreateModal,
+    },
   };
 }

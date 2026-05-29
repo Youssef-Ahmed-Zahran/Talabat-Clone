@@ -5,11 +5,11 @@ import toast from "react-hot-toast";
 import {
   sectionSchema,
   type SectionFormValues,
-} from "../../../schemas/catalog.schema";
-import type { Section } from "../../../types";
-import { useCreateSection, useUpdateSection } from "../api/catalog.api";
-import { handleApiError } from "../../../utils/error";
-import { SlideOver } from "../../../components/layout/SlideOver";
+} from "../../../../schemas/catalog.schema";
+import type { Section } from "../../../../types";
+import { useCreateSection, useUpdateSection } from "../../api/catalog.api";
+import { handleApiError } from "../../../../utils/error";
+import { SlideOver } from "../../../../components/layout/SlideOver";
 
 interface SectionModalProps {
   isOpen: boolean;

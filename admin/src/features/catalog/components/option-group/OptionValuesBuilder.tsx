@@ -1,22 +1,14 @@
-import {
-  useFieldArray,
-  type Control,
-  type UseFormRegister,
-} from "react-hook-form";
+import { useFieldArray, useFormContext } from "react-hook-form";
 import { Plus, Trash2 } from "lucide-react";
-import { type ProductFormValues } from "../../../schemas/catalog.schema";
+import type { ProductFormValues } from "../../../../schemas/catalog.schema";
 
 interface OptionValuesBuilderProps {
-  control: Control<ProductFormValues>;
   groupIndex: number;
-  register: UseFormRegister<ProductFormValues>;
 }
 
-export function OptionValuesBuilder({
-  control,
-  groupIndex,
-  register,
-}: OptionValuesBuilderProps) {
+export function OptionValuesBuilder({ groupIndex }: OptionValuesBuilderProps) {
+  const { register, control } = useFormContext<ProductFormValues>();
+
   const { fields, append, remove } = useFieldArray({
     control,
     name: `optionGroups.${groupIndex}.values`,

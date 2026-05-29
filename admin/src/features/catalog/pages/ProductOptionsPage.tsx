@@ -1,42 +1,42 @@
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Plus, Package, Settings2 } from "lucide-react";
+import { useAuthStore } from "../../../store/authStore";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
-import { OptionGroupModal } from "../components/OptionGroupModal";
-import { OptionValueModal } from "../components/OptionValueModal";
-import { OptionGroupCard } from "../components/OptionGroupCard";
-import { useProductOptions } from "../hooks/useProductOptions";
+import { OptionGroupModal } from "../components/option-group/OptionGroupModal";
+import { OptionValueModal } from "../components/option-group/OptionValueModal";
+import { OptionGroupCard } from "../components/option-group/OptionGroupCard";
+import { useProduct } from "../api/catalog.api";
+import { useOptionGroupsManager } from "../hooks/useOptionGroupsManager";
+import { useOptionValuesManager } from "../hooks/useOptionValuesManager";
 
 export default function ProductOptionsPage() {
-  const {
-    sid,
-    pid,
-    role,
-    product,
-    prodLoading,
-    prodError,
-    refetchProd,
-    optionGroups,
-    groupsLoading,
-    refetchGroups,
-    showGroupModal,
-    setShowGroupModal,
-    editingGroup,
-    showValueModal,
-    setShowValueModal,
-    activeGroupId,
-    editingValue,
-    expandedGroups,
-    toggleGroupExpand,
-    openCreateGroup,
-    openEditGroup,
-    handleDeleteGroup,
-    openAddValue,
-    openEditValue,
-    handleDeleteValue,
-  } = useProductOptions();
+  const params = useParams<{ storeId: string; productId: string }>();
+  const authStoreId = useAuthStore((s) => s.storeId);
+  const role = useAuthStore((s) => s.role);
 
-  if (prodLoading || groupsLoading) return <PageLoader />;
+  const sid = params.storeId || authStoreId || "";
+  const pid = params.productId || "";
+
+  const {
+    data: product,
+    isLoading: prodLoading,
+    isError: prodError,
+    refetch: refetchProd,
+  } = useProduct(sid, pid);
+
+  const {
+    query: groupsQuery,
+    state: groupsState,
+    modal: groupsModal,
+    actions: groupsActions,
+  } = useOptionGroupsManager(sid, pid);
+
+
+  const { modal: valuesModal, actions: valuesActions } = useOptionValuesManager(sid);
+
+
+  if (prodLoading || groupsQuery.isLoading) return <PageLoader />;
   if (prodError) return <ErrorFallback onRetry={refetchProd} />;
 
   return (
@@ -75,7 +75,7 @@ export default function ProductOptionsPage() {
           </div>
         </div>
         <button
-          onClick={openCreateGroup}
+          onClick={groupsModal.openCreateGroup}
           className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" />
@@ -83,19 +83,19 @@ export default function ProductOptionsPage() {
         </button>
       </div>
 
-      {optionGroups && optionGroups.length > 0 ? (
+      {groupsQuery.optionGroups && groupsQuery.optionGroups.length > 0 ? (
         <div className="space-y-4">
-          {optionGroups.map((g) => (
+          {groupsQuery.optionGroups.map((g) => (
             <OptionGroupCard
               key={g.id}
               group={g}
-              isExpanded={expandedGroups.has(g.id)}
-              onToggleExpand={toggleGroupExpand}
-              onAddValue={openAddValue}
-              onEditGroup={openEditGroup}
-              onDeleteGroup={handleDeleteGroup}
-              onEditValue={openEditValue}
-              onDeleteValue={handleDeleteValue}
+              isExpanded={groupsState.expandedGroups.has(g.id)}
+              onToggleExpand={groupsState.toggleGroupExpand}
+              onAddValue={valuesModal.openAddValue}
+              onEditGroup={groupsModal.openEditGroup}
+              onDeleteGroup={groupsActions.handleDeleteGroup}
+              onEditValue={valuesModal.openEditValue}
+              onDeleteValue={valuesActions.handleDeleteValue}
             />
           ))}
         </div>
@@ -111,7 +111,7 @@ export default function ProductOptionsPage() {
             Add option groups like "Size", "Toppings", "Extras" to this product.
           </p>
           <button
-            onClick={openCreateGroup}
+            onClick={groupsModal.openCreateGroup}
             className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -121,21 +121,19 @@ export default function ProductOptionsPage() {
       )}
 
       <OptionGroupModal
-        isOpen={showGroupModal}
-        onClose={() => setShowGroupModal(false)}
-        editingGroup={editingGroup}
-        storeId={sid}
-        productId={pid}
-        onSuccess={refetchGroups}
+        isOpen={groupsModal.isOpen}
+        onClose={() => groupsModal.setIsOpen(false)}
+        onSubmit={groupsActions.handleSubmitGroup}
+        isPending={groupsActions.isPending}
+        editingGroup={groupsModal.editingGroup}
       />
 
       <OptionValueModal
-        isOpen={showValueModal}
-        onClose={() => setShowValueModal(false)}
-        editingValue={editingValue}
-        storeId={sid}
-        activeGroupId={activeGroupId}
-        onSuccess={refetchGroups}
+        isOpen={valuesModal.isOpen}
+        onClose={() => valuesModal.setIsOpen(false)}
+        onSubmit={valuesActions.handleSubmitValue}
+        isPending={valuesActions.isPending}
+        editingValue={valuesModal.editingValue}
       />
     </div>
   );

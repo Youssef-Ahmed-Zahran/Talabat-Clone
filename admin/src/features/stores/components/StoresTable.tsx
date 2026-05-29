@@ -1,8 +1,6 @@
 import { Store as StoreIcon, Power, Pencil, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
 import type { Store } from "../../../types";
-import { prefetchStoreDetails } from "../api/store.api";
 import PageLoader from "../../../components/loader/PageLoader";
 
 interface StoresTableProps {
@@ -21,7 +19,6 @@ export function StoresTable({
   isLoading,
 }: StoresTableProps) {
   const navigate = useNavigate();
-  const qc = useQueryClient();
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -57,9 +54,6 @@ export function StoresTable({
               <tr
                 key={store.id}
                 onClick={() => navigate(`/stores/${store.id}`)}
-                onMouseEnter={() =>
-                  prefetchStoreDetails(qc, store.id as string)
-                }
                 className="hover:bg-gray-50/80 transition-colors cursor-pointer group"
               >
                 <td className="px-6 py-4">

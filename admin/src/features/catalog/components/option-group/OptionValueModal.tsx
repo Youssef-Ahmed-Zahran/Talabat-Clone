@@ -1,38 +1,28 @@
-import { useClearTimeout } from "../../../hooks/useClearTimeout";
+import { useClearTimeout } from "../../../../hooks/useClearTimeout";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import toast from "react-hot-toast";
 import {
   optionValueSchema,
   type OptionValueFormValues,
-} from "../../../schemas/productOption.schema";
-import type { OptionValue } from "../../../types";
-import { useCreateOptionValue, useUpdateOptionValue } from "../api/catalog.api";
+} from "../../../../schemas/productOption.schema";
+import type { OptionValue } from "../../../../types";
 
 interface OptionValueModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubmit: (data: OptionValueFormValues) => void;
+  isPending: boolean;
   editingValue: OptionValue | null;
-  // ✅ Moved down: modal now needs storeId + activeGroupId to own the mutations
-  storeId: string;
-  activeGroupId: string | null;
-  onSuccess: () => void;
 }
 
 export function OptionValueModal({
   isOpen,
   onClose,
+  onSubmit,
+  isPending,
   editingValue,
-  storeId,
-  activeGroupId,
-  onSuccess,
 }: OptionValueModalProps) {
-  // ✅ Moved down: mutations live here now, not in the page
-  const createValueMut = useCreateOptionValue(storeId);
-  const updateValueMut = useUpdateOptionValue(storeId);
-  const isPending = createValueMut.isPending || updateValueMut.isPending;
-
   useClearTimeout(onClose, isOpen);
 
   const {
@@ -45,45 +35,6 @@ export function OptionValueModal({
       ? { name: editingValue.name, extraPrice: editingValue.extra_price || 0 }
       : { name: "", extraPrice: 0 },
   });
-
-  // ✅ Moved down: handleSaveValue is now fully encapsulated here
-  const onSubmit = (data: OptionValueFormValues) => {
-    if (!activeGroupId) return;
-
-    if (editingValue) {
-      updateValueMut.mutate(
-        {
-          valueId: editingValue.id,
-          name: data.name.trim(),
-          extraPrice: Number(data.extraPrice) || 0,
-        },
-        {
-          onSuccess: () => {
-            toast.success("Option value updated");
-            onClose();
-            onSuccess();
-          },
-          onError: () => toast.error("Failed to update value"),
-        },
-      );
-    } else {
-      createValueMut.mutate(
-        {
-          groupId: activeGroupId,
-          name: data.name.trim(),
-          extraPrice: Number(data.extraPrice) || 0,
-        },
-        {
-          onSuccess: () => {
-            toast.success("Option value added");
-            onClose();
-            onSuccess();
-          },
-          onError: () => toast.error("Failed to add value"),
-        },
-      );
-    }
-  };
 
   if (!isOpen) return null;
 

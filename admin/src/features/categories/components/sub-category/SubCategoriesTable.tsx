@@ -7,8 +7,8 @@ import {
   Store as StoreIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { useDeleteSubCategory } from "../api/category.api";
-import type { Category } from "../../../types";
+import { useDeleteSubCategory } from "../../api/category.api";
+import type { Category } from "../../../../types";
 import SubCategoryModal from "./SubCategoryModal";
 import LinkStoreModal from "./LinkStoreModal";
 import LinkedStoresModal from "./LinkedStoresModal";

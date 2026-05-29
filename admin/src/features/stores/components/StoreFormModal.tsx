@@ -106,7 +106,8 @@ export function StoreFormModal({
     trigger,
     formState: { errors },
   } = useForm<StoreFormValues>({
-    resolver: zodResolver(storeSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(storeSchema) as any,
     values: editingStore
       ? {
           name: editingStore.name || "",
@@ -147,6 +148,7 @@ export function StoreFormModal({
   const coverImage = watch("coverImage");
   const lat = watch("latitude");
   const lng = watch("longitude");
+  const deliveryType = watch("deliveryType");
 
   const handleNext = async () => {
     let fieldsToValidate: (keyof StoreFormValues)[] = [];
@@ -644,6 +646,53 @@ export function StoreFormModal({
                   <option value="STORE_DELIVERY">Self Delivery</option>
                 </select>
               </div>
+
+              {deliveryType === "STORE_DELIVERY" && (
+                <div className="space-y-4 animate-slide-up">
+                  <div>
+                    <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                      Max Delivery Distance (KM) *
+                    </label>
+                    <input
+                      type="number"
+                      {...register("maxDeliveryDistanceKm")}
+                      className={`w-full px-4 py-3 bg-gray-50 border ${errors.maxDeliveryDistanceKm ? "border-red-500" : "border-gray-100"} rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all`}
+                    />
+                    <p className="mt-1.5 text-[11px] text-gray-500 ml-1">
+                      Maximum radius this store's drivers will travel outside
+                      their location.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+                      Outside Zone Delivery Fee (EGP) *
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold pointer-events-none">
+                        EGP
+                      </span>
+                      <input
+                        type="number"
+                        {...register("outsideZoneDeliveryFees", {
+                          valueAsNumber: true,
+                        })}
+                        placeholder="0"
+                        className={`w-full pl-14 pr-4 py-3 bg-gray-50 border ${errors.outsideZoneDeliveryFees ? "border-red-500" : "border-gray-100"} rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all`}
+                      />
+                    </div>
+                    {errors.outsideZoneDeliveryFees && (
+                      <p className="text-red-500 text-[11px] mt-1 ml-2 font-medium">
+                        {errors.outsideZoneDeliveryFees.message}
+                      </p>
+                    )}
+                    <p className="mt-1.5 text-[11px] text-gray-500 ml-1">
+                      Extra fee charged to customers when the delivery address
+                      falls outside the store's assigned zone.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

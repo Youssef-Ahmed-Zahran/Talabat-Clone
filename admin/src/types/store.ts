@@ -24,6 +24,8 @@ export interface Store {
   deliveryType?: 'TALABAT_DELIVERY' | 'STORE_DELIVERY';
   openTime?: string;
   closeTime?: string;
+  overtimeOpenTime?: string;
+  overtimeCloseTime?: string;
   deliveryTimeMinutes?: number;
   minimumOrderCost?: number | string;
   deliveryFees?: number | string;
@@ -56,6 +58,8 @@ export interface CreateStorePayload {
   deliveryType: 'TALABAT_DELIVERY' | 'STORE_DELIVERY';
   openTime: string;
   closeTime: string;
+  overtimeOpenTime?: string;
+  overtimeCloseTime?: string;
   deliveryTimeMinutes: number;
   minimumOrderCost: number;
   deliveryFees: number;

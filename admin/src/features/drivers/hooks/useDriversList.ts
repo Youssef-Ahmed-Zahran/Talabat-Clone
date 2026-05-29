@@ -94,21 +94,15 @@ export function useDriversList() {
   );
 
   return {
-    drivers: filtered,
-    isLoading,
-    isError,
-    refetch,
-    search,
-    setSearch,
-    handleApprove,
-    handleReject,
-    handleSuspend,
-    handleUnsuspend,
-    handleDelete,
-    isApproving: approveMutation.isPending,
-    isRejecting: rejectMutation.isPending,
-    isSuspending: suspendMutation.isPending,
-    isUnsuspending: unsuspendMutation.isPending,
-    isDeleting: deleteMutation.isPending,
+    filters: { search, setSearch },
+    query: { drivers: filtered, isLoading, isError, refetch },
+    actions: { handleApprove, handleReject, handleSuspend, handleUnsuspend, handleDelete },
+    loadingStates: {
+      isApproving: approveMutation.isPending,
+      isRejecting: rejectMutation.isPending,
+      isSuspending: suspendMutation.isPending,
+      isUnsuspending: unsuspendMutation.isPending,
+      isDeleting: deleteMutation.isPending,
+    },
   };
 }

@@ -64,13 +64,17 @@ export function useLoginForm() {
   };
 
   return {
-    showPassword,
-    setShowPassword,
-    role,
-    setRole,
-    isPending,
-    register: formMethods.register,
-    handleSubmit: formMethods.handleSubmit(onSubmit),
-    errors: formMethods.formState.errors,
+    state: {
+      showPassword,
+      setShowPassword,
+      role,
+      setRole,
+      isPending,
+    },
+    form: {
+      register: formMethods.register,
+      handleSubmit: formMethods.handleSubmit(onSubmit),
+      errors: formMethods.formState.errors,
+    },
   };
 }

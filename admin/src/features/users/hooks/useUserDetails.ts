@@ -51,16 +51,22 @@ export function useUserDetails() {
   };
 
   return {
-    user,
-    orders,
-    isUserLoading,
-    isUserError,
-    refetchUser,
-    isOrdersLoading,
-    isOrdersError,
-    refetchOrders,
-    handleToggleBlock,
-    isPendingToggle: blockMutation.isPending || unblockMutation.isPending,
-    navigate,
+    query: {
+      user,
+      isUserLoading,
+      isUserError,
+      refetchUser,
+      orders,
+      isOrdersLoading,
+      isOrdersError,
+      refetchOrders,
+    },
+    actions: {
+      handleToggleBlock,
+      isPendingToggle: blockMutation.isPending || unblockMutation.isPending,
+    },
+    router: {
+      navigate,
+    },
   };
 }

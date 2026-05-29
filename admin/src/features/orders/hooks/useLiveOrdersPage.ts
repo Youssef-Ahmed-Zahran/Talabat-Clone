@@ -59,14 +59,20 @@ export function useLiveOrdersPage() {
   };
 
   return {
-    orders,
-    isLoading,
-    isError,
-    refetch,
-    isFetching,
-    searchTerm,
-    setSearchTerm,
-    handleStatusChange,
-    isUpdating,
+    query: {
+      orders,
+      isLoading,
+      isError,
+      refetch,
+      isFetching,
+    },
+    filters: {
+      searchTerm,
+      setSearchTerm,
+    },
+    actions: {
+      handleStatusChange,
+      isUpdating,
+    },
   };
 }

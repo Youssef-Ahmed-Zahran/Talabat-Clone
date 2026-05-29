@@ -9,44 +9,35 @@ import {
 } from "lucide-react";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
-import { SectionModal } from "../components/SectionModal";
-import { ProductModal } from "../components/ProductModal";
-import { ProductCard } from "../components/ProductCard";
-import { SectionNav } from "../components/SectionTabs";
-import { useStoreCatalog } from "../hooks/useStoreCatalog";
+import { SectionModal } from "../components/section/SectionModal";
+import { ProductModal } from "../components/product/ProductModal";
+import { ProductCard } from "../components/product/ProductCard";
+import { SectionNav } from "../components/section/SectionTabs";
+import { useParams } from "react-router-dom";
+import { useAuthStore } from "../../../store/authStore";
+import { useSectionsManager } from "../hooks/useSectionsManager";
+import { useProductsManager } from "../hooks/useProductsManager";
 
 export default function StoreCatalogPage() {
+  const params = useParams<{ storeId: string }>();
+  const authStoreId = useAuthStore((s) => s.storeId);
+  const role = useAuthStore((s) => s.role);
+  const sid = params.storeId || authStoreId || "";
+
+  const { filters, query, modal, actions } = useProductsManager(sid);
+
   const {
-    sid,
-    role,
-    sections,
-    sectionsLoading,
-    sectionsError,
-    refetchSections,
-    activeSectionId,
-    setActiveSectionId,
-    productSearch,
-    setProductSearch,
-    products,
-    productsLoading,
-    showSectionModal,
-    setShowSectionModal,
-    editingSection,
-    showProductModal,
-    setShowProductModal,
-    editingProduct,
-    openCreateSection,
-    openEditSection,
-    handleDeleteSection,
-    openCreateProduct,
-    openEditProduct,
-    handleDeleteProduct,
-    handleToggleAvailability,
-  } = useStoreCatalog();
+    query: sectionsQuery,
+    modal: sectionsModal,
+    actions: sectionsActions,
+  } = useSectionsManager(sid, filters.activeSectionId, () =>
+    filters.setActiveSectionId(null),
+  );
 
   // ── Loading / Error ──────────────────────────────────────────
-  if (sectionsLoading && !sections) return <PageLoader />;
-  if (sectionsError) return <ErrorFallback onRetry={refetchSections} />;
+  if (sectionsQuery.isLoading && !sectionsQuery.sections) return <PageLoader />;
+  if (sectionsQuery.isError)
+    return <ErrorFallback onRetry={sectionsQuery.refetch} />;
 
   return (
     <div className="space-y-6">
@@ -70,14 +61,14 @@ export default function StoreCatalogPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={openCreateSection}
+            onClick={sectionsModal.openCreateSection}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
           >
             <Layers3 className="w-4 h-4" />
             Add Section
           </button>
           <button
-            onClick={openCreateProduct}
+            onClick={modal.openCreateProduct}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
@@ -91,11 +82,11 @@ export default function StoreCatalogPage() {
         <aside className="w-full lg:w-64 shrink-0">
           <div className="sticky top-24">
             <SectionNav
-              sections={sections}
-              activeSectionId={activeSectionId}
-              onSectionChange={setActiveSectionId}
-              onEditSection={openEditSection}
-              onDeleteSection={handleDeleteSection}
+              sections={sectionsQuery.sections}
+              activeSectionId={filters.activeSectionId}
+              onSectionChange={filters.setActiveSectionId}
+              onEditSection={sectionsModal.openEditSection}
+              onDeleteSection={sectionsActions.handleDeleteSection}
             />
           </div>
         </aside>
@@ -107,8 +98,8 @@ export default function StoreCatalogPage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
+                value={filters.productSearch}
+                onChange={(e) => filters.setProductSearch(e.target.value)}
                 placeholder="Search products..."
                 className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
               />
@@ -116,20 +107,20 @@ export default function StoreCatalogPage() {
           </div>
 
           {/* ── Products Grid ────────────────────────────────────────── */}
-          {productsLoading ? (
+          {query.isLoading ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-6 h-6 text-brand animate-spin" />
             </div>
-          ) : products.length > 0 ? (
+          ) : query.products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {products.map((p) => (
+              {query.products.map((p) => (
                 <ProductCard
                   key={p.id}
                   product={p}
                   storeId={sid}
-                  onEdit={openEditProduct}
-                  onDelete={handleDeleteProduct}
-                  onToggleAvailability={handleToggleAvailability}
+                  onEdit={modal.openEditProduct}
+                  onDelete={actions.handleDeleteProduct}
+                  onToggleAvailability={actions.handleToggleAvailability}
                 />
               ))}
             </div>
@@ -142,12 +133,12 @@ export default function StoreCatalogPage() {
                 No products found
               </h3>
               <p className="text-[13px] text-gray-400 mt-1">
-                {activeSectionId
+                {filters.activeSectionId
                   ? "This section has no products yet."
                   : "Start by adding sections and products to your catalog."}
               </p>
               <button
-                onClick={openCreateProduct}
+                onClick={modal.openCreateProduct}
                 className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -159,21 +150,22 @@ export default function StoreCatalogPage() {
       </div>
 
       <SectionModal
-        isOpen={showSectionModal}
-        onClose={() => setShowSectionModal(false)}
-        editingSection={editingSection}
+        isOpen={sectionsModal.isOpen}
+        onClose={() => sectionsModal.setIsOpen(false)}
+        editingSection={sectionsModal.editingSection}
         storeId={sid}
-        sectionsCount={sections?.length ?? 0}
-        onSuccess={refetchSections}
+        sectionsCount={sectionsQuery.sections?.length ?? 0}
+        onSuccess={sectionsQuery.refetch}
       />
 
       <ProductModal
-        isOpen={showProductModal}
-        onClose={() => setShowProductModal(false)}
-        editingProduct={editingProduct}
-        sections={sections}
-        activeSectionId={activeSectionId}
-        storeId={sid}
+        isOpen={modal.isOpen}
+        onClose={() => modal.setIsOpen(false)}
+        onSubmit={actions.handleSubmitProduct}
+        isPending={actions.isPending}
+        editingProduct={modal.editingProduct}
+        sections={sectionsQuery.sections}
+        activeSectionId={filters.activeSectionId}
       />
     </div>
   );

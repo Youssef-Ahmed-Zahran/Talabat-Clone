@@ -12,12 +12,16 @@ export function useStoreDetailsPage() {
   const { data: store, isLoading, isError, refetch } = useStoreDetails(storeId);
 
   return {
-    role,
-    storeId,
-    store,
-    isLoading,
-    isError,
-    refetch,
-    navigate,
+    query: {
+      role,
+      storeId,
+      store,
+      isLoading,
+      isError,
+      refetch,
+    },
+    router: {
+      navigate,
+    },
   };
 }

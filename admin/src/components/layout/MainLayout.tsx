@@ -35,14 +35,13 @@ export default function MainLayout() {
   const [profileOpen, setProfileOpen] = useState(false);
   const logout = useAuthStore((s) => s.logout);
   const role = useAuthStore((s) => s.role);
-  const storeId = useAuthStore((s) => s.storeId);
   const navigate = useNavigate();
 
   const NAV_ITEMS =
     role === "owner"
       ? [
           { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-          { label: "My Store", icon: Store, path: `/stores/${storeId}` },
+          { label: "My Store", icon: Store, path: `/my-store` },
           { label: "Orders", icon: ShoppingBag, path: "/orders" },
         ]
       : ADMIN_NAV_ITEMS;
@@ -74,7 +73,9 @@ export default function MainLayout() {
         `}
       >
         {/* Logo */}
-        <div className={`flex items-center h-16 border-b border-gray-100 transition-all duration-300 ${sidebarCollapsed ? "justify-center px-0" : "justify-between px-6"}`}>
+        <div
+          className={`flex items-center h-16 border-b border-gray-100 transition-all duration-300 ${sidebarCollapsed ? "justify-center px-0" : "justify-between px-6"}`}
+        >
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center flex-shrink-0">
               <span className="text-white font-bold text-sm">T</span>
@@ -101,7 +102,9 @@ export default function MainLayout() {
         </div>
 
         {/* Navigation */}
-        <nav className={`flex-1 py-4 space-y-0.5 overflow-y-auto ${sidebarCollapsed ? "px-1.5" : "px-3"}`}>
+        <nav
+          className={`flex-1 py-4 space-y-0.5 overflow-y-auto ${sidebarCollapsed ? "px-1.5" : "px-3"}`}
+        >
           {!sidebarCollapsed ? (
             <p className="px-3 mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 animate-fade-in">
               Main Menu
@@ -137,7 +140,9 @@ export default function MainLayout() {
                     }`}
                     strokeWidth={isActive ? 2.2 : 1.8}
                   />
-                  {!sidebarCollapsed && <span className="animate-fade-in">{label}</span>}
+                  {!sidebarCollapsed && (
+                    <span className="animate-fade-in">{label}</span>
+                  )}
                 </>
               )}
             </NavLink>
@@ -159,7 +164,9 @@ export default function MainLayout() {
               className="w-[18px] h-[18px] text-gray-400 group-hover:text-red-500 transition-colors flex-shrink-0"
               strokeWidth={1.8}
             />
-            {!sidebarCollapsed && <span className="animate-fade-in">Log out</span>}
+            {!sidebarCollapsed && (
+              <span className="animate-fade-in">Log out</span>
+            )}
           </button>
         </div>
       </aside>

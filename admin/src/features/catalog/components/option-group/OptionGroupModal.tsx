@@ -1,38 +1,28 @@
-import { useClearTimeout } from "../../../hooks/useClearTimeout";
+import { useClearTimeout } from "../../../../hooks/useClearTimeout";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import toast from "react-hot-toast";
 import {
   optionGroupSchema,
   type OptionGroupFormValues,
-} from "../../../schemas/productOption.schema";
-import type { OptionGroup } from "../../../types";
-import { useCreateOptionGroup, useUpdateOptionGroup } from "../api/catalog.api";
+} from "../../../../schemas/productOption.schema";
+import type { OptionGroup } from "../../../../types";
 
 interface OptionGroupModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubmit: (data: OptionGroupFormValues) => void;
+  isPending: boolean;
   editingGroup: OptionGroup | null;
-  // ✅ Moved down: modal now needs storeId + productId to own the mutations
-  storeId: string;
-  productId: string;
-  onSuccess: () => void;
 }
 
 export function OptionGroupModal({
   isOpen,
   onClose,
+  onSubmit,
+  isPending,
   editingGroup,
-  storeId,
-  productId,
-  onSuccess,
 }: OptionGroupModalProps) {
-  // ✅ Moved down: mutations live here now, not in the page
-  const createGroupMut = useCreateOptionGroup(storeId);
-  const updateGroupMut = useUpdateOptionGroup(storeId);
-  const isPending = createGroupMut.isPending || updateGroupMut.isPending;
-
   useClearTimeout(onClose, isOpen);
 
   const {
@@ -50,47 +40,6 @@ export function OptionGroupModal({
         }
       : { name: "", isRequired: false, minSelect: 0, maxSelect: 1 },
   });
-
-  // ✅ Moved down: handleSaveGroup is now fully encapsulated here
-  const onSubmit = (data: OptionGroupFormValues) => {
-    if (editingGroup) {
-      updateGroupMut.mutate(
-        {
-          groupId: editingGroup.id,
-          name: data.name.trim(),
-          isRequired: data.isRequired,
-          minSelect: Number(data.minSelect),
-          maxSelect: Number(data.maxSelect),
-        },
-        {
-          onSuccess: () => {
-            toast.success("Option group updated");
-            onClose();
-            onSuccess();
-          },
-          onError: () => toast.error("Failed to update option group"),
-        },
-      );
-    } else {
-      createGroupMut.mutate(
-        {
-          productId,
-          name: data.name.trim(),
-          isRequired: data.isRequired,
-          minSelect: Number(data.minSelect),
-          maxSelect: Number(data.maxSelect),
-        },
-        {
-          onSuccess: () => {
-            toast.success("Option group created");
-            onClose();
-            onSuccess();
-          },
-          onError: () => toast.error("Failed to create option group"),
-        },
-      );
-    }
-  };
 
   if (!isOpen) return null;
 

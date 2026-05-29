@@ -77,40 +77,23 @@ const ONLINE_STATUS_CONFIG: Record<
 };
 
 export default function DriverDetailsPage() {
-  const {
-    driverId,
-    driver,
-    isLoading,
-    isError,
-    refetch,
-    navigate,
-    handleApprove,
-    handleReject,
-    handleSuspend,
-    handleUnsuspend,
-    handleVerifyDoc,
-    handleRejectDoc,
-    isApproving,
-    isRejecting,
-    isSuspending,
-    isUnsuspending,
-  } = useDriverDetails();
+  const { query, actions, loadingStates, router } = useDriverDetails();
 
-  if (isLoading) return <PageLoader />;
-  if (isError || !driver) return <ErrorFallback onRetry={refetch} />;
+  if (query.isLoading) return <PageLoader />;
+  if (query.isError || !query.driver) return <ErrorFallback onRetry={query.refetch} />;
 
-  const application = driver.application;
+  const application = query.driver.application;
   const appStatus = application?.status || "PENDING";
   const appCfg = APP_STATUS_CONFIG[appStatus];
   const onlineCfg =
-    ONLINE_STATUS_CONFIG[driver.status] || ONLINE_STATUS_CONFIG.OFFLINE;
+    ONLINE_STATUS_CONFIG[query.driver.status] || ONLINE_STATUS_CONFIG.OFFLINE;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
       {/* Header & Back Button */}
       <div className="flex items-center justify-between">
         <button
-          onClick={() => navigate("/drivers")}
+          onClick={() => router.navigate("/drivers")}
           className="group flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
         >
           <div className="p-2 bg-white border border-gray-100 rounded-lg group-hover:border-gray-200 transition-all">
@@ -123,16 +106,16 @@ export default function DriverDetailsPage() {
           {appStatus === "PENDING" && (
             <>
               <button
-                onClick={handleApprove}
-                disabled={isApproving}
+                onClick={actions.handleApprove}
+                disabled={loadingStates.isApproving}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-emerald-500 rounded-xl hover:bg-emerald-600 transition-all disabled:opacity-50"
               >
                 <CheckCircle className="w-4 h-4" />
                 Approve Application
               </button>
               <button
-                onClick={handleReject}
-                disabled={isRejecting}
+                onClick={actions.handleReject}
+                disabled={loadingStates.isRejecting}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-all disabled:opacity-50"
               >
                 <XCircle className="w-4 h-4" />
@@ -141,10 +124,10 @@ export default function DriverDetailsPage() {
             </>
           )}
 
-          {driver.status !== "SUSPENDED" ? (
+          {query.driver.status !== "SUSPENDED" ? (
             <button
-              onClick={handleSuspend}
-              disabled={isSuspending}
+              onClick={actions.handleSuspend}
+              disabled={loadingStates.isSuspending}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-amber-600 bg-amber-50 rounded-xl hover:bg-amber-100 transition-all disabled:opacity-50"
             >
               <ShieldOff className="w-4 h-4" />
@@ -152,8 +135,8 @@ export default function DriverDetailsPage() {
             </button>
           ) : (
             <button
-              onClick={handleUnsuspend}
-              disabled={isUnsuspending}
+              onClick={actions.handleUnsuspend}
+              disabled={loadingStates.isUnsuspending}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-emerald-600 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-all disabled:opacity-50"
             >
               <ShieldCheck className="w-4 h-4" />
@@ -165,17 +148,17 @@ export default function DriverDetailsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <DriverProfileCard
-          driver={driver}
+          driver={query.driver}
           appCfg={appCfg}
           onlineCfg={onlineCfg}
         />
 
         <div className="lg:col-span-2 space-y-8">
-          <DriverApplicationDetails driver={driver} />
+          <DriverApplicationDetails driver={query.driver} />
           <DriverDocumentsList
-            documents={driver.documents}
-            onVerify={handleVerifyDoc}
-            onReject={handleRejectDoc}
+            documents={query.driver.documents}
+            onVerify={actions.handleVerifyDoc}
+            onReject={actions.handleRejectDoc}
           />
           <div className="pt-4 border-t border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-3">
@@ -184,7 +167,7 @@ export default function DriverDetailsPage() {
               </div>
               Financial Management (Wallet)
             </h3>
-            <DriverWalletDetails driverId={driverId!} />
+            <DriverWalletDetails driverId={query.driverId!} />
           </div>
         </div>
       </div>

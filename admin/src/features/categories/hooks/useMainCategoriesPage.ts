@@ -17,18 +17,24 @@ export function useMainCategoriesPage() {
   const selectedCategory = categories?.find((c) => c.id === selectedCategoryId);
 
   return {
-    categories,
-    isLoading,
-    isError,
-    refetch,
-    selectedCategoryId,
-    setSelectedCategoryId,
-    subCategories,
-    subLoading,
-    showMainModal,
-    setShowMainModal,
-    showSubModal,
-    setShowSubModal,
-    selectedCategory,
+    query: {
+      categories,
+      isLoading,
+      isError,
+      refetch,
+      subCategories,
+      subLoading,
+      selectedCategory,
+    },
+    state: {
+      selectedCategoryId,
+      setSelectedCategoryId,
+    },
+    modal: {
+      showMainModal,
+      setShowMainModal,
+      showSubModal,
+      setShowSubModal,
+    },
   };
 }

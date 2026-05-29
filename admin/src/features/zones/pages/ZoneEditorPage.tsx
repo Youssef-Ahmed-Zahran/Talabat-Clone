@@ -1,22 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import toast from "react-hot-toast";
-import {
-  useCreateZone,
-  useUpdateZone,
-  useAssignStoresToZone,
-  useRemoveStoreFromZone,
-  useAssignDriversToZone,
-  useRemoveDriverFromZone,
-  fetchZoneById,
-  fetchStores,
-  fetchDrivers,
-  fetchCities,
-  type GeoJSONPolygon,
-  type Zone,
-  type ZoneDriver,
-  type ZoneStore,
-} from "../api/zones.api";
+import React from "react";
+import type { ZoneDriver, ZoneStore, Zone } from "../api/zones.api";
 import ZoneMapEditor from "../components/ZoneMapEditor";
 import {
   MapPin,
@@ -32,8 +15,7 @@ import {
   AlertTriangle,
   ChevronDown,
 } from "lucide-react";
-
-type Mode = "create" | "edit";
+import { useZoneEditor } from "../hooks/useZoneEditor";
 
 const PRESET_COLORS = [
   "#FF5A00", // Brand
@@ -45,309 +27,9 @@ const PRESET_COLORS = [
 ];
 
 const ZoneEditorPage: React.FC = () => {
-  const { id } = useParams<{ id?: string }>();
-  const navigate = useNavigate();
-  const mode: Mode = id ? "edit" : "create";
-
-  const createZoneMutation = useCreateZone();
-  const updateZoneMutation = useUpdateZone();
-  const assignStoresMutation = useAssignStoresToZone();
-  const removeStoreMutation = useRemoveStoreFromZone();
-  const assignDriversMutation = useAssignDriversToZone();
-  const removeDriverMutation = useRemoveDriverFromZone();
-
-  // Form state
-  const [name, setName] = useState("");
-  const [cityId, setCityId] = useState("");
-  const [description, setDescription] = useState("");
-  const [color, setColor] = useState("#F97316");
-  const [geojson, setGeojson] = useState<GeoJSONPolygon | null>(null);
-  const [initialPolygon, setInitialPolygon] = useState<GeoJSONPolygon | null>(
-    null,
-  );
-
-  // Cities
-  const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
-  const selectedCountryCode = "EG"; // Static for Egypt
-
-  // Store assignment
-  const [assignedStores, setAssignedStores] = useState<Zone["storeZones"]>([]);
-  const [storeSearch, setStoreSearch] = useState("");
-  const [storeResults, setStoreResults] = useState<ZoneStore[]>([]);
-  const [searchingStores, setSearchingStores] = useState(false);
-
-  // UI
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"map" | "stores" | "drivers">(
-    "map",
-  );
-  const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
-
-  // Driver assignment
-  const [assignedDrivers, setAssignedDrivers] = useState<Zone["driverZones"]>(
-    [],
-  );
-  const [driverSearch, setDriverSearch] = useState("");
-  const [driverResults, setDriverResults] = useState<ZoneDriver[]>([]);
-  const [searchingDrivers, setSearchingDrivers] = useState(false);
-
-  // Dynamic Name Search State
-  const [nameSuggestions, setNameSuggestions] = useState<
-    { name?: string; display_name: string; lat: string; lon: string }[]
-  >([]);
-  const [isSearchingName, setIsSearchingName] = useState(false);
-  const [showNameSuggestions, setShowNameSuggestions] = useState(false);
-
-  // Load cities for static country EG on mount
-  useEffect(() => {
-    fetchCities(selectedCountryCode)
-      .then(setCities)
-      .catch(() => {});
-  }, []);
-
-  // Load existing zone for edit mode
-  useEffect(() => {
-    if (mode === "edit" && id) {
-      fetchZoneById(id)
-        .then((zone) => {
-          console.log("[ZoneEditor] Loaded zone data:", zone);
-          console.log(
-            "[ZoneEditor] StoreZones count:",
-            zone.storeZones?.length || 0,
-          );
-          setName(zone.name || "");
-          setCityId(zone.cityId || "");
-          setDescription(zone.description || "");
-          setColor(zone.color || "#F97316");
-          if (zone.boundary) {
-            setInitialPolygon(zone.boundary);
-            setGeojson(zone.boundary);
-          }
-          setAssignedStores(zone.storeZones || []);
-          setAssignedDrivers(zone.driverZones || []);
-        })
-        .catch((err) => {
-          console.error("[ZoneEditor] Failed to fetch zone:", err);
-          toast.error("Failed to load zone details. Please refresh.");
-        });
-    }
-  }, [mode, id]);
-
-  // Auto-pan map and fetch suggestions when Zone Name is typed (debounced geocoding)
-  useEffect(() => {
-    if (!name.trim() || mode === "edit" || !showNameSuggestions) {
-      // Use setTimeout to avoid synchronous setState inside effect body which causes cascading renders
-      const clearTimer = setTimeout(() => setNameSuggestions([]), 0);
-      return () => clearTimeout(clearTimer);
-    }
-    const timer = setTimeout(async () => {
-      setIsSearchingName(true);
-      try {
-        const selectedCityName =
-          cities.find((c) => c.id === cityId)?.name || "";
-        const selectedCountryName = "Egypt";
-
-        const parts = [name, selectedCityName, selectedCountryName].filter(
-          Boolean,
-        );
-        const query = parts.join(", ");
-
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`,
-        );
-        const data = await res.json();
-        setNameSuggestions(data || []);
-
-        if (data && data.length > 0) {
-          setMapCenter([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
-        }
-      } catch (err) {
-        console.error("Geocoding failed:", err);
-        setNameSuggestions([]);
-      } finally {
-        setIsSearchingName(false);
-      }
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [name, cityId, cities, mode, showNameSuggestions]);
-
-  const handleSelectNameSuggestion = (suggestion: {
-    name?: string;
-    display_name: string;
-    lat: string;
-    lon: string;
-  }) => {
-    const shortName = suggestion.name || suggestion.display_name.split(",")[0];
-    setName(shortName);
-    setShowNameSuggestions(false);
-    if (suggestion.lat && suggestion.lon) {
-      setMapCenter([parseFloat(suggestion.lat), parseFloat(suggestion.lon)]);
-    }
-  };
-
-  // Store search
-  useEffect(() => {
-    if (!storeSearch.trim()) {
-      const clearTimer = setTimeout(() => setStoreResults([]), 0);
-      return () => clearTimeout(clearTimer);
-    }
-    const timer = setTimeout(async () => {
-      setSearchingStores(true);
-      try {
-        const stores = await fetchStores(storeSearch);
-        setStoreResults(stores);
-      } catch {
-        setStoreResults([]);
-      } finally {
-        setSearchingStores(false);
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [storeSearch]);
-
-  const handleAddStore = async (store: ZoneStore) => {
-    if (!id) return;
-    try {
-      await assignStoresMutation.mutateAsync({
-        zoneId: id,
-        storeIds: [store.id],
-      });
-      setAssignedStores((prev) => [
-        ...(prev || []),
-        {
-          id: Math.random().toString(),
-          storeId: store.id,
-          store,
-        } as NonNullable<Zone["storeZones"]>[0],
-      ]);
-      setStoreSearch("");
-      setStoreResults([]);
-      toast.success(`Store "${store.name}" assigned successfully.`);
-    } catch {
-      toast.error("Failed to assign store.");
-    }
-  };
-
-  const handleRemoveStore = async (storeId: string) => {
-    if (!id) return;
-    try {
-      await removeStoreMutation.mutateAsync({ zoneId: id, storeId });
-      setAssignedStores((prev) =>
-        (prev || []).filter(
-          (s) => s.storeId !== storeId && s.store?.id !== storeId,
-        ),
-      );
-      toast.success("Store removed successfully.");
-    } catch {
-      toast.error("Failed to remove store.");
-    }
-  };
-
-  // Driver search
-  useEffect(() => {
-    if (!driverSearch.trim()) {
-      const clearTimer = setTimeout(() => setDriverResults([]), 0);
-      return () => clearTimeout(clearTimer);
-    }
-    const timer = setTimeout(async () => {
-      setSearchingDrivers(true);
-      try {
-        const drivers = await fetchDrivers(driverSearch);
-        setDriverResults(drivers);
-      } catch {
-        setDriverResults([]);
-      } finally {
-        setSearchingDrivers(false);
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [driverSearch]);
-
-  const handleAddDriver = async (driver: ZoneDriver) => {
-    if (!id) return;
-    try {
-      await assignDriversMutation.mutateAsync({
-        zoneId: id,
-        driverIds: [driver.id],
-      });
-      setAssignedDrivers((prev) => [
-        ...(prev || []),
-        {
-          id: Math.random().toString(),
-          driverId: driver.id,
-          driver,
-        } as NonNullable<Zone["driverZones"]>[0],
-      ]);
-      setDriverSearch("");
-      setDriverResults([]);
-      const driverName = driver.application
-        ? `${driver.application.firstName} ${driver.application.familyName}`
-        : driver.phone;
-      toast.success(`Driver "${driverName}" assigned successfully.`);
-    } catch {
-      toast.error("Failed to assign driver.");
-    }
-  };
-
-  const handleRemoveDriver = async (driverId: string) => {
-    if (!id) return;
-    try {
-      await removeDriverMutation.mutateAsync({ zoneId: id, driverId });
-      setAssignedDrivers((prev) =>
-        (prev || []).filter(
-          (d) => d.driverId !== driverId && d.driver?.id !== driverId,
-        ),
-      );
-      toast.success("Driver removed successfully.");
-    } catch {
-      toast.error("Failed to remove driver.");
-    }
-  };
-
-  const handleSave = async () => {
-    if (!name.trim() || !cityId) {
-      setSaveError("Name and city are required.");
-      return;
-    }
-
-    setSaving(true);
-    setSaveError(null);
-
-    try {
-      if (mode === "create") {
-        if (!geojson) {
-          setSaveError("Please draw a zone polygon on the map.");
-          setSaving(false);
-          return;
-        }
-        const newZone = await createZoneMutation.mutateAsync({
-          name,
-          cityId,
-          description,
-          color,
-          geojson,
-        });
-        toast.success("Zone created successfully.");
-        navigate(`/zones/${newZone.id}/edit`);
-      } else if (id) {
-        await updateZoneMutation.mutateAsync({
-          id,
-          name,
-          description,
-          color,
-          ...(geojson ? { geojson } : {}),
-        });
-        toast.success("Zone updated successfully.");
-        navigate("/zones");
-      }
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setSaveError(error?.response?.data?.message || "Failed to save zone.");
-    } finally {
-      setSaving(false);
-    }
-  };
+  const { state, actions, router } = useZoneEditor();
+  const { form, geocoding, stores, drivers, ui } = state;
+  const { navigate } = router;
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] animate-fade-in pb-12">
@@ -369,14 +51,14 @@ const ZoneEditorPage: React.FC = () => {
             </div>
             <div>
               <h1 className="text-2xl font-black text-gray-900 tracking-tight leading-tight">
-                {mode === "create" ? "Create Zone" : "Edit Zone"}
+                {form.mode === "create" ? "Create Zone" : "Edit Zone"}
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
                 <p className="text-[11px] text-gray-400 font-bold uppercase tracking-[0.1em]">
-                  {mode === "create"
+                  {form.mode === "create"
                     ? "Delivery Area Definition"
-                    : `ID: ${id?.slice(0, 8)}…`}
+                    : `ID: ${form.id?.slice(0, 8)}…`}
                 </p>
               </div>
             </div>
@@ -385,10 +67,10 @@ const ZoneEditorPage: React.FC = () => {
 
         <button
           className="group inline-flex items-center gap-3 px-8 py-3.5 bg-brand text-white font-black rounded-2xl hover:bg-brand-dark transition-all duration-300 premium-shadow-lg active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
-          onClick={handleSave}
-          disabled={saving}
+          onClick={actions.handleSave}
+          disabled={ui.saving}
         >
-          {saving ? (
+          {ui.saving ? (
             <Loader2 size={20} className="animate-spin" />
           ) : (
             <Save
@@ -396,15 +78,15 @@ const ZoneEditorPage: React.FC = () => {
               className="group-hover:rotate-12 transition-transform"
             />
           )}
-          <span>{saving ? "Saving Changes…" : "Save Zone"}</span>
+          <span>{ui.saving ? "Saving Changes…" : "Save Zone"}</span>
         </button>
       </div>
 
       <div className="max-w-[1600px] mx-auto p-4 lg:p-12 animate-slide-up">
-        {saveError && (
+        {ui.saveError && (
           <div className="mb-8 flex items-center gap-4 p-5 bg-red-50 border border-red-100/50 rounded-[24px] text-red-600 shadow-sm animate-shake">
             <AlertTriangle size={20} className="shrink-0" />
-            <p className="text-sm font-bold">{saveError}</p>
+            <p className="text-sm font-bold">{ui.saveError}</p>
           </div>
         )}
 
@@ -434,22 +116,26 @@ const ZoneEditorPage: React.FC = () => {
                   <div className="relative group">
                     <input
                       type="text"
-                      value={name}
+                      value={form.name}
                       onChange={(e) => {
-                        setName(e.target.value);
-                        setShowNameSuggestions(true);
+                        form.setName(e.target.value);
+                        geocoding.setShowNameSuggestions(true);
                       }}
                       onFocus={() => {
-                        if (name.trim()) setShowNameSuggestions(true);
+                        if (form.name.trim())
+                          geocoding.setShowNameSuggestions(true);
                       }}
                       onBlur={() => {
-                        setTimeout(() => setShowNameSuggestions(false), 200);
+                        setTimeout(
+                          () => geocoding.setShowNameSuggestions(false),
+                          200,
+                        );
                       }}
                       placeholder="e.g. Maadi Residential Area"
                       className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand/10 focus:border-brand/50 focus:bg-white transition-all duration-300 text-gray-900 font-bold placeholder:text-gray-300 pr-12 shadow-inner"
                     />
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center">
-                      {isSearchingName ? (
+                      {geocoding.isSearchingName ? (
                         <Loader2
                           size={18}
                           className="text-brand animate-spin"
@@ -462,34 +148,37 @@ const ZoneEditorPage: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  {showNameSuggestions && nameSuggestions.length > 0 && (
-                    <div className="absolute top-full mt-3 left-0 right-0 bg-white/95 backdrop-blur-xl border border-gray-100 shadow-2xl rounded-3xl z-[100] max-h-[300px] overflow-hidden p-2 animate-slide-up">
-                      <div className="overflow-y-auto max-h-[290px] pr-1">
-                        {nameSuggestions.map((s, idx) => (
-                          <div
-                            key={idx}
-                            className="px-4 py-4 hover:bg-brand/5 cursor-pointer rounded-2xl transition-all group flex items-start gap-4 mb-1 last:mb-0"
-                            onClick={() => handleSelectNameSuggestion(s)}
-                          >
-                            <div className="w-9 h-9 rounded-xl bg-gray-50 group-hover:bg-brand/10 flex items-center justify-center shrink-0 transition-colors">
-                              <MapPin
-                                size={16}
-                                className="text-gray-400 group-hover:text-brand transition-colors"
-                              />
+                  {geocoding.showNameSuggestions &&
+                    geocoding.nameSuggestions.length > 0 && (
+                      <div className="absolute top-full mt-3 left-0 right-0 bg-white/95 backdrop-blur-xl border border-gray-100 shadow-2xl rounded-3xl z-[100] max-h-[300px] overflow-hidden p-2 animate-slide-up">
+                        <div className="overflow-y-auto max-h-[290px] pr-1">
+                          {geocoding.nameSuggestions.map((s, idx) => (
+                            <div
+                              key={idx}
+                              className="px-4 py-4 hover:bg-brand/5 cursor-pointer rounded-2xl transition-all group flex items-start gap-4 mb-1 last:mb-0"
+                              onClick={() =>
+                                actions.handleSelectNameSuggestion(s)
+                              }
+                            >
+                              <div className="w-9 h-9 rounded-xl bg-gray-50 group-hover:bg-brand/10 flex items-center justify-center shrink-0 transition-colors">
+                                <MapPin
+                                  size={16}
+                                  className="text-gray-400 group-hover:text-brand transition-colors"
+                                />
+                              </div>
+                              <div>
+                                <p className="text-sm font-black text-gray-900 leading-tight">
+                                  {s.name || s.display_name.split(",")[0]}
+                                </p>
+                                <p className="text-[11px] text-gray-400 mt-1 font-medium line-clamp-1">
+                                  {s.display_name}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm font-black text-gray-900 leading-tight">
-                                {s.name || s.display_name.split(",")[0]}
-                              </p>
-                              <p className="text-[11px] text-gray-400 mt-1 font-medium line-clamp-1">
-                                {s.display_name}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-5">
@@ -517,11 +206,13 @@ const ZoneEditorPage: React.FC = () => {
                     </label>
                     <div className="relative">
                       <select
-                        value={cityId}
+                        value={form.cityId}
                         onChange={async (e) => {
                           const id = e.target.value;
-                          setCityId(id);
-                          const selectedCity = cities.find((c) => c.id === id);
+                          form.setCityId(id);
+                          const selectedCity = form.cities.find(
+                            (c) => c.id === id,
+                          );
                           if (selectedCity) {
                             const selectedCountryName = "Egypt";
                             const query =
@@ -532,7 +223,7 @@ const ZoneEditorPage: React.FC = () => {
                               );
                               const data = await res.json();
                               if (data && data.length > 0) {
-                                setMapCenter([
+                                ui.setMapCenter([
                                   parseFloat(data[0].lat),
                                   parseFloat(data[0].lon),
                                 ]);
@@ -548,7 +239,7 @@ const ZoneEditorPage: React.FC = () => {
                         className="w-full pl-5 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand/10 focus:border-brand/50 focus:bg-white transition-all duration-300 text-gray-900 font-bold appearance-none shadow-inner"
                       >
                         <option value="">Select City</option>
-                        {cities.map((c) => (
+                        {form.cities.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.name}
                           </option>
@@ -566,8 +257,8 @@ const ZoneEditorPage: React.FC = () => {
                     Description
                   </label>
                   <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    value={form.description}
+                    onChange={(e) => form.setDescription(e.target.value)}
                     placeholder="Describe delivery rules, zone limits..."
                     rows={3}
                     className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand/10 focus:border-brand/50 focus:bg-white transition-all duration-300 text-gray-900 font-bold placeholder:text-gray-300 resize-none shadow-inner"
@@ -582,20 +273,20 @@ const ZoneEditorPage: React.FC = () => {
                     {PRESET_COLORS.map((c) => (
                       <button
                         key={c}
-                        onClick={() => setColor(c)}
-                        className={`w-full aspect-square rounded-xl transition-all duration-300 border-4 ${color === c ? "scale-110 border-white shadow-lg ring-2 ring-brand" : "border-transparent opacity-80 hover:opacity-100"}`}
+                        onClick={() => form.setColor(c)}
+                        className={`w-full aspect-square rounded-xl transition-all duration-300 border-4 ${form.color === c ? "scale-110 border-white shadow-lg ring-2 ring-brand" : "border-transparent opacity-80 hover:opacity-100"}`}
                         style={{ backgroundColor: c }}
                       />
                     ))}
                     <div className="relative w-full aspect-square group">
                       <input
                         type="color"
-                        value={color}
-                        onChange={(e) => setColor(e.target.value)}
+                        value={form.color}
+                        onChange={(e) => form.setColor(e.target.value)}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                       />
                       <div
-                        className={`w-full h-full rounded-xl flex items-center justify-center border-2 border-dashed ${!PRESET_COLORS.includes(color) ? "border-brand bg-brand/5 text-brand" : "border-gray-200 text-gray-400"} transition-all group-hover:border-brand group-hover:text-brand`}
+                        className={`w-full h-full rounded-xl flex items-center justify-center border-2 border-dashed ${!PRESET_COLORS.includes(form.color) ? "border-brand bg-brand/5 text-brand" : "border-gray-200 text-gray-400"} transition-all group-hover:border-brand group-hover:text-brand`}
                       >
                         <Plus size={16} />
                       </div>
@@ -606,19 +297,22 @@ const ZoneEditorPage: React.FC = () => {
             </div>
 
             <div
-              className={`p-6 rounded-[32px] border-2 flex items-center gap-5 transition-all duration-500 premium-shadow ${geojson ? "bg-green-50/50 border-green-100 text-green-700 ring-4 ring-green-500/5" : "bg-brand/5 border-brand/10 text-brand ring-4 ring-brand/5"}`}
+              className={`p-6 rounded-[32px] border-2 flex items-center gap-5 transition-all duration-500 premium-shadow ${form.geojson ? "bg-green-50/50 border-green-100 text-green-700 ring-4 ring-green-500/5" : "bg-brand/5 border-brand/10 text-brand ring-4 ring-brand/5"}`}
             >
               <div
-                className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${geojson ? "bg-green-500 text-white" : "bg-brand text-white"}`}
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${form.geojson ? "bg-green-500 text-white" : "bg-brand text-white"}`}
               >
-                <MapPin size={24} className={geojson ? "" : "animate-bounce"} />
+                <MapPin
+                  size={24}
+                  className={form.geojson ? "" : "animate-bounce"}
+                />
               </div>
               <div>
                 <p className="text-base font-black tracking-tight">
-                  {geojson ? "Boundary Defined" : "Pending Boundary"}
+                  {form.geojson ? "Boundary Defined" : "Pending Boundary"}
                 </p>
                 <p className="text-[11px] font-bold opacity-70 uppercase tracking-widest mt-0.5">
-                  {geojson
+                  {form.geojson
                     ? "Delivery area successfully mapped"
                     : "Draw the zone area on the map"}
                 </p>
@@ -630,33 +324,33 @@ const ZoneEditorPage: React.FC = () => {
           <div className="lg:col-span-8 bg-white rounded-[40px] border border-gray-100 shadow-2xl premium-shadow overflow-hidden flex flex-col min-h-[750px] animate-slide-in-right">
             <div className="flex border-b border-gray-50 bg-[#F9FAFB]/50 p-2 gap-1.5 backdrop-blur-sm">
               <button
-                className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[24px] text-sm font-black tracking-tight transition-all duration-300 ${activeTab === "map" ? "bg-white text-brand shadow-lg premium-shadow ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-white/50"}`}
-                onClick={() => setActiveTab("map")}
+                className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[24px] text-sm font-black tracking-tight transition-all duration-300 ${ui.activeTab === "map" ? "bg-white text-brand shadow-lg premium-shadow ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-white/50"}`}
+                onClick={() => ui.setActiveTab("map")}
               >
                 <MapPin size={18} /> Map Editor
               </button>
-              {mode === "edit" && (
+              {form.mode === "edit" && (
                 <>
                   <button
-                    className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[24px] text-sm font-black tracking-tight transition-all duration-300 ${activeTab === "stores" ? "bg-white text-brand shadow-lg premium-shadow ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-white/50"}`}
-                    onClick={() => setActiveTab("stores")}
+                    className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[24px] text-sm font-black tracking-tight transition-all duration-300 ${ui.activeTab === "stores" ? "bg-white text-brand shadow-lg premium-shadow ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-white/50"}`}
+                    onClick={() => ui.setActiveTab("stores")}
                   >
                     <Building2 size={18} /> Linked Stores
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === "stores" ? "bg-brand/10 text-brand" : "bg-gray-100 text-gray-400"}`}
+                      className={`px-2 py-0.5 rounded-full text-[10px] ${ui.activeTab === "stores" ? "bg-brand/10 text-brand" : "bg-gray-100 text-gray-400"}`}
                     >
-                      {assignedStores?.length ?? 0}
+                      {stores.assignedStores?.length ?? 0}
                     </span>
                   </button>
                   <button
-                    className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[24px] text-sm font-black tracking-tight transition-all duration-300 ${activeTab === "drivers" ? "bg-white text-brand shadow-lg premium-shadow ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-white/50"}`}
-                    onClick={() => setActiveTab("drivers")}
+                    className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[24px] text-sm font-black tracking-tight transition-all duration-300 ${ui.activeTab === "drivers" ? "bg-white text-brand shadow-lg premium-shadow ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-white/50"}`}
+                    onClick={() => ui.setActiveTab("drivers")}
                   >
                     <Car size={18} /> Fleet
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === "drivers" ? "bg-brand/10 text-brand" : "bg-gray-100 text-gray-400"}`}
+                      className={`px-2 py-0.5 rounded-full text-[10px] ${ui.activeTab === "drivers" ? "bg-brand/10 text-brand" : "bg-gray-100 text-gray-400"}`}
                     >
-                      {assignedDrivers?.length ?? 0}
+                      {drivers.assignedDrivers?.length ?? 0}
                     </span>
                   </button>
                 </>
@@ -664,19 +358,19 @@ const ZoneEditorPage: React.FC = () => {
             </div>
 
             <div className="flex-1 relative flex flex-col">
-              {activeTab === "map" && (
+              {ui.activeTab === "map" && (
                 <div className="absolute inset-0">
                   <ZoneMapEditor
-                    initialPolygon={initialPolygon}
-                    onChange={setGeojson}
+                    initialPolygon={form.initialPolygon}
+                    onChange={form.setGeojson}
                     height="100%"
-                    centerOn={mapCenter}
-                    color={color}
+                    centerOn={ui.mapCenter}
+                    color={form.color}
                   />
                 </div>
               )}
 
-              {(activeTab === "stores" || activeTab === "drivers") && (
+              {(ui.activeTab === "stores" || ui.activeTab === "drivers") && (
                 <div className="p-6 flex flex-col h-full bg-gray-50/30 overflow-y-auto">
                   {/* Search Bar */}
                   <div className="relative mb-8">
@@ -684,22 +378,24 @@ const ZoneEditorPage: React.FC = () => {
                     <input
                       type="text"
                       placeholder={
-                        activeTab === "stores"
+                        ui.activeTab === "stores"
                           ? "Search stores by name…"
                           : "Search drivers by name or phone…"
                       }
                       value={
-                        activeTab === "stores" ? storeSearch : driverSearch
+                        ui.activeTab === "stores"
+                          ? stores.storeSearch
+                          : drivers.driverSearch
                       }
                       onChange={(e) =>
-                        activeTab === "stores"
-                          ? setStoreSearch(e.target.value)
-                          : setDriverSearch(e.target.value)
+                        ui.activeTab === "stores"
+                          ? stores.setStoreSearch(e.target.value)
+                          : drivers.setDriverSearch(e.target.value)
                       }
                       className="w-full pl-12 pr-12 py-4 bg-white border border-gray-100 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-brand/10 focus:border-brand/50 transition-all duration-300 text-sm font-bold shadow-sm placeholder:text-gray-300"
                     />
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                      {searchingStores || searchingDrivers ? (
+                      {stores.searchingStores || drivers.searchingDrivers ? (
                         <Loader2
                           size={16}
                           className="text-brand animate-spin"
@@ -712,27 +408,29 @@ const ZoneEditorPage: React.FC = () => {
                     </div>
 
                     {/* Dropdown Results */}
-                    {(activeTab === "stores" ? storeResults : driverResults)
-                      .length > 0 && (
+                    {(ui.activeTab === "stores"
+                      ? stores.storeResults
+                      : drivers.driverResults
+                    ).length > 0 && (
                       <div className="absolute top-full left-0 right-0 mt-3 bg-white/95 backdrop-blur-xl rounded-[28px] border border-gray-100 shadow-2xl z-[100] max-h-[350px] overflow-hidden p-2 animate-slide-up">
                         <div className="overflow-y-auto max-h-[330px] pr-1">
-                          {(activeTab === "stores"
-                            ? storeResults
-                            : driverResults
+                          {(ui.activeTab === "stores"
+                            ? stores.storeResults
+                            : drivers.driverResults
                           ).map((rawItem) => {
-                            const isStore = activeTab === "stores";
+                            const isStore = ui.activeTab === "stores";
                             const storeItem = rawItem as ZoneStore;
                             const driverItem = rawItem as ZoneDriver;
 
                             const alreadyAssigned = isStore
-                              ? (assignedStores || []).some(
+                              ? (stores.assignedStores || []).some(
                                   (s) =>
                                     String(s.storeId) ===
                                       String(storeItem.id) ||
                                     String(s.store?.id) ===
                                       String(storeItem.id),
                                 )
-                              : (assignedDrivers || []).some(
+                              : (drivers.assignedDrivers || []).some(
                                   (d) =>
                                     d.driverId === driverItem.id ||
                                     d.driver?.id === driverItem.id,
@@ -783,8 +481,8 @@ const ZoneEditorPage: React.FC = () => {
                                 <button
                                   onClick={() =>
                                     isStore
-                                      ? handleAddStore(storeItem)
-                                      : handleAddDriver(driverItem)
+                                      ? actions.handleAddStore(storeItem)
+                                      : actions.handleAddDriver(driverItem)
                                   }
                                   disabled={alreadyAssigned}
                                   className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all duration-300 ${alreadyAssigned ? "text-gray-400 bg-gray-50 cursor-not-allowed" : "text-brand bg-brand/5 hover:bg-brand hover:text-white hover:shadow-lg hover:shadow-brand/20 active:scale-95"}`}
@@ -815,9 +513,9 @@ const ZoneEditorPage: React.FC = () => {
                       <span className="text-[10px] font-black text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">
                         {
                           (
-                            (activeTab === "stores"
-                              ? assignedStores
-                              : assignedDrivers) || []
+                            (ui.activeTab === "stores"
+                              ? stores.assignedStores
+                              : drivers.assignedDrivers) || []
                           ).length
                         }{" "}
                         items
@@ -825,20 +523,20 @@ const ZoneEditorPage: React.FC = () => {
                     </div>
 
                     {(
-                      (activeTab === "stores"
-                        ? assignedStores
-                        : assignedDrivers) || []
+                      (ui.activeTab === "stores"
+                        ? stores.assignedStores
+                        : drivers.assignedDrivers) || []
                     ).length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-20 bg-white/50 border-2 border-gray-100 border-dashed rounded-[32px] text-center animate-fade-in">
                         <div className="w-20 h-20 bg-gray-50 rounded-[28px] flex items-center justify-center text-gray-200 mb-6 shadow-inner ring-8 ring-gray-50/50">
-                          {activeTab === "stores" ? (
+                          {ui.activeTab === "stores" ? (
                             <Building2 size={32} />
                           ) : (
                             <Car size={32} />
                           )}
                         </div>
                         <p className="text-base font-black text-gray-900 tracking-tight">
-                          No {activeTab === "stores" ? "stores" : "drivers"}{" "}
+                          No {ui.activeTab === "stores" ? "stores" : "drivers"}{" "}
                           assigned
                         </p>
                         <p className="text-xs text-gray-400 mt-2 max-w-[200px] mx-auto font-medium">
@@ -847,11 +545,11 @@ const ZoneEditorPage: React.FC = () => {
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pb-12 animate-slide-up">
-                        {(activeTab === "stores"
-                          ? assignedStores || []
-                          : assignedDrivers || []
+                        {(ui.activeTab === "stores"
+                          ? stores.assignedStores || []
+                          : drivers.assignedDrivers || []
                         ).map((rawLink) => {
-                          const isStore = activeTab === "stores";
+                          const isStore = ui.activeTab === "stores";
                           const storeLink = rawLink as NonNullable<
                             Zone["storeZones"]
                           >[0];
@@ -888,8 +586,12 @@ const ZoneEditorPage: React.FC = () => {
                                 <button
                                   onClick={() =>
                                     isStore
-                                      ? handleRemoveStore(storeLink.storeId)
-                                      : handleRemoveDriver(driverLink.driverId)
+                                      ? actions.handleRemoveStore(
+                                          storeLink.storeId,
+                                        )
+                                      : actions.handleRemoveDriver(
+                                          driverLink.driverId,
+                                        )
                                   }
                                   className="ml-auto p-1.5 text-red-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all"
                                 >
@@ -958,10 +660,10 @@ const ZoneEditorPage: React.FC = () => {
                               <button
                                 onClick={() =>
                                   isStore
-                                    ? handleRemoveStore(
+                                    ? actions.handleRemoveStore(
                                         storeLink.storeId || storeItem.id,
                                       )
-                                    : handleRemoveDriver(
+                                    : actions.handleRemoveDriver(
                                         driverLink.driverId || driverItem.id,
                                       )
                                 }

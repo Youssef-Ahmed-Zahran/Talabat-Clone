@@ -15,19 +15,7 @@ import {
 import { useZonesPage } from "../hooks/useZonesPage";
 
 const ZonesPage: React.FC = () => {
-  const {
-    zones,
-    isLoading,
-    error,
-    refetch,
-    deleteConfirm,
-    setDeleteConfirm,
-    togglingId,
-    handleToggleActive,
-    handleDelete,
-    goToNewZone,
-    goToEditZone,
-  } = useZonesPage();
+  const { query, state, actions, router } = useZonesPage();
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -48,7 +36,7 @@ const ZonesPage: React.FC = () => {
         </div>
         <button
           className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand text-white font-semibold rounded-xl hover:bg-brand-dark transition-all shadow-sm shadow-brand/20 active:scale-[0.98]"
-          onClick={goToNewZone}
+          onClick={router.goToNewZone}
         >
           <Plus size={18} />
           New Zone
@@ -58,20 +46,24 @@ const ZonesPage: React.FC = () => {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total Zones", value: zones.length, color: "text-gray-900" },
+          {
+            label: "Total Zones",
+            value: query.zones.length,
+            color: "text-gray-900",
+          },
           {
             label: "Active",
-            value: zones.filter((z) => z.isActive).length,
+            value: query.zones.filter((z) => z.isActive).length,
             color: "text-green-600",
           },
           {
             label: "Inactive",
-            value: zones.filter((z) => !z.isActive).length,
+            value: query.zones.filter((z) => !z.isActive).length,
             color: "text-gray-400",
           },
           {
             label: "Stores Assigned",
-            value: zones.reduce(
+            value: query.zones.reduce(
               (acc, z) => acc + (z._count?.storeZones ?? 0),
               0,
             ),
@@ -91,14 +83,14 @@ const ZonesPage: React.FC = () => {
       </div>
 
       {/* Content */}
-      {isLoading ? (
+      {query.isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-gray-100 border-dashed">
           <Loader2 className="w-10 h-10 text-brand animate-spin mb-4" />
           <p className="text-gray-500 font-medium tracking-tight">
             Loading zones…
           </p>
         </div>
-      ) : error ? (
+      ) : query.error ? (
         <div className="flex flex-col items-center justify-center py-16 bg-red-50 rounded-3xl border border-red-100 text-center px-6">
           <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center text-red-600 mb-4">
             <AlertTriangle size={28} />
@@ -107,13 +99,13 @@ const ZonesPage: React.FC = () => {
             Failed to load zones.
           </p>
           <button
-            onClick={() => refetch()}
+            onClick={() => query.refetch()}
             className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
           >
             Retry
           </button>
         </div>
-      ) : zones.length === 0 ? (
+      ) : query.zones.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-gray-100 border-dashed text-center px-6">
           <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-6">
             <MapPin size={40} />
@@ -126,7 +118,7 @@ const ZonesPage: React.FC = () => {
             define where your drivers operate.
           </p>
           <button
-            onClick={goToNewZone}
+            onClick={router.goToNewZone}
             className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-dark transition-all active:scale-[0.98]"
           >
             <Plus size={18} /> Create First Zone
@@ -134,7 +126,7 @@ const ZonesPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {zones.map((zone) => (
+          {query.zones.map((zone) => (
             <div
               key={zone.id}
               className={`group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden ${!zone.isActive ? "opacity-75 grayscale-[0.5]" : ""}`}
@@ -195,11 +187,11 @@ const ZonesPage: React.FC = () => {
                   <div className="flex items-center gap-1">
                     <button
                       className={`p-2 rounded-lg transition-colors ${zone.isActive ? "text-gray-400 hover:text-red-500 hover:bg-red-50" : "text-gray-400 hover:text-green-600 hover:bg-green-50"}`}
-                      onClick={() => handleToggleActive(zone)}
-                      disabled={togglingId === zone.id}
+                      onClick={() => actions.handleToggleActive(zone)}
+                      disabled={state.togglingId === zone.id}
                       title={zone.isActive ? "Deactivate" : "Activate"}
                     >
-                      {togglingId === zone.id ? (
+                      {state.togglingId === zone.id ? (
                         <Loader2 size={16} className="animate-spin" />
                       ) : zone.isActive ? (
                         <ToggleRight size={20} />
@@ -210,7 +202,7 @@ const ZonesPage: React.FC = () => {
 
                     <button
                       className="p-2 text-gray-400 hover:text-brand hover:bg-brand/5 rounded-lg transition-colors"
-                      onClick={() => goToEditZone(zone.id)}
+                      onClick={() => router.goToEditZone(zone.id)}
                       title="Edit zone"
                     >
                       <Pencil size={16} />
@@ -218,7 +210,7 @@ const ZonesPage: React.FC = () => {
 
                     <button
                       className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      onClick={() => setDeleteConfirm(zone.id)}
+                      onClick={() => state.setDeleteConfirm(zone.id)}
                       title="Delete zone"
                     >
                       <Trash2 size={16} />
@@ -227,7 +219,7 @@ const ZonesPage: React.FC = () => {
 
                   <button
                     className="flex items-center gap-1 text-[13px] font-bold text-gray-900 hover:text-brand transition-colors"
-                    onClick={() => goToEditZone(zone.id)}
+                    onClick={() => router.goToEditZone(zone.id)}
                   >
                     Details <ChevronRight size={14} />
                   </button>
@@ -235,7 +227,7 @@ const ZonesPage: React.FC = () => {
               </div>
 
               {/* Delete confirm overlay */}
-              {deleteConfirm === zone.id && (
+              {state.deleteConfirm === zone.id && (
                 <div className="absolute inset-0 z-10 bg-gray-900/95 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6 animate-fade-in">
                   <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
                     <Trash2 size={24} />
@@ -248,13 +240,13 @@ const ZonesPage: React.FC = () => {
                   <div className="flex items-center gap-3 w-full">
                     <button
                       className="flex-1 px-4 py-2 bg-white/10 text-white font-semibold rounded-xl hover:bg-white/20 transition-colors"
-                      onClick={() => setDeleteConfirm(null)}
+                      onClick={() => state.setDeleteConfirm(null)}
                     >
                       Cancel
                     </button>
                     <button
                       className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors"
-                      onClick={() => handleDelete(zone.id)}
+                      onClick={() => actions.handleDelete(zone.id)}
                     >
                       Delete
                     </button>

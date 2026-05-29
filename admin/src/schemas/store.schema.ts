@@ -14,6 +14,8 @@ export const storeSchema = z.object({
   deliveryType: z.enum(["TALABAT_DELIVERY", "STORE_DELIVERY", ""]),
   openTime: z.string().optional(),
   closeTime: z.string().optional(),
+  overtimeOpenTime: z.string().optional(),
+  overtimeCloseTime: z.string().optional(),
   deliveryTimeMinutes: z.coerce.number().min(0).optional(),
   minimumOrderCost: z.coerce.number().min(0).optional(),
   deliveryFees: z.coerce.number().min(0).optional(),

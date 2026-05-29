@@ -7,11 +7,15 @@ export function useDashboard() {
   const isAdmin = role === "admin";
 
   return {
-    stats,
-    isLoading,
-    isError,
-    refetch,
-    role,
-    isAdmin,
+    query: {
+      stats,
+      isLoading,
+      isError,
+      refetch,
+    },
+    state: {
+      role,
+      isAdmin,
+    },
   };
 }

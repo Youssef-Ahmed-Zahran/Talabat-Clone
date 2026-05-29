@@ -42,13 +42,19 @@ export function useUsersList() {
   );
 
   return {
-    users: filtered,
-    isLoading,
-    isError,
-    refetch,
-    search,
-    setSearch,
-    handleToggle,
-    isToggling: blockMutation.isPending || unblockMutation.isPending,
+    filters: {
+      search,
+      setSearch,
+    },
+    query: {
+      users: filtered,
+      isLoading,
+      isError,
+      refetch,
+    },
+    actions: {
+      handleToggle,
+      isToggling: blockMutation.isPending || unblockMutation.isPending,
+    },
   };
 }

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layers3, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { useDeleteCategory } from "../api/category.api";
-import type { Category } from "../../../types";
+import { useDeleteCategory } from "../../api/category.api";
+import type { Category } from "../../../../types";
 import CategoryModal from "./CategoryModal";
 
 interface MainCategoriesTableProps {
