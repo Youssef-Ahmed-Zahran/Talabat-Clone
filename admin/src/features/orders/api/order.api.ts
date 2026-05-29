@@ -50,8 +50,18 @@ export const useUpdateOrderStatus = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: updateOrderStatus,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["orders"] });
+    onSuccess: (data) => {
+      // Optimistically update the orders list in cache without triggering a refetch
+      qc.setQueriesData({ queryKey: ["orders"] }, (oldData: Order[] | undefined) => {
+        if (Array.isArray(oldData)) {
+          return oldData.map((order: Order) =>
+            order.id === data.orderId
+              ? { ...order, status: data.status }
+              : order
+          );
+        }
+        return oldData;
+      });
     },
   });
 };
