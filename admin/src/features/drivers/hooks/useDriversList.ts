@@ -9,7 +9,6 @@ import {
   useDeleteDriver,
 } from "../api/driver.api";
 import { useDebounce } from "../../../hooks/useDebouncing";
-import type { Driver } from "../../../types";
 import { handleApiError } from "../../../utils/error";
 
 export function useDriversList() {

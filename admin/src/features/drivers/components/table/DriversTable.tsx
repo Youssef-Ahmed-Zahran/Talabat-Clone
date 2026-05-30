@@ -9,7 +9,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import type { Driver, DriverStatus } from "../../../types";
+import type { Driver, DriverStatus } from "../../../../types";
 
 const STATUS_BADGE: Record<
   DriverStatus,

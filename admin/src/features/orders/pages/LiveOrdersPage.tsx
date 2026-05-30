@@ -117,7 +117,9 @@ export default function LiveOrdersPage() {
                   <td className="px-6 py-4 text-right">
                     <select
                       value={o.status}
-                      onChange={(e) => actions.handleStatusChange(o.id, e.target.value)}
+                      onChange={(e) =>
+                        actions.handleStatusChange(o.id, e.target.value)
+                      }
                       disabled={actions.isUpdating}
                       className="text-[12px] font-medium bg-white border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:opacity-50"
                     >
@@ -146,4 +148,3 @@ export default function LiveOrdersPage() {
     </div>
   );
 }
-
