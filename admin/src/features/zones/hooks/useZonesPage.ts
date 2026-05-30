@@ -11,8 +11,16 @@ import {
 export function useZonesPage() {
   const navigate = useNavigate();
   const { data: zones = [], isLoading, error, refetch } = useZones();
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  type ModalState =
+    | { type: "NONE" }
+    | { type: "DELETE_CONFIRM"; zoneId: string };
+
+  const [modalState, setModalState] = useState<ModalState>({ type: "NONE" });
   const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const confirmDelete = (zoneId: string) => setModalState({ type: "DELETE_CONFIRM", zoneId });
+  const closeModal = () => setModalState({ type: "NONE" });
 
   const updateZoneMutation = useUpdateZone();
   const deleteZoneMutation = useDeleteZone();
@@ -38,7 +46,7 @@ export function useZonesPage() {
     try {
       await deleteZoneMutation.mutateAsync(id);
       toast.success("Zone deleted successfully.");
-      setDeleteConfirm(null);
+      closeModal();
     } catch {
       toast.error("Failed to delete zone.");
     }
@@ -54,9 +62,12 @@ export function useZonesPage() {
       error,
       refetch,
     },
+    modal: {
+      state: modalState,
+      confirmDelete,
+      close: closeModal,
+    },
     state: {
-      deleteConfirm,
-      setDeleteConfirm,
       togglingId,
     },
     actions: {

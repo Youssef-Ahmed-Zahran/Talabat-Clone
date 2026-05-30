@@ -96,8 +96,12 @@ export function useDriversList() {
   return {
     filters: { search, setSearch },
     query: { drivers: filtered, isLoading, isError, refetch },
-    actions: { handleApprove, handleReject, handleSuspend, handleUnsuspend, handleDelete },
-    loadingStates: {
+    actions: {
+      handleApprove,
+      handleReject,
+      handleSuspend,
+      handleUnsuspend,
+      handleDelete,
       isApproving: approveMutation.isPending,
       isRejecting: rejectMutation.isPending,
       isSuspending: suspendMutation.isPending,

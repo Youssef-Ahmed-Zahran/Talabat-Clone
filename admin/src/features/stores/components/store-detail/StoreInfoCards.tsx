@@ -1,5 +1,5 @@
 import { Info, Phone, Mail, MapPin, Activity } from "lucide-react";
-import type { Store } from "../../../types";
+import type { Store } from "../../../../types";
 
 interface StoreInfoCardsProps {
   store: Store;

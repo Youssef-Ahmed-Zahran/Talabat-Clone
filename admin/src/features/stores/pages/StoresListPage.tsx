@@ -1,8 +1,8 @@
 import { Plus, Search } from "lucide-react";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
-import { StoreFormModal } from "../components/StoreFormModal";
-import { StoresTable } from "../components/StoresTable";
+import { StoreFormModal } from "../components/modals/StoreFormModal";
+import { StoresTable } from "../components/table/StoresTable";
 import { useStoresList } from "../hooks/useStoresList";
 
 export default function StoresListPage() {
@@ -126,12 +126,16 @@ export default function StoresListPage() {
         </div>
       </div>
 
-      <StoreFormModal
-        isOpen={modal.isOpen}
-        onClose={() => modal.setIsOpen(false)}
-        editingStore={modal.editingStore}
-        categories={query.categories}
-      />
+      {(modal.state.type === "CREATE" || modal.state.type === "EDIT") && (
+        <StoreFormModal
+          isOpen={true}
+          onClose={modal.close}
+          editingStore={modal.state.type === "EDIT" ? modal.state.store : null}
+          categories={query.categories}
+          onSubmit={actions.submit}
+          isPending={actions.isPending}
+        />
+      )}
     </div>
   );
 }

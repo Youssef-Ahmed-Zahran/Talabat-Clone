@@ -19,18 +19,16 @@ export function useProductsManager(sid: string) {
   const deleteProductMut = useDeleteProduct(sid);
   const createProductMut = useCreateProduct(sid);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  type ModalState =
+    | { type: "NONE" }
+    | { type: "CREATE" }
+    | { type: "EDIT"; product: Product };
 
-  const openCreate = () => {
-    setEditingProduct(null);
-    setIsModalOpen(true);
-  };
+  const [modalState, setModalState] = useState<ModalState>({ type: "NONE" });
 
-  const openEdit = (p: Product) => {
-    setEditingProduct(p);
-    setIsModalOpen(true);
-  };
+  const openCreate = () => setModalState({ type: "CREATE" });
+  const openEdit = (p: Product) => setModalState({ type: "EDIT", product: p });
+  const closeModal = () => setModalState({ type: "NONE" });
 
   const handleDelete = (p: Product) => {
     if (!confirm(`Delete product "${p.name}"? This cannot be undone.`)) return;
@@ -51,10 +49,10 @@ export function useProductsManager(sid: string) {
   };
 
   const handleSubmitProduct = (data: ProductFormValues) => {
-    if (editingProduct) {
+    if (modalState.type === "EDIT") {
       updateProductMut.mutate(
         {
-          productId: editingProduct.id,
+          productId: modalState.product.id,
           name: data.name.trim(),
           description: data.description?.trim() || undefined,
           price: Number(data.price),
@@ -65,12 +63,12 @@ export function useProductsManager(sid: string) {
         {
           onSuccess: () => {
             toast.success("Product updated");
-            setIsModalOpen(false);
+            closeModal();
           },
           onError: (err) => handleApiError(err, "Couldn't update product."),
         },
       );
-    } else {
+    } else if (modalState.type === "CREATE") {
       createProductMut.mutate(
         {
           name: data.name.trim(),
@@ -84,7 +82,7 @@ export function useProductsManager(sid: string) {
         {
           onSuccess: () => {
             toast.success("Product created");
-            setIsModalOpen(false);
+            closeModal();
           },
           onError: (err) => handleApiError(err, "Couldn't create product."),
         },
@@ -104,11 +102,10 @@ export function useProductsManager(sid: string) {
       isLoading: productsLoading,
     },
     modal: {
-      isOpen: isModalOpen,
-      setIsOpen: setIsModalOpen,
-      editingProduct,
-      openCreateProduct: openCreate,
-      openEditProduct: openEdit,
+      state: modalState,
+      close: closeModal,
+      openCreate,
+      openEdit,
     },
     actions: {
       handleDeleteProduct: handleDelete,

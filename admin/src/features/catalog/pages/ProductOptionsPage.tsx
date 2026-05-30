@@ -32,9 +32,8 @@ export default function ProductOptionsPage() {
     actions: groupsActions,
   } = useOptionGroupsManager(sid, pid);
 
-
-  const { modal: valuesModal, actions: valuesActions } = useOptionValuesManager(sid);
-
+  const { modal: valuesModal, actions: valuesActions } =
+    useOptionValuesManager(sid);
 
   if (prodLoading || groupsQuery.isLoading) return <PageLoader />;
   if (prodError) return <ErrorFallback onRetry={refetchProd} />;
@@ -75,7 +74,7 @@ export default function ProductOptionsPage() {
           </div>
         </div>
         <button
-          onClick={groupsModal.openCreateGroup}
+          onClick={groupsModal.openCreate}
           className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" />
@@ -91,10 +90,10 @@ export default function ProductOptionsPage() {
               group={g}
               isExpanded={groupsState.expandedGroups.has(g.id)}
               onToggleExpand={groupsState.toggleGroupExpand}
-              onAddValue={valuesModal.openAddValue}
-              onEditGroup={groupsModal.openEditGroup}
+              onAddValue={valuesModal.openCreate}
+              onEditGroup={groupsModal.openEdit}
               onDeleteGroup={groupsActions.handleDeleteGroup}
-              onEditValue={valuesModal.openEditValue}
+              onEditValue={valuesModal.openEdit}
               onDeleteValue={valuesActions.handleDeleteValue}
             />
           ))}
@@ -111,7 +110,7 @@ export default function ProductOptionsPage() {
             Add option groups like "Size", "Toppings", "Extras" to this product.
           </p>
           <button
-            onClick={groupsModal.openCreateGroup}
+            onClick={groupsModal.openCreate}
             className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -120,21 +119,31 @@ export default function ProductOptionsPage() {
         </div>
       )}
 
-      <OptionGroupModal
-        isOpen={groupsModal.isOpen}
-        onClose={() => groupsModal.setIsOpen(false)}
-        onSubmit={groupsActions.handleSubmitGroup}
-        isPending={groupsActions.isPending}
-        editingGroup={groupsModal.editingGroup}
-      />
+      {(groupsModal.state.type === "CREATE" ||
+        groupsModal.state.type === "EDIT") && (
+        <OptionGroupModal
+          isOpen={true}
+          onClose={groupsModal.close}
+          onSubmit={groupsActions.handleSubmitGroup}
+          isPending={groupsActions.isPending}
+          editingGroup={
+            groupsModal.state.type === "EDIT" ? groupsModal.state.group : null
+          }
+        />
+      )}
 
-      <OptionValueModal
-        isOpen={valuesModal.isOpen}
-        onClose={() => valuesModal.setIsOpen(false)}
-        onSubmit={valuesActions.handleSubmitValue}
-        isPending={valuesActions.isPending}
-        editingValue={valuesModal.editingValue}
-      />
+      {(valuesModal.state.type === "CREATE" ||
+        valuesModal.state.type === "EDIT") && (
+        <OptionValueModal
+          isOpen={true}
+          onClose={valuesModal.close}
+          onSubmit={valuesActions.handleSubmitValue}
+          isPending={valuesActions.isPending}
+          editingValue={
+            valuesModal.state.type === "EDIT" ? valuesModal.state.value : null
+          }
+        />
+      )}
     </div>
   );
 }

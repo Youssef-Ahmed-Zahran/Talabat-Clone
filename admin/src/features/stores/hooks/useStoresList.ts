@@ -8,6 +8,9 @@ import {
 } from "../../categories/api/category.api";
 import type { Store } from "../../../types";
 import { handleApiError } from "../../../utils/error";
+import { useCreateStore, useUpdateStore } from "../api/store.api";
+import type { StoreFormValues } from "../../../schemas/store.schema";
+import type { CreateStorePayload } from "../../../types";
 
 export function useStoresList() {
   const { data: categories } = useMainCategories();
@@ -17,8 +20,14 @@ export function useStoresList() {
   );
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingStore, setEditingStore] = useState<Store | null>(null);
+  type ModalState =
+    | { type: "NONE" }
+    | { type: "CREATE" }
+    | { type: "EDIT"; store: Store };
+
+  const [modalState, setModalState] = useState<ModalState>({ type: "NONE" });
+
+  const closeModal = () => setModalState({ type: "NONE" });
 
   const { data: subCategories } = useSubCategories(activeTab || "");
   const {
@@ -31,6 +40,8 @@ export function useStoresList() {
   } = useStores({ mainCategoryId: activeTab, subCategoryId: activeSubTab });
 
   const toggleMutation = useToggleStoreStatus();
+  const createMutation = useCreateStore();
+  const updateMutation = useUpdateStore();
 
   const handleToggle = (storeId: number | string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -44,15 +55,58 @@ export function useStoresList() {
     });
   };
 
-  const openCreateStore = () => {
-    setEditingStore(null);
-    setShowCreateModal(true);
-  };
+  const openCreateStore = () => setModalState({ type: "CREATE" });
 
   const openEditStore = (store: Store, e: React.MouseEvent) => {
     e.stopPropagation();
-    setEditingStore(store);
-    setShowCreateModal(true);
+    setModalState({ type: "EDIT", store });
+  };
+
+  const handleSubmit = (data: StoreFormValues, selectedZoneId: string) => {
+    const payload: CreateStorePayload = {
+      ...data,
+      mainCategoryId: data.mainCategoryId,
+      deliveryType: (data.deliveryType || "TALABAT_DELIVERY") as
+        | "TALABAT_DELIVERY"
+        | "STORE_DELIVERY",
+      cityName: "Cairo",
+      countryName: "Egypt",
+      countryCode: "EG",
+      openTime: data.openTime || "09:00",
+      closeTime: data.closeTime || "23:00",
+      deliveryTimeMinutes: data.deliveryTimeMinutes || 30,
+      minimumOrderCost: data.minimumOrderCost || 0,
+      deliveryFees: data.deliveryFees || 0,
+      allowPreorder: data.allowPreorder ?? true,
+      ownerEmail: data.ownerEmail || "",
+      latitude: data.latitude || "0",
+      longitude: data.longitude || "0",
+      logo: data.logoUrl,
+      cover: data.coverImage,
+      zoneId: selectedZoneId || undefined,
+    };
+
+    if (modalState.type === "EDIT") {
+      updateMutation.mutate(
+        { storeId: String(modalState.store.id), payload },
+        {
+          onSuccess: () => {
+            toast.success("Store updated successfully");
+            closeModal();
+          },
+          onError: (err) =>
+            handleApiError(err, "We couldn't update the store."),
+        },
+      );
+    } else if (modalState.type === "CREATE") {
+      createMutation.mutate(payload, {
+        onSuccess: () => {
+          toast.success("Store created successfully");
+          closeModal();
+        },
+        onError: (err) => handleApiError(err, "We couldn't create the store."),
+      });
+    }
   };
 
   const filteredStores = storesData?.stores?.filter((s: Store) =>
@@ -79,13 +133,14 @@ export function useStoresList() {
       refetch,
     },
     modal: {
-      isOpen: showCreateModal,
-      setIsOpen: setShowCreateModal,
-      editingStore,
+      state: modalState,
+      close: closeModal,
       openCreateStore,
       openEditStore,
     },
     actions: {
+      submit: handleSubmit,
+      isPending: createMutation.isPending || updateMutation.isPending,
       handleToggle,
       isToggling: toggleMutation.isPending,
     },

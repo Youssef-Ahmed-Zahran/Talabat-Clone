@@ -61,14 +61,14 @@ export default function StoreCatalogPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={sectionsModal.openCreateSection}
+            onClick={sectionsModal.openCreate}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
           >
             <Layers3 className="w-4 h-4" />
             Add Section
           </button>
           <button
-            onClick={modal.openCreateProduct}
+            onClick={modal.openCreate}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
@@ -85,7 +85,7 @@ export default function StoreCatalogPage() {
               sections={sectionsQuery.sections}
               activeSectionId={filters.activeSectionId}
               onSectionChange={filters.setActiveSectionId}
-              onEditSection={sectionsModal.openEditSection}
+              onEditSection={sectionsModal.openEdit}
               onDeleteSection={sectionsActions.handleDeleteSection}
             />
           </div>
@@ -118,7 +118,7 @@ export default function StoreCatalogPage() {
                   key={p.id}
                   product={p}
                   storeId={sid}
-                  onEdit={modal.openEditProduct}
+                  onEdit={modal.openEdit}
                   onDelete={actions.handleDeleteProduct}
                   onToggleAvailability={actions.handleToggleAvailability}
                 />
@@ -138,7 +138,7 @@ export default function StoreCatalogPage() {
                   : "Start by adding sections and products to your catalog."}
               </p>
               <button
-                onClick={modal.openCreateProduct}
+                onClick={modal.openCreate}
                 className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -149,24 +149,34 @@ export default function StoreCatalogPage() {
         </div>
       </div>
 
-      <SectionModal
-        isOpen={sectionsModal.isOpen}
-        onClose={() => sectionsModal.setIsOpen(false)}
-        editingSection={sectionsModal.editingSection}
-        storeId={sid}
-        sectionsCount={sectionsQuery.sections?.length ?? 0}
-        onSuccess={sectionsQuery.refetch}
-      />
+      {(sectionsModal.state.type === "CREATE" ||
+        sectionsModal.state.type === "EDIT") && (
+        <SectionModal
+          isOpen={true}
+          onClose={sectionsModal.close}
+          onSubmit={sectionsActions.handleSubmitSection}
+          isPending={sectionsActions.isPending}
+          editingSection={
+            sectionsModal.state.type === "EDIT"
+              ? sectionsModal.state.section
+              : null
+          }
+        />
+      )}
 
-      <ProductModal
-        isOpen={modal.isOpen}
-        onClose={() => modal.setIsOpen(false)}
-        onSubmit={actions.handleSubmitProduct}
-        isPending={actions.isPending}
-        editingProduct={modal.editingProduct}
-        sections={sectionsQuery.sections}
-        activeSectionId={filters.activeSectionId}
-      />
+      {(modal.state.type === "CREATE" || modal.state.type === "EDIT") && (
+        <ProductModal
+          isOpen={true}
+          onClose={modal.close}
+          onSubmit={actions.handleSubmitProduct}
+          isPending={actions.isPending}
+          editingProduct={
+            modal.state.type === "EDIT" ? modal.state.product : null
+          }
+          sections={sectionsQuery.sections}
+          activeSectionId={filters.activeSectionId}
+        />
+      )}
     </div>
   );
 }

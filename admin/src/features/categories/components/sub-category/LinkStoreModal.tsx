@@ -1,54 +1,38 @@
 import { useClearTimeout } from "../../../../hooks/useClearTimeout";
 import { Loader2 } from "lucide-react";
 
-import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   linkStoreSchema,
   type LinkStoreFormValues,
 } from "../../../../schemas/subCategory.schema";
-import { useLinkStore } from "../../api/category.api";
 import { useStores } from "../../../stores/api/store.api";
 
 interface LinkStoreModalProps {
-  subCategoryId: string;
   onClose: () => void;
+  onSubmit: (data: LinkStoreFormValues) => void;
+  isPending: boolean;
 }
 
 export default function LinkStoreModal({
-  subCategoryId,
   onClose,
+  onSubmit,
+  isPending,
 }: LinkStoreModalProps) {
   const { data: storesResponse, isLoading: isLoadingStores } = useStores();
   const stores = storesResponse?.stores || [];
-  const linkStoreMutation = useLinkStore();
 
   useClearTimeout(onClose);
 
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors },
   } = useForm<LinkStoreFormValues>({
     resolver: zodResolver(linkStoreSchema),
     defaultValues: { storeId: "" },
   });
-
-  const onLinkStore = (data: LinkStoreFormValues) => {
-    linkStoreMutation.mutate(
-      { subCategoryId, storeId: data.storeId },
-      {
-        onSuccess: () => {
-          toast.success("Store linked successfully");
-          reset();
-          onClose();
-        },
-        onError: () => toast.error("Failed to link store"),
-      },
-    );
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -58,7 +42,7 @@ export default function LinkStoreModal({
       />
       <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-200/80 w-full max-w-md p-6 animate-slide-up">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Link Store</h2>
-        <form onSubmit={handleSubmit(onLinkStore)}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <div className="mb-5">
             <label
               htmlFor="store-select"
@@ -104,12 +88,10 @@ export default function LinkStoreModal({
             </button>
             <button
               type="submit"
-              disabled={linkStoreMutation.isPending}
+              disabled={isPending}
               className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark disabled:opacity-60 transition-colors"
             >
-              {linkStoreMutation.isPending && (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              )}
+              {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Link
             </button>
           </div>

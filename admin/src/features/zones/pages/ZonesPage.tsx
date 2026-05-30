@@ -15,7 +15,7 @@ import {
 import { useZonesPage } from "../hooks/useZonesPage";
 
 const ZonesPage: React.FC = () => {
-  const { query, state, actions, router } = useZonesPage();
+  const { query, state, modal, actions, router } = useZonesPage();
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -210,7 +210,7 @@ const ZonesPage: React.FC = () => {
 
                     <button
                       className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      onClick={() => state.setDeleteConfirm(zone.id)}
+                      onClick={() => modal.confirmDelete(zone.id)}
                       title="Delete zone"
                     >
                       <Trash2 size={16} />
@@ -227,32 +227,33 @@ const ZonesPage: React.FC = () => {
               </div>
 
               {/* Delete confirm overlay */}
-              {state.deleteConfirm === zone.id && (
-                <div className="absolute inset-0 z-10 bg-gray-900/95 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6 animate-fade-in">
-                  <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
-                    <Trash2 size={24} />
+              {modal.state.type === "DELETE_CONFIRM" &&
+                modal.state.zoneId === zone.id && (
+                  <div className="absolute inset-0 z-10 bg-gray-900/95 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6 animate-fade-in">
+                    <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
+                      <Trash2 size={24} />
+                    </div>
+                    <h4 className="text-white font-bold mb-1">Delete Zone?</h4>
+                    <p className="text-gray-400 text-xs mb-6">
+                      This action cannot be undone. All store/driver links will
+                      be lost.
+                    </p>
+                    <div className="flex items-center gap-3 w-full">
+                      <button
+                        className="flex-1 px-4 py-2 bg-white/10 text-white font-semibold rounded-xl hover:bg-white/20 transition-colors"
+                        onClick={modal.close}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors"
+                        onClick={() => actions.handleDelete(zone.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                  <h4 className="text-white font-bold mb-1">Delete Zone?</h4>
-                  <p className="text-gray-400 text-xs mb-6">
-                    This action cannot be undone. All store/driver links will be
-                    lost.
-                  </p>
-                  <div className="flex items-center gap-3 w-full">
-                    <button
-                      className="flex-1 px-4 py-2 bg-white/10 text-white font-semibold rounded-xl hover:bg-white/20 transition-colors"
-                      onClick={() => state.setDeleteConfirm(null)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors"
-                      onClick={() => actions.handleDelete(zone.id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
             </div>
           ))}
         </div>

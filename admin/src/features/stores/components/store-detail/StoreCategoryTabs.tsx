@@ -1,4 +1,4 @@
-import type { Category } from "../../../types";
+import type { Category } from "../../../../types";
 
 interface StoreCategoryTabsProps {
   categories?: Category[];

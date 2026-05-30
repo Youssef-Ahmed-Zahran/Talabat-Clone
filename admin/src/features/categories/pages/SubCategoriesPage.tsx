@@ -4,10 +4,12 @@ import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
 import SubCategoriesTable from "../components/sub-category/SubCategoriesTable";
 import SubCategoryModal from "../components/sub-category/SubCategoryModal";
+import LinkStoreModal from "../components/sub-category/LinkStoreModal";
+import LinkedStoresModal from "../components/sub-category/LinkedStoresModal";
 import { useSubCategoriesPage } from "../hooks/useSubCategoriesPage";
 
 export default function SubCategoriesPage() {
-  const { query, modal } = useSubCategoriesPage();
+  const { query, modal, actions } = useSubCategoriesPage();
 
   if (query.isLoading) return <PageLoader />;
   if (query.isError) return <ErrorFallback onRetry={query.refetch} />;
@@ -33,7 +35,7 @@ export default function SubCategoriesPage() {
           </div>
         </div>
         <button
-          onClick={() => modal.setShowCreateModal(true)}
+          onClick={modal.sub.openCreate}
           className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" />
@@ -41,19 +43,43 @@ export default function SubCategoriesPage() {
         </button>
       </div>
 
-      {/* Table — owns all row-level state & modals */}
       <SubCategoriesTable
         subCategories={query.subCategories ?? []}
         categoryId={query.categoryId}
+        onEdit={modal.sub.openEdit}
+        onDelete={actions.sub.delete}
+        onLink={modal.stores.openLink}
+        onViewStores={modal.stores.openView}
+        isDeleting={actions.sub.isDeletePending}
       />
 
-      {/* Create modal — owned by the page (triggered from the header) */}
-      {modal.showCreateModal && (
+      {(modal.state.type === "SUB_CREATE" ||
+        modal.state.type === "SUB_EDIT") && (
         <SubCategoryModal
-          isOpen={modal.showCreateModal}
-          categoryId={query.categoryId}
-          editingSub={null}
-          onClose={() => modal.setShowCreateModal(false)}
+          isOpen={true}
+          editingSub={
+            modal.state.type === "SUB_EDIT" ? modal.state.subCategory : null
+          }
+          onClose={modal.close}
+          onSubmit={actions.sub.submit}
+          isPending={actions.sub.isPending}
+        />
+      )}
+
+      {modal.state.type === "LINK_STORE" && (
+        <LinkStoreModal
+          onClose={modal.close}
+          onSubmit={actions.stores.link}
+          isPending={actions.stores.isLinkPending}
+        />
+      )}
+
+      {modal.state.type === "LINKED_STORES" && (
+        <LinkedStoresModal
+          subCategoryId={modal.state.subId}
+          onClose={modal.close}
+          onUnlink={actions.stores.unlink}
+          isUnlinkPending={actions.stores.isUnlinkPending}
         />
       )}
     </div>

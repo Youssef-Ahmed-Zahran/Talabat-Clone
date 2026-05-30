@@ -1,37 +1,28 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Layers } from "lucide-react";
-import toast from "react-hot-toast";
 import {
   sectionSchema,
   type SectionFormValues,
 } from "../../../../schemas/catalog.schema";
 import type { Section } from "../../../../types";
-import { useCreateSection, useUpdateSection } from "../../api/catalog.api";
-import { handleApiError } from "../../../../utils/error";
 import { SlideOver } from "../../../../components/layout/SlideOver";
 
 interface SectionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubmit: (data: SectionFormValues) => void;
+  isPending: boolean;
   editingSection: Section | null;
-  storeId: string;
-  sectionsCount: number;
-  onSuccess: () => void;
 }
 
 export function SectionModal({
   isOpen,
   onClose,
+  onSubmit,
+  isPending,
   editingSection,
-  storeId,
-  sectionsCount,
-  onSuccess,
 }: SectionModalProps) {
-  const createSectionMut = useCreateSection(storeId);
-  const updateSectionMut = useUpdateSection(storeId);
-  const isPending = createSectionMut.isPending || updateSectionMut.isPending;
-
   const {
     register,
     handleSubmit,
@@ -40,34 +31,6 @@ export function SectionModal({
     resolver: zodResolver(sectionSchema),
     values: editingSection ? { name: editingSection.name } : { name: "" },
   });
-
-  const onSubmit = (data: SectionFormValues) => {
-    if (editingSection) {
-      updateSectionMut.mutate(
-        { sectionId: editingSection.id, name: data.name.trim() },
-        {
-          onSuccess: () => {
-            toast.success("Section updated");
-            onClose();
-            onSuccess();
-          },
-          onError: (err) => handleApiError(err, "Couldn't update section."),
-        },
-      );
-    } else {
-      createSectionMut.mutate(
-        { name: data.name.trim(), sortOrder: sectionsCount },
-        {
-          onSuccess: () => {
-            toast.success("Section created");
-            onClose();
-            onSuccess();
-          },
-          onError: (err) => handleApiError(err, "Couldn't create section."),
-        },
-      );
-    }
-  };
 
   return (
     <SlideOver

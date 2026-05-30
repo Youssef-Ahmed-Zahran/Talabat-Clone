@@ -1,40 +1,26 @@
 import { useClearTimeout } from "../../../../hooks/useClearTimeout";
 import { X, Loader2, Store as StoreIcon, Trash2 } from "lucide-react";
 
-import toast from "react-hot-toast";
-import { useStoresInSubCategory, useUnlinkStore } from "../../api/category.api";
+import { useStoresInSubCategory } from "../../api/category.api";
 import type { Store } from "../../../../types";
 
 interface LinkedStoresModalProps {
   subCategoryId: string;
   onClose: () => void;
+  onUnlink: (storeId: string) => void;
+  isUnlinkPending: boolean;
 }
 
 export default function LinkedStoresModal({
   subCategoryId,
   onClose,
+  onUnlink,
+  isUnlinkPending,
 }: LinkedStoresModalProps) {
   const { data: linkedStoresData, isLoading } =
     useStoresInSubCategory(subCategoryId);
-  const unlinkStoreMutation = useUnlinkStore();
 
   useClearTimeout(onClose);
-
-  const handleUnlink = (storeId: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to unlink this store from this sub-category?",
-      )
-    ) {
-      unlinkStoreMutation.mutate(
-        { subCategoryId, storeId },
-        {
-          onSuccess: () => toast.success("Store unlinked successfully"),
-          onError: () => toast.error("Failed to unlink store"),
-        },
-      );
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -87,13 +73,12 @@ export default function LinkedStoresModal({
                     </div>
                   </div>
                   <button
-                    onClick={() => handleUnlink(String(store.id))}
-                    disabled={unlinkStoreMutation.isPending}
+                    onClick={() => onUnlink(String(store.id))}
+                    disabled={isUnlinkPending}
                     className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                     title="Unlink Store"
                   >
-                    {unlinkStoreMutation.isPending &&
-                    unlinkStoreMutation.variables?.storeId === store.id ? (
+                    {isUnlinkPending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Trash2 className="w-4 h-4" />

@@ -1,11 +1,11 @@
 import { Search } from "lucide-react";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
-import { DriversTable } from "../components/DriversTable";
+import { DriversTable } from "../components/table/DriversTable";
 import { useDriversList } from "../hooks/useDriversList";
 
 export default function DriversListPage() {
-  const { filters, query, actions, loadingStates } = useDriversList();
+  const { filters, query, actions } = useDriversList();
 
   if (query.isLoading) return <PageLoader />;
   if (query.isError) return <ErrorFallback onRetry={query.refetch} />;
@@ -39,11 +39,11 @@ export default function DriversListPage() {
         onSuspend={actions.handleSuspend}
         onUnsuspend={actions.handleUnsuspend}
         onDelete={actions.handleDelete}
-        isApproving={loadingStates.isApproving}
-        isRejecting={loadingStates.isRejecting}
-        isSuspending={loadingStates.isSuspending}
-        isUnsuspending={loadingStates.isUnsuspending}
-        isDeleting={loadingStates.isDeleting}
+        isApproving={actions.isApproving}
+        isRejecting={actions.isRejecting}
+        isSuspending={actions.isSuspending}
+        isUnsuspending={actions.isUnsuspending}
+        isDeleting={actions.isDeleting}
       />
     </div>
   );

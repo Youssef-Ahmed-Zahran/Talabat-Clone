@@ -1,43 +1,21 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layers3, ChevronRight, Pencil, Trash2 } from "lucide-react";
-import toast from "react-hot-toast";
-import { useDeleteCategory } from "../../api/category.api";
 import type { Category } from "../../../../types";
-import CategoryModal from "./CategoryModal";
 
 interface MainCategoriesTableProps {
   categories: Category[];
+  onEdit: (cat: Category) => void;
+  onDelete: (cat: Category) => void;
+  isDeleting: boolean;
 }
 
 export default function MainCategoriesTable({
   categories,
+  onEdit,
+  onDelete,
+  isDeleting,
 }: MainCategoriesTableProps) {
   const navigate = useNavigate();
-  const deleteMutation = useDeleteCategory();
-
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-
-  const openEdit = (cat: Category, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingCategory(cat);
-    setShowEditModal(true);
-  };
-
-  const handleDelete = (cat: Category, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (
-      window.confirm(
-        `Are you sure you want to delete ${cat.name}? This will also delete all sub-categories and unlink stores.`,
-      )
-    ) {
-      deleteMutation.mutate(cat.id, {
-        onSuccess: () => toast.success("Category deleted"),
-        onError: () => toast.error("Failed to delete category"),
-      });
-    }
-  };
 
   return (
     <>
@@ -104,15 +82,21 @@ export default function MainCategoriesTable({
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-3">
                       <button
-                        onClick={(e) => openEdit(cat, e)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(cat);
+                        }}
                         className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
                         title="Edit Category"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={(e) => handleDelete(cat, e)}
-                        disabled={deleteMutation.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(cat);
+                        }}
+                        disabled={isDeleting}
                         className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                         title="Delete Category"
                       >
@@ -136,17 +120,6 @@ export default function MainCategoriesTable({
           </tbody>
         </table>
       </div>
-
-      {showEditModal && (
-        <CategoryModal
-          isOpen={true}
-          editingCategory={editingCategory}
-          onClose={() => {
-            setShowEditModal(false);
-            setEditingCategory(null);
-          }}
-        />
-      )}
     </>
   );
 }

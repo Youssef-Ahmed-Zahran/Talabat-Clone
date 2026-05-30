@@ -20,8 +20,13 @@ export function useOptionGroupsManager(sid: string, pid: string) {
   const deleteGroupMut = useDeleteOptionGroup(sid);
 
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [showGroupModal, setShowGroupModal] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<OptionGroup | null>(null);
+
+  type ModalState =
+    | { type: "NONE" }
+    | { type: "CREATE" }
+    | { type: "EDIT"; group: OptionGroup };
+
+  const [modalState, setModalState] = useState<ModalState>({ type: "NONE" });
 
   const toggleGroupExpand = (id: string) => {
     setExpandedGroups((prev) => {
@@ -32,15 +37,9 @@ export function useOptionGroupsManager(sid: string, pid: string) {
     });
   };
 
-  const openCreateGroup = () => {
-    setEditingGroup(null);
-    setShowGroupModal(true);
-  };
-
-  const openEditGroup = (g: OptionGroup) => {
-    setEditingGroup(g);
-    setShowGroupModal(true);
-  };
+  const openCreateGroup = () => setModalState({ type: "CREATE" });
+  const openEditGroup = (g: OptionGroup) => setModalState({ type: "EDIT", group: g });
+  const closeModal = () => setModalState({ type: "NONE" });
 
   const handleDeleteGroup = (g: OptionGroup) => {
     if (!confirm(`Delete option group "${g.name}" and all its values?`)) return;
@@ -51,10 +50,10 @@ export function useOptionGroupsManager(sid: string, pid: string) {
   };
 
   const handleSubmitGroup = (data: OptionGroupFormValues) => {
-    if (editingGroup) {
+    if (modalState.type === "EDIT") {
       updateGroupMut.mutate(
         {
-          groupId: editingGroup.id,
+          groupId: modalState.group.id,
           name: data.name.trim(),
           isRequired: data.isRequired,
           minSelect: Number(data.minSelect),
@@ -63,12 +62,12 @@ export function useOptionGroupsManager(sid: string, pid: string) {
         {
           onSuccess: () => {
             toast.success("Option group updated");
-            setShowGroupModal(false);
+            closeModal();
           },
           onError: () => toast.error("Failed to update option group"),
         },
       );
-    } else {
+    } else if (modalState.type === "CREATE") {
       createGroupMut.mutate(
         {
           productId: pid,
@@ -80,7 +79,7 @@ export function useOptionGroupsManager(sid: string, pid: string) {
         {
           onSuccess: () => {
             toast.success("Option group created");
-            setShowGroupModal(false);
+            closeModal();
           },
           onError: () => toast.error("Failed to create option group"),
         },
@@ -98,11 +97,10 @@ export function useOptionGroupsManager(sid: string, pid: string) {
       toggleGroupExpand,
     },
     modal: {
-      isOpen: showGroupModal,
-      setIsOpen: setShowGroupModal,
-      editingGroup,
-      openCreateGroup,
-      openEditGroup,
+      state: modalState,
+      close: closeModal,
+      openCreate: openCreateGroup,
+      openEdit: openEditGroup,
     },
     actions: {
       handleDeleteGroup,

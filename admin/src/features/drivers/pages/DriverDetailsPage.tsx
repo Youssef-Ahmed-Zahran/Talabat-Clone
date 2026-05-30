@@ -10,10 +10,10 @@ import {
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
 import type { DriverStatus } from "../../../types";
-import { DriverProfileCard } from "../components/DriverProfileCard";
-import { DriverApplicationDetails } from "../components/DriverApplicationDetails";
-import { DriverDocumentsList } from "../components/DriverDocumentsList";
-import { DriverWalletDetails } from "../components/DriverWalletDetails";
+import { DriverProfileCard } from "../components/profile/DriverProfileCard";
+import { DriverApplicationDetails } from "../components/application/DriverApplicationDetails";
+import { DriverDocumentsList } from "../components/application/DriverDocumentsList";
+import { DriverWalletDetails } from "../components/wallet/DriverWalletDetails";
 import { useDriverDetails } from "../hooks/useDriverDetails";
 
 const APP_STATUS_CONFIG: Record<

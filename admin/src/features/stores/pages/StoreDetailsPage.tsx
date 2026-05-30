@@ -3,10 +3,10 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Package, Settings } from "lucide-react";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
-import { StoreHero } from "../components/StoreHero";
-import { StoreInfoCards } from "../components/StoreInfoCards";
+import { StoreHero } from "../components/store-detail/StoreHero";
+import { StoreInfoCards } from "../components/store-detail/StoreInfoCards";
 import { useStoreDetailsPage } from "../hooks/useStoreDetailsPage";
-import { ClientStoreEditModal } from "../components/ClientStoreEditModal";
+import { ClientStoreEditModal } from "../components/modals/ClientStoreEditModal";
 
 export default function StoreDetailsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);

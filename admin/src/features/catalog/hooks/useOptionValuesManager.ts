@@ -13,21 +13,16 @@ export function useOptionValuesManager(sid: string) {
   const updateValueMut = useUpdateOptionValue(sid);
   const deleteValueMut = useDeleteOptionValue(sid);
 
-  const [showValueModal, setShowValueModal] = useState(false);
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
-  const [editingValue, setEditingValue] = useState<OptionValue | null>(null);
+  type ModalState =
+    | { type: "NONE" }
+    | { type: "CREATE"; groupId: string }
+    | { type: "EDIT"; groupId: string; value: OptionValue };
 
-  const openAddValue = (groupId: string) => {
-    setActiveGroupId(groupId);
-    setEditingValue(null);
-    setShowValueModal(true);
-  };
+  const [modalState, setModalState] = useState<ModalState>({ type: "NONE" });
 
-  const openEditValue = (groupId: string, v: OptionValue) => {
-    setActiveGroupId(groupId);
-    setEditingValue(v);
-    setShowValueModal(true);
-  };
+  const openAddValue = (groupId: string) => setModalState({ type: "CREATE", groupId });
+  const openEditValue = (groupId: string, v: OptionValue) => setModalState({ type: "EDIT", groupId, value: v });
+  const closeModal = () => setModalState({ type: "NONE" });
 
   const handleDeleteValue = (valueId: string) => {
     if (!confirm("Delete this option value?")) return;
@@ -38,34 +33,34 @@ export function useOptionValuesManager(sid: string) {
   };
 
   const handleSubmitValue = (data: OptionValueFormValues) => {
-    if (!activeGroupId) return;
+    if (modalState.type === "NONE") return;
 
-    if (editingValue) {
+    if (modalState.type === "EDIT") {
       updateValueMut.mutate(
         {
-          valueId: editingValue.id,
+          valueId: modalState.value.id,
           name: data.name.trim(),
           extraPrice: Number(data.extraPrice) || 0,
         },
         {
           onSuccess: () => {
             toast.success("Option value updated");
-            setShowValueModal(false);
+            closeModal();
           },
           onError: () => toast.error("Failed to update value"),
         },
       );
-    } else {
+    } else if (modalState.type === "CREATE") {
       createValueMut.mutate(
         {
-          groupId: activeGroupId,
+          groupId: modalState.groupId,
           name: data.name.trim(),
           extraPrice: Number(data.extraPrice) || 0,
         },
         {
           onSuccess: () => {
             toast.success("Option value added");
-            setShowValueModal(false);
+            closeModal();
           },
           onError: () => toast.error("Failed to add value"),
         },
@@ -75,12 +70,10 @@ export function useOptionValuesManager(sid: string) {
 
   return {
     modal: {
-      isOpen: showValueModal,
-      setIsOpen: setShowValueModal,
-      activeGroupId,
-      editingValue,
-      openAddValue,
-      openEditValue,
+      state: modalState,
+      close: closeModal,
+      openCreate: openAddValue,
+      openEdit: openEditValue,
     },
     actions: {
       handleDeleteValue,

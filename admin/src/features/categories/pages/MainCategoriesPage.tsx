@@ -4,10 +4,12 @@ import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
 import SubCategoriesTable from "../components/sub-category/SubCategoriesTable";
 import CategoryModal from "../components/main-category/CategoryModal";
 import SubCategoryModal from "../components/sub-category/SubCategoryModal";
+import LinkStoreModal from "../components/sub-category/LinkStoreModal";
+import LinkedStoresModal from "../components/sub-category/LinkedStoresModal";
 import { useMainCategoriesPage } from "../hooks/useMainCategoriesPage";
 
 export default function MainCategoriesPage() {
-  const { query, state, modal } = useMainCategoriesPage();
+  const { query, state, modal, actions } = useMainCategoriesPage();
 
   if (query.isLoading && !query.categories) return <PageLoader />;
   if (query.isError) return <ErrorFallback onRetry={query.refetch} />;
@@ -25,7 +27,7 @@ export default function MainCategoriesPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => modal.setShowMainModal(true)}
+            onClick={modal.main.openCreate}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
@@ -109,7 +111,7 @@ export default function MainCategoriesPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => modal.setShowSubModal(true)}
+                  onClick={modal.sub.openCreate}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
@@ -125,6 +127,11 @@ export default function MainCategoriesPage() {
                 <SubCategoriesTable
                   subCategories={query.subCategories ?? []}
                   categoryId={state.selectedCategoryId}
+                  onEdit={modal.sub.openEdit}
+                  onDelete={actions.sub.delete}
+                  onLink={modal.stores.openLink}
+                  onViewStores={modal.stores.openView}
+                  isDeleting={actions.sub.isDeletePending}
                 />
               )}
             </div>
@@ -145,20 +152,46 @@ export default function MainCategoriesPage() {
         </div>
       </div>
 
-      {modal.showMainModal && (
+      {(modal.state.type === "MAIN_CREATE" ||
+        modal.state.type === "MAIN_EDIT") && (
         <CategoryModal
           isOpen={true}
-          editingCategory={null}
-          onClose={() => modal.setShowMainModal(false)}
+          editingCategory={
+            modal.state.type === "MAIN_EDIT" ? modal.state.category : null
+          }
+          onClose={modal.close}
+          onSubmit={actions.main.submit}
+          isPending={actions.main.isPending}
         />
       )}
 
-      {modal.showSubModal && state.selectedCategoryId && (
-        <SubCategoryModal
-          isOpen={true}
-          categoryId={state.selectedCategoryId}
-          editingSub={null}
-          onClose={() => modal.setShowSubModal(false)}
+      {(modal.state.type === "SUB_CREATE" || modal.state.type === "SUB_EDIT") &&
+        state.selectedCategoryId && (
+          <SubCategoryModal
+            isOpen={true}
+            editingSub={
+              modal.state.type === "SUB_EDIT" ? modal.state.subCategory : null
+            }
+            onClose={modal.close}
+            onSubmit={actions.sub.submit}
+            isPending={actions.sub.isPending}
+          />
+        )}
+
+      {modal.state.type === "LINK_STORE" && (
+        <LinkStoreModal
+          onClose={modal.close}
+          onSubmit={actions.stores.link}
+          isPending={actions.stores.isLinkPending}
+        />
+      )}
+
+      {modal.state.type === "LINKED_STORES" && (
+        <LinkedStoresModal
+          subCategoryId={modal.state.subId}
+          onClose={modal.close}
+          onUnlink={actions.stores.unlink}
+          isUnlinkPending={actions.stores.isUnlinkPending}
         />
       )}
     </div>

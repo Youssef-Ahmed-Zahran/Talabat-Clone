@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Layers3,
   Link2,
@@ -6,51 +5,26 @@ import {
   Trash2,
   Store as StoreIcon,
 } from "lucide-react";
-import toast from "react-hot-toast";
-import { useDeleteSubCategory } from "../../api/category.api";
 import type { Category } from "../../../../types";
-import SubCategoryModal from "./SubCategoryModal";
-import LinkStoreModal from "./LinkStoreModal";
-import LinkedStoresModal from "./LinkedStoresModal";
 
 interface SubCategoriesTableProps {
   subCategories: Category[];
   categoryId: string;
+  onEdit: (sub: Category, e: React.MouseEvent) => void;
+  onDelete: (sub: Category, e: React.MouseEvent) => void;
+  onLink: (subId: string) => void;
+  onViewStores: (subId: string) => void;
+  isDeleting: boolean;
 }
 
 export default function SubCategoriesTable({
   subCategories,
-  categoryId,
+  onEdit,
+  onDelete,
+  onLink,
+  onViewStores,
+  isDeleting,
 }: SubCategoriesTableProps) {
-  const deleteSubMutation = useDeleteSubCategory();
-
-  const [editingSub, setEditingSub] = useState<Category | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-
-  const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
-  const [showLinkModal, setShowLinkModal] = useState(false);
-  const [showLinkedStoresModal, setShowLinkedStoresModal] = useState(false);
-
-  const openEdit = (sub: Category, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingSub(sub);
-    setShowEditModal(true);
-  };
-
-  const handleDelete = (sub: Category, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (
-      window.confirm(
-        `Are you sure you want to delete ${sub.name}? This will unlink all stores from this sub-category.`,
-      )
-    ) {
-      deleteSubMutation.mutate(sub.id, {
-        onSuccess: () => toast.success("Sub-category deleted"),
-        onError: () => toast.error("Failed to delete sub-category"),
-      });
-    }
-  };
-
   return (
     <>
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -109,10 +83,7 @@ export default function SubCategoriesTable({
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-3">
                       <button
-                        onClick={() => {
-                          setSelectedSubId(sub.id);
-                          setShowLinkedStoresModal(true);
-                        }}
+                        onClick={() => onViewStores(sub.id)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-brand bg-brand-50 rounded-lg hover:bg-brand-100 transition-colors"
                         title="View Linked Stores"
                       >
@@ -120,10 +91,7 @@ export default function SubCategoriesTable({
                         Stores
                       </button>
                       <button
-                        onClick={() => {
-                          setSelectedSubId(sub.id);
-                          setShowLinkModal(true);
-                        }}
+                        onClick={() => onLink(sub.id)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                         title="Link Store"
                       >
@@ -131,15 +99,15 @@ export default function SubCategoriesTable({
                         Link
                       </button>
                       <button
-                        onClick={(e) => openEdit(sub, e)}
+                        onClick={(e) => onEdit(sub, e)}
                         className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors ml-2"
                         title="Edit Sub-Category"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={(e) => handleDelete(sub, e)}
-                        disabled={deleteSubMutation.isPending}
+                        onClick={(e) => onDelete(sub, e)}
+                        disabled={isDeleting}
                         className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                         title="Delete Sub-Category"
                       >
@@ -162,35 +130,6 @@ export default function SubCategoriesTable({
           </tbody>
         </table>
       </div>
-
-      {/* Edit Modal */}
-      {showEditModal && (
-        <SubCategoryModal
-          isOpen={true}
-          categoryId={categoryId}
-          editingSub={editingSub}
-          onClose={() => {
-            setShowEditModal(false);
-            setEditingSub(null);
-          }}
-        />
-      )}
-
-      {/* Link Store Modal */}
-      {showLinkModal && selectedSubId && (
-        <LinkStoreModal
-          subCategoryId={selectedSubId}
-          onClose={() => setShowLinkModal(false)}
-        />
-      )}
-
-      {/* Linked Stores Modal */}
-      {showLinkedStoresModal && selectedSubId && (
-        <LinkedStoresModal
-          subCategoryId={selectedSubId}
-          onClose={() => setShowLinkedStoresModal(false)}
-        />
-      )}
     </>
   );
 }

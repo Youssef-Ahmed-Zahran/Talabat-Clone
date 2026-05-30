@@ -1,35 +1,28 @@
 import { Loader2, Upload, LayoutGrid } from "lucide-react";
-import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   subCategorySchema,
   type SubCategoryFormValues,
 } from "../../../../schemas/subCategory.schema";
-import {
-  useCreateSubCategory,
-  useUpdateSubCategory,
-} from "../../api/category.api";
 import type { Category } from "../../../../types";
 import { SlideOver } from "../../../../components/layout/SlideOver";
 
 interface SubCategoryModalProps {
   isOpen: boolean;
-  categoryId: string;
   editingSub: Category | null;
   onClose: () => void;
+  onSubmit: (data: SubCategoryFormValues) => void;
+  isPending: boolean;
 }
 
 export default function SubCategoryModal({
   isOpen,
-  categoryId,
   editingSub,
   onClose,
+  onSubmit,
+  isPending,
 }: SubCategoryModalProps) {
-  const createSubMutation = useCreateSubCategory();
-  const updateSubMutation = useUpdateSubCategory();
-  const isPending = createSubMutation.isPending || updateSubMutation.isPending;
-
   const {
     register,
     handleSubmit,
@@ -55,40 +48,6 @@ export default function SubCategoryModal({
     }
   };
 
-  const onSave = (data: SubCategoryFormValues) => {
-    if (editingSub) {
-      updateSubMutation.mutate(
-        {
-          subCategoryId: editingSub.id,
-          name: data.name.trim(),
-          image: data.image || undefined,
-        },
-        {
-          onSuccess: () => {
-            toast.success("Sub-category updated");
-            onClose();
-          },
-          onError: () => toast.error("Failed to update sub-category"),
-        },
-      );
-    } else {
-      createSubMutation.mutate(
-        {
-          name: data.name.trim(),
-          parentId: categoryId,
-          image: data.image || undefined,
-        },
-        {
-          onSuccess: () => {
-            toast.success("Sub-category created");
-            onClose();
-          },
-          onError: () => toast.error("Failed to create sub-category"),
-        },
-      );
-    }
-  };
-
   return (
     <SlideOver
       isOpen={isOpen}
@@ -105,7 +64,7 @@ export default function SubCategoryModal({
             Cancel
           </button>
           <button
-            onClick={handleSubmit(onSave)}
+            onClick={handleSubmit(onSubmit)}
             disabled={isPending}
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-brand text-white text-sm font-bold rounded-xl hover:bg-brand-dark transition-all disabled:opacity-70"
           >

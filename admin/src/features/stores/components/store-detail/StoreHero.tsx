@@ -1,5 +1,5 @@
 import { Store as StoreIcon, Clock, Truck, DollarSign } from "lucide-react";
-import type { Store } from "../../../types";
+import type { Store } from "../../../../types";
 
 interface StoreHeroProps {
   store: Store;

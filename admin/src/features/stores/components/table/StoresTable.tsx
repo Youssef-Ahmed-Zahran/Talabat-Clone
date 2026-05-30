@@ -1,7 +1,7 @@
 import { Store as StoreIcon, Power, Pencil, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import type { Store } from "../../../types";
-import PageLoader from "../../../components/loader/PageLoader";
+import type { Store } from "../../../../types";
+import PageLoader from "../../../../components/loader/PageLoader";
 
 interface StoresTableProps {
   stores?: Store[];

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { useSections, useDeleteSection } from "../api/catalog.api";
+import { useSections, useDeleteSection, useCreateSection, useUpdateSection } from "../api/catalog.api";
 import type { Section } from "../../../types";
 import { handleApiError } from "../../../utils/error";
+import type { SectionFormValues } from "../../../schemas/catalog.schema";
 
 export function useSectionsManager(sid: string, activeSectionId: string | null, onClearSection: () => void) {
   const {
@@ -13,19 +14,19 @@ export function useSectionsManager(sid: string, activeSectionId: string | null, 
   } = useSections(sid);
 
   const deleteSectionMut = useDeleteSection(sid);
+  const createSectionMut = useCreateSection(sid);
+  const updateSectionMut = useUpdateSection(sid);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingSection, setEditingSection] = useState<Section | null>(null);
+  type ModalState =
+    | { type: "NONE" }
+    | { type: "CREATE" }
+    | { type: "EDIT"; section: Section };
 
-  const openCreate = () => {
-    setEditingSection(null);
-    setIsModalOpen(true);
-  };
+  const [modalState, setModalState] = useState<ModalState>({ type: "NONE" });
 
-  const openEdit = (s: Section) => {
-    setEditingSection(s);
-    setIsModalOpen(true);
-  };
+  const openCreate = () => setModalState({ type: "CREATE" });
+  const openEdit = (s: Section) => setModalState({ type: "EDIT", section: s });
+  const closeModal = () => setModalState({ type: "NONE" });
 
   const handleDelete = (s: Section) => {
     if (!confirm(`Delete section "${s.name}"? All products inside will be orphaned.`)) return;
@@ -38,6 +39,34 @@ export function useSectionsManager(sid: string, activeSectionId: string | null, 
     });
   };
 
+  const handleSubmitSection = (data: SectionFormValues) => {
+    if (modalState.type === "EDIT") {
+      updateSectionMut.mutate(
+        { sectionId: modalState.section.id, name: data.name.trim() },
+        {
+          onSuccess: () => {
+            toast.success("Section updated");
+            closeModal();
+            refetch();
+          },
+          onError: (err) => handleApiError(err, "Couldn't update section."),
+        },
+      );
+    } else if (modalState.type === "CREATE") {
+      createSectionMut.mutate(
+        { name: data.name.trim(), sortOrder: sections?.length ?? 0 },
+        {
+          onSuccess: () => {
+            toast.success("Section created");
+            closeModal();
+            refetch();
+          },
+          onError: (err) => handleApiError(err, "Couldn't create section."),
+        },
+      );
+    }
+  };
+
   return {
     query: {
       sections,
@@ -46,14 +75,15 @@ export function useSectionsManager(sid: string, activeSectionId: string | null, 
       refetch,
     },
     modal: {
-      isOpen: isModalOpen,
-      setIsOpen: setIsModalOpen,
-      editingSection,
-      openCreateSection: openCreate,
-      openEditSection: openEdit,
+      state: modalState,
+      close: closeModal,
+      openCreate,
+      openEdit,
     },
     actions: {
       handleDeleteSection: handleDelete,
+      handleSubmitSection,
+      isPending: createSectionMut.isPending || updateSectionMut.isPending,
     },
   };
 }
