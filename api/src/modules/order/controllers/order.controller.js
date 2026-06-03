@@ -13,8 +13,8 @@ import { queue } from "../../../lib/queue.js";
 const fetchCartItems = async (cartId, storeId) => {
     return await tenantQuery(storeId, `
         SELECT ci.*, 
-               row_to_json(p.*) as product,
-               (SELECT COALESCE(json_agg(row_to_json(o.*)), '[]'::json)
+            row_to_json(p.*) as product,
+            (SELECT COALESCE(json_agg(row_to_json(o.*)), '[]'::json)
                 FROM (
                     SELECT cio.*, row_to_json(pov.*) as option_value 
                     FROM cart_item_options cio
@@ -203,7 +203,6 @@ export const placeOrder = async (req, res, next) => {
 // ═══════════════════════════════════════════════════════════════
 // GET MY ORDERS
 // ═══════════════════════════════════════════════════════════════
-
 export const getMyOrders = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -273,7 +272,7 @@ export const getOrderById = async (req, res, next) => {
 
         let items = await tenantQuery(order.store.id, `
             SELECT oi.*, 
-                   (SELECT COALESCE(json_agg(row_to_json(o.*)), '[]'::json) FROM order_item_options o WHERE o.order_item_id = oi.id) as options
+                (SELECT COALESCE(json_agg(row_to_json(o.*)), '[]'::json) FROM order_item_options o WHERE o.order_item_id = oi.id) as options
             FROM order_items oi WHERE oi.order_id = $1
         `, [order.id]);
 
@@ -425,7 +424,7 @@ export const reorder = async (req, res, next) => {
                     if (!opt.option_value_id) continue;
                     await client.query(
                         `INSERT INTO cart_item_options (cart_item_id, option_value_id, extra_price)
-                         VALUES ($1, $2, $3)`,
+                        VALUES ($1, $2, $3)`,
                         [cRows[0].id, opt.option_value_id, opt.extra_price_snapshot]
                     );
                 }

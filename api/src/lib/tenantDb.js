@@ -12,6 +12,12 @@
  *
  * Adding a new store category (e.g. "HEALTH_BEAUTY", "ELECTRONICS") requires
  * ZERO changes here — every tenant gets the exact same universal schema.
+ *
+ * FIX (race condition): tenantQuery now uses BEGIN + SET LOCAL + COMMIT so the
+ * search_path is scoped to the transaction only. When the connection is returned
+ * to the pool its search_path resets automatically, eliminating the bug where a
+ * recycled connection from store_X bleeds into a query for store_Y under
+ * Promise.all parallelism.
  */
 
 import pg from "pg";
@@ -68,21 +74,31 @@ export function getTenantPool(storeId) {
  * SET search_path that isn't awaited, causing queries to run against the
  * wrong (public) schema.
  *
+ * NOTE: This client is owned by the caller until client.release() is called.
+ * For fire-and-forget single queries, prefer tenantQuery() which handles
+ * the full lifecycle automatically using SET LOCAL inside a transaction.
+ *
  * @param {string} storeId
  * @returns {Promise<import('pg').PoolClient>}
  */
 export async function getTenantClient(storeId) {
     const schema = schemaName(storeId);
     const client = await getTenantPool(storeId).connect();
-    // Always explicitly set search_path and AWAIT it before returning.
-    // This is the correct fix for the race condition with pool.on("connect").
+    // Explicitly await search_path before returning.
+    // Using SET (not SET LOCAL) here is intentional — the caller owns this
+    // client for its full lifetime and is responsible for releasing it.
     await client.query(`SET search_path TO "${schema}", public`);
     return client;
 }
 
 /**
  * Executes a query against the tenant schema and returns the rows.
- * Convenience wrapper so callers don't need to manage client lifecycle.
+ *
+ * Uses BEGIN + SET LOCAL + COMMIT so the search_path is scoped to this
+ * transaction only. When the connection is returned to the pool its
+ * search_path resets automatically, which eliminates the race condition
+ * that occurred under Promise.all when a recycled connection from store_X
+ * would bleed into a query intended for store_Y.
  *
  * @param {string} storeId
  * @param {string} sql
@@ -93,10 +109,18 @@ export async function tenantQuery(storeId, sql, params = []) {
     const schema = schemaName(storeId);
     const client = await getTenantPool(storeId).connect();
     try {
-        // Explicitly await search_path before running user query
-        await client.query(`SET search_path TO "${schema}", public`);
+        await client.query("BEGIN");
+        // SET LOCAL scopes the search_path to this transaction only.
+        // When the transaction ends (COMMIT or ROLLBACK) the connection
+        // reverts to its pool-default search_path automatically.
+        // This is the correct fix for the parallel-query race condition.
+        await client.query(`SET LOCAL search_path TO "${schema}", public`);
         const { rows } = await client.query(sql, params);
+        await client.query("COMMIT");
         return rows;
+    } catch (err) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw err;
     } finally {
         client.release();
     }
@@ -105,18 +129,24 @@ export async function tenantQuery(storeId, sql, params = []) {
 /**
  * Runs multiple SQL statements inside a single transaction on the tenant schema.
  *
+ * SET LOCAL is used so the search_path is automatically reset when the
+ * transaction ends and the connection is returned to the pool.
+ *
  * @param {string} storeId
  * @param {(client: import('pg').PoolClient) => Promise<any>} fn
  */
 export async function tenantTransaction(storeId, fn) {
-    const client = await getTenantClient(storeId);
+    const schema = schemaName(storeId);
+    const client = await getTenantPool(storeId).connect();
     try {
         await client.query("BEGIN");
+        // SET LOCAL — scoped to this transaction, resets on COMMIT/ROLLBACK.
+        await client.query(`SET LOCAL search_path TO "${schema}", public`);
         const result = await fn(client);
         await client.query("COMMIT");
         return result;
     } catch (err) {
-        await client.query("ROLLBACK");
+        await client.query("ROLLBACK").catch(() => {});
         throw err;
     } finally {
         client.release();

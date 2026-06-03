@@ -95,10 +95,14 @@ export const createZone = async (req, res, next) => {
 
 export const getAllZones = async (req, res, next) => {
     try {
-        const { cityId, includeGeometry = "false" } = req.query;
+        const { cityId, includeGeometry = "false", page = 1, limit = 20 } = req.query;
+        const skip = (Number(page) - 1) * Number(limit);
+        const take = Number(limit);
 
-        // Only cache non-geometry requests — geometry payloads are large and vary by cityId
-        const cacheKey = includeGeometry === "true" ? null : `zones:all:city_${cityId || "any"}`;
+        const cacheKey = includeGeometry === "true"
+            ? null  // never cache geometry payloads — too large
+            : `zones:all:city_${cityId || "any"}:p_${page}:l_${limit}`;
+
         if (cacheKey) {
             const cached = await cache.get(cacheKey);
             if (cached) return res.json(new ApiResponse(200, cached, "Zones fetched (cached)."));
@@ -107,14 +111,19 @@ export const getAllZones = async (req, res, next) => {
         const where = {};
         if (cityId) where.cityId = cityId;
 
-        const zones = await prisma.zone.findMany({
-            where,
-            include: {
-                city: { select: { id: true, name: true } },
-                _count: { select: { storeZones: true, driverZones: true } },
-            },
-            orderBy: { createdAt: "asc" },
-        });
+        const [zones, total] = await Promise.all([
+            prisma.zone.findMany({
+                where,
+                skip,
+                take,
+                include: {
+                    city: { select: { id: true, name: true } },
+                    _count: { select: { storeZones: true, driverZones: true } },
+                },
+                orderBy: { createdAt: "asc" },
+            }),
+            prisma.zone.count({ where }),
+        ]);
 
         let result = zones;
         if (includeGeometry === "true") {
@@ -125,9 +134,19 @@ export const getAllZones = async (req, res, next) => {
             result = zones.map((z) => ({ ...z, boundary: geoMap[z.id] ?? null }));
         }
 
-        if (cacheKey) await cache.set(cacheKey, result, 300); // 5 minutes
+        const responseData = {
+            zones: result,
+            pagination: {
+                total,
+                page: Number(page),
+                limit: Number(limit),
+                totalPages: Math.ceil(total / Number(limit)),
+            },
+        };
 
-        res.json(new ApiResponse(200, result, "Zones fetched."));
+        if (cacheKey) await cache.set(cacheKey, responseData, 300); // 5 min
+
+        res.json(new ApiResponse(200, responseData, "Zones fetched."));
     } catch (err) {
         next(err);
     }

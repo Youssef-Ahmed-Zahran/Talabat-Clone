@@ -14,22 +14,41 @@ import { cache } from "../../../lib/cache.js";
 /** GET /api/categories */
 export const getAllMainCategories = async (req, res, next) => {
   try {
-    const cacheKey = "categories:main:all";
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
+
+    const cacheKey = `categories:main:p_${page}:l_${limit}`;
     const cached = await cache.get(cacheKey);
     if (cached) {
       return res.json(new ApiResponse(200, cached, "Main categories fetched (cached)."));
     }
 
-    const categories = await prisma.mainCategory.findMany({
-      orderBy: { name: "asc" },
-      include: {
-        _count: { select: { subCategories: true, stores: true } },
+    const [categories, total] = await Promise.all([
+      prisma.mainCategory.findMany({
+        skip,
+        take,
+        orderBy: { name: "asc" },
+        include: {
+          _count: { select: { subCategories: true, stores: true } },
+        },
+      }),
+      prisma.mainCategory.count(),
+    ]);
+
+    const responseData = {
+      categories,
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / Number(limit)),
       },
-    });
+    };
 
-    await cache.set(cacheKey, categories, 600); // 10 minutes — categories rarely change
+    await cache.set(cacheKey, responseData, 600); // 10 min
 
-    res.json(new ApiResponse(200, categories, "Main categories fetched."));
+    res.json(new ApiResponse(200, responseData, "Main categories fetched."));
   } catch (err) {
     next(err);
   }
