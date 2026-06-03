@@ -13,13 +13,16 @@ import type { StoreFormValues } from "../../../schemas/store.schema";
 import type { CreateStorePayload } from "../../../types";
 
 export function useStoresList() {
-  const { data: categories } = useMainCategories();
+  const { data: categoriesData } = useMainCategories();
   const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
   const [activeSubTab, setActiveSubTab] = useState<string | undefined>(
     undefined,
   );
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
   type ModalState =
     | { type: "NONE" }
     | { type: "CREATE" }
@@ -37,7 +40,13 @@ export function useStoresList() {
     isPlaceholderData,
     isError,
     refetch,
-  } = useStores({ mainCategoryId: activeTab, subCategoryId: activeSubTab });
+  } = useStores({ 
+    mainCategoryId: activeTab, 
+    subCategoryId: activeSubTab,
+    search: debouncedSearch,
+    page,
+    limit,
+  });
 
   const toggleMutation = useToggleStoreStatus();
   const createMutation = useCreateStore();
@@ -109,9 +118,9 @@ export function useStoresList() {
     }
   };
 
-  const filteredStores = storesData?.stores?.filter((s: Store) =>
-    (s.name || "").toLowerCase().includes(debouncedSearch.toLowerCase()),
-  );
+  const stores = storesData?.stores || [];
+  const pagination = storesData?.pagination || null;
+  const categoriesList = categoriesData?.categories || [];
 
   return {
     filters: {
@@ -121,11 +130,15 @@ export function useStoresList() {
       setActiveSubTab,
       search,
       setSearch,
+      page,
+      setPage,
+      limit,
     },
     query: {
-      categories,
+      categories: categoriesList,
       subCategories,
-      stores: filteredStores,
+      stores,
+      pagination,
       isLoading,
       isFetching,
       isPlaceholderData,

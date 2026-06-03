@@ -32,3 +32,4 @@ export type { Driver, DriverStatus } from "./driver";
 export * from "./dashboard";
 export * from "./category_payloads";
 export * from "./catalog";
+export * from "./zone";

@@ -15,15 +15,17 @@ interface DriversResponse {
 }
 
 // ── Fetch all drivers (admin endpoint) ─────────────────────────────────
-const fetchDrivers = async (): Promise<DriversResponse> => {
-  const { data } = await api.get("/admin/drivers");
+const fetchDrivers = async (search?: string, page?: number, limit?: number): Promise<DriversResponse> => {
+  const { data } = await api.get("/admin/drivers", {
+    params: { search, page, limit }
+  });
   return data.data ?? data;
 };
 
-export const useDrivers = () => {
+export const useDrivers = (search?: string, page?: number, limit?: number) => {
   return useQuery({
-    queryKey: ["drivers"],
-    queryFn: fetchDrivers,
+    queryKey: ["drivers", search, page, limit],
+    queryFn: () => fetchDrivers(search, page, limit),
   });
 };
 

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { User } from "../../../types";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
+import Pagination from "../../../components/pagination/Pagination";
 import { useUsersList } from "../hooks/useUsersList";
 
 export default function UsersListPage() {
@@ -27,7 +28,10 @@ export default function UsersListPage() {
         <input
           type="text"
           value={filters.search}
-          onChange={(e) => filters.setSearch(e.target.value)}
+          onChange={(e) => {
+            filters.setSearch(e.target.value);
+            filters.setPage(1);
+          }}
           placeholder="Search users…"
           className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl placeholder:text-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all"
         />
@@ -122,6 +126,15 @@ export default function UsersListPage() {
             )}
           </tbody>
         </table>
+        {query.pagination && (
+          <Pagination
+            currentPage={filters.page}
+            totalPages={query.pagination.totalPages}
+            onPageChange={filters.setPage}
+            totalItems={query.pagination.total}
+            itemsPerPage={filters.limit}
+          />
+        )}
       </div>
     </div>
   );

@@ -2,16 +2,17 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { useUsers, useBlockUser, useUnblockUser } from "../api/user.api";
 import { useDebounce } from "../../../hooks/useDebouncing";
-import type { User } from "../../../types";
 import { handleApiError } from "../../../utils/error";
 
 export function useUsersList() {
-  const { data: usersData, isLoading, isError, refetch } = useUsers();
-  const blockMutation = useBlockUser();
-  const unblockMutation = useUnblockUser();
-
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  const { data: response, isLoading, isError, refetch } = useUsers(debouncedSearch, page, limit);
+  const blockMutation = useBlockUser();
+  const unblockMutation = useUnblockUser();
 
   const handleToggle = (userId: number | string, isActive: boolean) => {
     const idStr = userId.toString();
@@ -33,21 +34,20 @@ export function useUsersList() {
     }
   };
 
-  const filtered = usersData?.users?.filter(
-    (u: User) =>
-      (u.fullName || "")
-        .toLowerCase()
-        .includes(debouncedSearch.toLowerCase()) ||
-      (u.email || "").toLowerCase().includes(debouncedSearch.toLowerCase()),
-  );
+  const users = response?.users || [];
+  const pagination = response?.pagination || null;
 
   return {
     filters: {
       search,
       setSearch,
+      page,
+      setPage,
+      limit,
     },
     query: {
-      users: filtered,
+      users,
+      pagination,
       isLoading,
       isError,
       refetch,

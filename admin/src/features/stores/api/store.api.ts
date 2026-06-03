@@ -19,9 +19,12 @@ type StoresResponse = PaginatedListResponse<Store, "stores">;
 const fetchStores = async (
   options: FetchStoresOptions = {},
 ): Promise<StoresResponse> => {
-  const params: Record<string, string> = {};
+  const params: Record<string, string | number> = {};
   if (options.mainCategoryId) params.mainCategoryId = options.mainCategoryId;
   if (options.subCategoryId) params.subCategoryId = options.subCategoryId;
+  if (options.search) params.search = options.search;
+  if (options.page) params.page = options.page;
+  if (options.limit) params.limit = options.limit;
 
   const { data } = await api.get("/stores/admin", { params });
   return data.data ?? data;
@@ -33,6 +36,9 @@ export const useStores = (options: FetchStoresOptions = {}) => {
       "stores",
       options.mainCategoryId ?? "all",
       options.subCategoryId ?? "all",
+      options.search,
+      options.page,
+      options.limit,
     ],
     queryFn: () => fetchStores(options),
     placeholderData: keepPreviousData,

@@ -9,23 +9,31 @@ import type { Order } from "../../../types";
 
 import { useAuthStore } from "../../../store/authStore";
 
+export interface OrdersResponse {
+  orders: Order[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 // ── Fetch all orders (admin/owner endpoint) ──────────────────────────────────
-const fetchLiveOrders = async (search?: string): Promise<Order[]> => {
+const fetchLiveOrders = async (search?: string, page?: number, limit?: number): Promise<OrdersResponse> => {
   const role = useAuthStore.getState().role;
   const endpoint = role === "owner" ? "/orders/store" : "/orders/admin/all";
   const { data } = await api.get(endpoint, {
-    params: { search },
+    params: { search, page, limit },
   });
   const payload = data.data ?? data;
-  // Backend may return { orders, pagination } or just an array
-  return Array.isArray(payload) ? payload : (payload.orders ?? []);
+  return payload;
 };
 
-export const useLiveOrders = (search?: string) => {
+export const useLiveOrders = (search?: string, page?: number, limit?: number) => {
   return useQuery({
-    queryKey: ["orders", "live", search],
-    queryFn: () => fetchLiveOrders(search),
-    refetchInterval: 15_000,
+    queryKey: ["orders", "live", search, page, limit],
+    queryFn: () => fetchLiveOrders(search, page, limit),
     placeholderData: keepPreviousData,
   });
 };

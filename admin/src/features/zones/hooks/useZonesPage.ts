@@ -10,7 +10,12 @@ import {
 
 export function useZonesPage() {
   const navigate = useNavigate();
-  const { data: zones = [], isLoading, error, refetch } = useZones();
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  const { data: response, isLoading, error, refetch } = useZones(undefined, page, limit);
+  const zones = response?.zones || [];
+  const pagination = response?.pagination || null;
 
   type ModalState =
     | { type: "NONE" }
@@ -58,6 +63,7 @@ export function useZonesPage() {
   return {
     query: {
       zones,
+      pagination,
       isLoading,
       error,
       refetch,
@@ -69,6 +75,9 @@ export function useZonesPage() {
     },
     state: {
       togglingId,
+      page,
+      setPage,
+      limit,
     },
     actions: {
       handleToggleActive,

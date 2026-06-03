@@ -1,6 +1,7 @@
 import { Plus, Search } from "lucide-react";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
+import Pagination from "../../../components/pagination/Pagination";
 import { StoreFormModal } from "../components/modals/StoreFormModal";
 import { StoresTable } from "../components/table/StoresTable";
 import { useStoresList } from "../hooks/useStoresList";
@@ -45,7 +46,10 @@ export default function StoresListPage() {
                 <input
                   type="text"
                   value={filters.search}
-                  onChange={(e) => filters.setSearch(e.target.value)}
+                  onChange={(e) => {
+                    filters.setSearch(e.target.value);
+                    filters.setPage(1);
+                  }}
                   placeholder="Store name..."
                   className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border-none rounded-xl placeholder:text-gray-400 text-gray-900 focus:ring-2 focus:ring-brand/20 transition-all"
                 />
@@ -61,6 +65,7 @@ export default function StoresListPage() {
                   onClick={() => {
                     filters.setActiveTab(undefined);
                     filters.setActiveSubTab(undefined);
+                    filters.setPage(1);
                   }}
                   className={`w-full flex items-center px-3 py-2 rounded-xl text-[13px] font-medium transition-all ${
                     filters.activeTab === undefined
@@ -76,6 +81,7 @@ export default function StoresListPage() {
                       onClick={() => {
                         filters.setActiveTab(cat.id);
                         filters.setActiveSubTab(undefined);
+                        filters.setPage(1);
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition-all ${
                         filters.activeTab === cat.id && !filters.activeSubTab
@@ -95,7 +101,10 @@ export default function StoresListPage() {
                           {query.subCategories.map((sub) => (
                             <button
                               key={sub.id}
-                              onClick={() => filters.setActiveSubTab(sub.id)}
+                              onClick={() => {
+                                filters.setActiveSubTab(sub.id);
+                                filters.setPage(1);
+                              }}
                               className={`w-full text-left px-3 py-1.5 rounded-lg text-[12px] transition-all ${
                                 filters.activeSubTab === sub.id
                                   ? "bg-brand text-white shadow-sm font-semibold"
@@ -115,7 +124,7 @@ export default function StoresListPage() {
         </aside>
 
         {/* ── Table Content ─────────────────────────────────────────── */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 space-y-4">
           <StoresTable
             stores={query.stores}
             onToggleStatus={actions.handleToggle}
@@ -123,6 +132,15 @@ export default function StoresListPage() {
             isToggling={actions.isToggling}
             isLoading={query.isLoading}
           />
+          {query.pagination && (
+            <Pagination
+              currentPage={filters.page}
+              totalPages={query.pagination.totalPages}
+              onPageChange={filters.setPage}
+              totalItems={query.pagination.total}
+              itemsPerPage={filters.limit}
+            />
+          )}
         </div>
       </div>
 

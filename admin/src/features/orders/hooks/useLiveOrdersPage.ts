@@ -8,14 +8,19 @@ import { handleApiError } from "../../../utils/error";
 export function useLiveOrdersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 500);
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
   const {
-    data: orders,
+    data: response,
     isLoading,
     isError,
     refetch,
     isFetching,
-  } = useLiveOrders(debouncedSearch);
+  } = useLiveOrders(debouncedSearch, page, limit);
+
+  const orders = response?.orders || [];
+  const pagination = response?.pagination || null;
 
   const { mutate: updateStatus, isPending: isUpdating } =
     useUpdateOrderStatus();
@@ -61,6 +66,7 @@ export function useLiveOrdersPage() {
   return {
     query: {
       orders,
+      pagination,
       isLoading,
       isError,
       refetch,
@@ -69,6 +75,9 @@ export function useLiveOrdersPage() {
     filters: {
       searchTerm,
       setSearchTerm,
+      page,
+      setPage,
+      limit,
     },
     actions: {
       handleStatusChange,

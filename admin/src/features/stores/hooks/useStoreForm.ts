@@ -49,9 +49,10 @@ export function useStoreForm(isOpen: boolean, editingStore: Store | null) {
 
   useEffect(() => {
     if (isOpen) {
-      fetchAllZones()
-        .then((zones) => {
-          setZones(zones);
+      fetchAllZones(undefined, 1, 100)
+        .then((response) => {
+          const zones = response?.zones ?? response ?? [];
+          setZones(Array.isArray(zones) ? zones : []);
           setCurrentStep(1);
           setSelectedZoneId(editingStore?.storeZones?.[0]?.zoneId ?? "");
         })

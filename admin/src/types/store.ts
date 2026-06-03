@@ -86,5 +86,7 @@ export type UpdateStorePayload = Partial<CreateStorePayload>;
 export interface FetchStoresOptions {
   mainCategoryId?: string;
   subCategoryId?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
 }
-

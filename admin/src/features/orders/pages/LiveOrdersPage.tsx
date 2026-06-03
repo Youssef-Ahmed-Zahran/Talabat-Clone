@@ -1,7 +1,8 @@
-import { RefreshCw, Search } from "lucide-react";
+import { RefreshCw, Search, Loader2 } from "lucide-react";
 import type { Order, OrderStatus } from "../../../types";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
+import Pagination from "../../../components/pagination/Pagination";
 import { useLiveOrdersPage } from "../hooks/useLiveOrdersPage";
 
 import { StatusBadge } from "../components/StatusBadge";
@@ -21,7 +22,7 @@ export default function LiveOrdersPage() {
             Live Orders
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Real-time monitoring • Auto-refreshes every 15s
+            Real-time monitoring • Updates on new orders
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -31,19 +32,22 @@ export default function LiveOrdersPage() {
               type="text"
               placeholder="Search by ID or customer..."
               value={filters.searchTerm}
-              onChange={(e) => filters.setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                filters.setSearchTerm(e.target.value);
+                filters.setPage(1);
+              }}
               className="pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all w-64 shadow-sm"
             />
           </div>
           <button
             onClick={() => query.refetch()}
             disabled={query.isFetching}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-60 transition-colors shadow-sm"
           >
             <RefreshCw
               className={`w-4 h-4 ${query.isFetching ? "animate-spin" : ""}`}
             />
-            Refresh
+            {query.isFetching ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </div>
@@ -58,7 +62,17 @@ export default function LiveOrdersPage() {
         </span>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div className="relative bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        {query.isFetching && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-[1px] rounded-2xl">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="w-7 h-7 text-brand animate-spin" />
+              <span className="text-xs font-medium text-gray-500">
+                Loading orders…
+              </span>
+            </div>
+          </div>
+        )}
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-50">
@@ -144,6 +158,15 @@ export default function LiveOrdersPage() {
             )}
           </tbody>
         </table>
+        {query.pagination && (
+          <Pagination
+            currentPage={filters.page}
+            totalPages={query.pagination.totalPages}
+            onPageChange={filters.setPage}
+            totalItems={query.pagination.total}
+            itemsPerPage={filters.limit}
+          />
+        )}
       </div>
     </div>
   );

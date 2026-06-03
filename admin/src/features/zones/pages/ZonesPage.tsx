@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   Loader2,
 } from "lucide-react";
+import Pagination from "../../../components/pagination/Pagination";
 import { useZonesPage } from "../hooks/useZonesPage";
 
 const ZonesPage: React.FC = () => {
@@ -257,6 +258,16 @@ const ZonesPage: React.FC = () => {
             </div>
           ))}
         </div>
+      )}
+
+      {query.pagination && query.zones.length > 0 && (
+        <Pagination
+          currentPage={state.page}
+          totalPages={query.pagination.totalPages}
+          onPageChange={state.setPage}
+          totalItems={query.pagination.total}
+          itemsPerPage={state.limit}
+        />
       )}
     </div>
   );

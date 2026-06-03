@@ -7,16 +7,26 @@ import type {
   LinkStorePayload,
 } from '../../../types';
 
+export interface MainCategoriesResponse {
+  categories: Category[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 // ── Fetch all main categories ──────────────────────────────────────────
-const fetchMainCategories = async (): Promise<Category[]> => {
-  const { data } = await api.get('/categories');
+const fetchMainCategories = async (page?: number, limit?: number): Promise<MainCategoriesResponse> => {
+  const { data } = await api.get('/categories', { params: { page, limit } });
   return data.data ?? data;
 };
 
-export const useMainCategories = () => {
+export const useMainCategories = (page?: number, limit?: number) => {
   return useQuery({
-    queryKey: ['categories', 'main'],
-    queryFn: fetchMainCategories,
+    queryKey: ['categories', 'main', page, limit],
+    queryFn: () => fetchMainCategories(page, limit),
   });
 };
 

@@ -12,15 +12,17 @@ import { useDebounce } from "../../../hooks/useDebouncing";
 import { handleApiError } from "../../../utils/error";
 
 export function useDriversList() {
-  const { data: driversData, isLoading, isError, refetch } = useDrivers();
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  const { data: response, isLoading, isError, refetch } = useDrivers(debouncedSearch, page, limit);
   const approveMutation = useApproveDriver();
   const rejectMutation = useRejectDriver();
   const suspendMutation = useSuspendDriver();
   const unsuspendMutation = useUnsuspendDriver();
   const deleteMutation = useDeleteDriver();
-
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
 
   const handleApprove = (id: string) => {
     approveMutation.mutate(id, {
@@ -86,15 +88,12 @@ export function useDriversList() {
     });
   };
 
-  const filtered = driversData?.drivers?.filter(
-    (d: Driver) =>
-      (d.email || "").toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      (d.phone || "").includes(debouncedSearch),
-  );
+  const drivers = response?.drivers || [];
+  const pagination = response?.pagination || null;
 
   return {
-    filters: { search, setSearch },
-    query: { drivers: filtered, isLoading, isError, refetch },
+    filters: { search, setSearch, page, setPage, limit },
+    query: { drivers, pagination, isLoading, isError, refetch },
     actions: {
       handleApprove,
       handleReject,

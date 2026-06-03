@@ -1,6 +1,7 @@
 import { Plus, Layers3, ChevronRight, LayoutGrid } from "lucide-react";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
+import Pagination from "../../../components/pagination/Pagination";
 import SubCategoriesTable from "../components/sub-category/SubCategoriesTable";
 import CategoryModal from "../components/main-category/CategoryModal";
 import SubCategoryModal from "../components/sub-category/SubCategoryModal";
@@ -89,6 +90,17 @@ export default function MainCategoriesPage() {
                 </button>
               ))}
             </div>
+            {query.pagination && (
+              <div className="border-t border-gray-50 bg-white p-2">
+                <Pagination
+                  currentPage={state.page}
+                  totalPages={query.pagination.totalPages}
+                  onPageChange={state.setPage}
+                  totalItems={query.pagination.total}
+                  itemsPerPage={state.limit}
+                />
+              </div>
+            )}
           </div>
         </div>
 

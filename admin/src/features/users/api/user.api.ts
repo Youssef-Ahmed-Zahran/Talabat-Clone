@@ -5,15 +5,17 @@ import type { User, PaginatedListResponse } from '../../../types';
 type UsersResponse = PaginatedListResponse<User, 'users'>;
 
 // ── Fetch all users (admin endpoint) ───────────────────────────────────
-const fetchUsers = async (): Promise<UsersResponse> => {
-  const { data } = await api.get('/admin/users');
+const fetchUsers = async (search?: string, page?: number, limit?: number): Promise<UsersResponse> => {
+  const { data } = await api.get('/admin/users', {
+    params: { search, page, limit }
+  });
   return data.data ?? data;
 };
 
-export const useUsers = () => {
+export const useUsers = (search?: string, page?: number, limit?: number) => {
   return useQuery({
-    queryKey: ['users'],
-    queryFn: fetchUsers,
+    queryKey: ['users', search, page, limit],
+    queryFn: () => fetchUsers(search, page, limit),
   });
 };
 

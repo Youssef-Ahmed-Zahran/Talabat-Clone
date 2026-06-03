@@ -50,18 +50,19 @@ const ZoneMapEditor: React.FC<ZoneMapEditorProps> = ({
   // Load existing zone overlays
   useEffect(() => {
     if (showExistingZones) {
-      fetchAllZones()
-        .then((zones) =>
+      fetchAllZones(undefined, 1, 100)
+        .then((response) => {
+          const zones = response?.zones ?? response ?? [];
           setExistingZones(
-            zones
+            (Array.isArray(zones) ? zones : [])
               .filter((z) => z.boundary)
               .map((z) => ({
                 name: z.name,
                 boundary: z.boundary!,
                 color: z.color || "#FF5733",
               })),
-          ),
-        )
+          );
+        })
         .catch(() => {});
     }
   }, [showExistingZones]);

@@ -17,10 +17,16 @@ import type { CategoryFormValues } from "../../../schemas/category.schema";
 import type { SubCategoryFormValues, LinkStoreFormValues } from "../../../schemas/subCategory.schema";
 
 export function useMainCategoriesPage() {
-  const { data: categories, isLoading, isError, refetch } = useMainCategories();
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  const { data: categoriesData, isLoading, isError, refetch } = useMainCategories(page, limit);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null,
   );
+
+  const categories = categoriesData?.categories || [];
+  const pagination = categoriesData?.pagination || null;
 
   const { data: subCategories, isLoading: subLoading } = useSubCategories(
     selectedCategoryId || "",
@@ -39,7 +45,7 @@ export function useMainCategoriesPage() {
 
   const closeModal = () => setModalState({ type: "NONE" });
 
-  const selectedCategory = categories?.find((c) => c.id === selectedCategoryId);
+  const selectedCategory = categories?.find((c: Category) => c.id === selectedCategoryId);
 
   const createCategoryMut = useCreateCategory();
   const updateCategoryMut = useUpdateCategory();
@@ -202,6 +208,7 @@ export function useMainCategoriesPage() {
   return {
     query: {
       categories,
+      pagination,
       isLoading,
       isError,
       refetch,
@@ -212,6 +219,9 @@ export function useMainCategoriesPage() {
     state: {
       selectedCategoryId,
       setSelectedCategoryId,
+      page,
+      setPage,
+      limit,
     },
     modal: {
       state: modalState,

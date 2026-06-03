@@ -3,56 +3,17 @@ import api from "../../../config/axios";
 
 // ── Types ─────────────────────────────────────────────────────
 
-export interface Zone {
-  id: string;
-  name: string;
-  cityId: string;
-  description?: string;
-  color?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  city?: { id: string; name: string };
-  _count?: { storeZones: number; driverZones: number };
-  boundary?: GeoJSONPolygon | null;
-  storeZones?: {
-    id: string;
-    storeId: string;
-    zoneId: string;
-    store: { id: string; name: string; logoUrl?: string; isActive: boolean };
-  }[];
-  driverZones?: {
-    id: string;
-    driverId: string;
-    zoneId: string;
-    driver: {
-      id: string;
-      phone: string;
-      isOnline: boolean;
-      status: string;
-      application?: { firstName: string; familyName: string; profilePhotoUrl?: string } | null;
-    };
-  }[];
-}
+import type { Zone, GeoJSONPolygon, ZonesListResponse } from "../../../types";
 
-export interface GeoJSONPolygon {
-  type: "Polygon";
-  coordinates: number[][][];
-}
-
-export interface ZoneStore {
-  id: string;
-  name: string;
-  logoUrl?: string;
-  isActive: boolean;
-  city?: { name: string };
-}
-
-// ── Zone CRUD ─────────────────────────────────────────────────
-
-export const fetchAllZones = async (cityId?: string): Promise<Zone[]> => {
-  const params: Record<string, string> = { includeGeometry: "true" };
+export const fetchAllZones = async (
+  cityId?: string,
+  page?: number,
+  limit?: number,
+): Promise<ZonesListResponse> => {
+  const params: Record<string, string | number> = { includeGeometry: "true" };
   if (cityId) params.cityId = cityId;
+  if (page) params.page = page;
+  if (limit) params.limit = limit;
   const res = await api.get("/zones", { params });
   return res.data.data;
 };
@@ -160,10 +121,10 @@ export const fetchDrivers = async (search?: string): Promise<ZoneDriver[]> => {
 
 // ── React Query Hooks ──────────────────────────────────────────
 
-export const useZones = (cityId?: string) => {
-  return useQuery<Zone[]>({
-    queryKey: ["zones", { cityId }],
-    queryFn: () => fetchAllZones(cityId),
+export const useZones = (cityId?: string, page?: number, limit?: number) => {
+  return useQuery<ZonesListResponse>({
+    queryKey: ["zones", { cityId, page, limit }],
+    queryFn: () => fetchAllZones(cityId, page, limit),
   });
 };
 
