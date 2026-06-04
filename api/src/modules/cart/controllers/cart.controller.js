@@ -23,7 +23,12 @@ export const getCart = async (req, res, next) => {
         const items = await tenantQuery(storeId, `
             SELECT ci.*,
                 ci.base_price AS "unitPrice",
-                row_to_json(p.*) AS product,
+                json_build_object(
+                    'id', p.id,
+                    'name', p.name,
+                    'price', p.price,
+                    'imageUrl', p.primary_image_url
+                ) AS product,
                 (SELECT COALESCE(json_agg(row_to_json(o.*)), '[]'::json)
                     FROM (
                         SELECT cio.id,
@@ -113,7 +118,12 @@ export const addItem = async (req, res, next) => {
             const { rows: cartRows } = await client.query(`
                 SELECT ci.*,
                        ci.base_price AS "unitPrice",
-                       row_to_json(p.*) AS product,
+                       json_build_object(
+                           'id', p.id,
+                           'name', p.name,
+                           'price', p.price,
+                           'imageUrl', p.primary_image_url
+                       ) AS product,
                        (SELECT COALESCE(json_agg(row_to_json(o.*)), '[]'::json)
                         FROM (
                             SELECT cio.id,
@@ -172,7 +182,12 @@ export const updateItemQuantity = async (req, res, next) => {
         const items = await tenantQuery(storeId, `
             SELECT ci.*,
                    ci.base_price AS "unitPrice",
-                   row_to_json(p.*) AS product,
+                   json_build_object(
+                       'id', p.id,
+                       'name', p.name,
+                       'price', p.price,
+                       'imageUrl', p.primary_image_url
+                   ) AS product,
                    (SELECT COALESCE(json_agg(row_to_json(o.*)), '[]'::json)
                     FROM (
                         SELECT cio.id,
@@ -216,7 +231,12 @@ export const removeItem = async (req, res, next) => {
         const items = await tenantQuery(storeId, `
             SELECT ci.*,
                    ci.base_price AS "unitPrice",
-                   row_to_json(p.*) AS product,
+                   json_build_object(
+                       'id', p.id,
+                       'name', p.name,
+                       'price', p.price,
+                       'imageUrl', p.primary_image_url
+                   ) AS product,
                    (SELECT COALESCE(json_agg(row_to_json(o.*)), '[]'::json)
                     FROM (
                         SELECT cio.id,
