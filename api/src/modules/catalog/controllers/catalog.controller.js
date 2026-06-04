@@ -97,6 +97,12 @@ export const getSections = async (req, res, next) => {
                              p.meta,
                              p.created_at,
                              COALESCE(
+                                 (SELECT json_agg(pi.image_url ORDER BY pi.sort_order ASC)
+                                  FROM product_images pi
+                                  WHERE pi.product_id = p.id),
+                                 '[]'::json
+                             ) AS images,
+                             COALESCE(
                                  (SELECT json_agg(
                                      json_build_object(
                                          'id', g.id,
