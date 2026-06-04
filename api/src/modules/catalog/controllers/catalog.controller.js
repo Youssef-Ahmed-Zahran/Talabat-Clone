@@ -355,11 +355,31 @@ export const getProducts = async (req, res, next) => {
 
         const products = await tenantQuery(storeId, `
             SELECT p.*,
-                   json_agg(pi.*) as images
+                   (SELECT json_agg(pi.* ORDER BY pi.sort_order ASC) FROM product_images pi WHERE pi.product_id = p.id) AS images,
+                   COALESCE(
+                       (SELECT json_agg(
+                           json_build_object(
+                               'id', g.id,
+                               'name', g.name,
+                               'is_required', g.is_required,
+                               'min_select', g.min_select,
+                               'max_select', g.max_select,
+                               'sort_order', g.sort_order,
+                               'values', COALESCE(
+                                   (SELECT json_agg(json_build_object('id', v.id, 'name', v.name, 'extra_price', v.extra_price))
+                                    FROM product_option_values v
+                                    WHERE v.option_group_id = g.id),
+                                   '[]'::json
+                               )
+                           )
+                           ORDER BY g.sort_order ASC
+                       )
+                       FROM product_option_groups g
+                       WHERE g.product_id = p.id),
+                       '[]'::json
+                   ) AS option_groups
             FROM products p
-            LEFT JOIN product_images pi ON pi.product_id = p.id
             ${whereClause}
-            GROUP BY p.id
             ORDER BY p.created_at DESC
             LIMIT $${paramIdx++} OFFSET $${paramIdx++}
         `, [...params, Number(limit), skip]);
@@ -410,10 +430,10 @@ export const updateProduct = async (req, res, next) => {
         const [existing] = await tenantQuery(storeId, `SELECT * FROM products WHERE id = $1`, [productId]);
         if (!existing) throw new ApiError(404, "Product not found.");
 
-        const { name, description, price, quantity, sectionId, isAvailable, primaryImage, meta } = req.body;
+        const { name, description, price, quantity, sectionId, isAvailable, primaryImage, meta, optionGroups } = req.body;
         let primaryImageUrl = existing.primary_image_url;
 
-        if (primaryImage) {
+        if (primaryImage && !primaryImage.startsWith("http")) {
             if (primaryImageUrl) await deleteFromCloudinary(primaryImageUrl);
             primaryImageUrl = await uploadToCloudinary(primaryImage, "products/restaurant");
         }
@@ -434,12 +454,59 @@ export const updateProduct = async (req, res, next) => {
         updates.push(`updated_at = NOW()`);
         params.push(productId);
 
-        const [product] = await tenantQuery(storeId, `
-            UPDATE products 
-            SET ${updates.join(", ")}
-            WHERE id = $${paramIdx}
-            RETURNING *
-        `, params);
+        const product = await tenantTransaction(storeId, async (client) => {
+            // A. Update core product fields
+            const { rows } = await client.query(`
+                UPDATE products 
+                SET ${updates.join(", ")}
+                WHERE id = $${paramIdx}
+                RETURNING *
+            `, params);
+
+            const p = rows[0];
+
+            // B. Replace option groups if provided (full replace strategy)
+            if (Array.isArray(optionGroups)) {
+                // Delete all existing option groups (cascade deletes values)
+                await client.query(
+                    `DELETE FROM product_option_groups WHERE product_id = $1`,
+                    [productId]
+                );
+
+                // Recreate from the submitted list
+                for (let i = 0; i < optionGroups.length; i++) {
+                    const group = optionGroups[i];
+                    if (!group.name) continue;
+
+                    const { rows: gRows } = await client.query(`
+                        INSERT INTO product_option_groups (product_id, name, is_required, min_select, max_select, sort_order)
+                        VALUES ($1, $2, $3, $4, $5, $6)
+                        RETURNING *
+                    `, [
+                        productId,
+                        group.name,
+                        group.isRequired || false,
+                        group.minSelect || 0,
+                        group.maxSelect || 1,
+                        group.sortOrder ?? i,
+                    ]);
+
+                    const g = gRows[0];
+
+                    if (Array.isArray(group.values)) {
+                        for (const val of group.values) {
+                            if (!val.name) continue;
+                            await client.query(`
+                                INSERT INTO product_option_values (option_group_id, name, extra_price)
+                                VALUES ($1, $2, $3)
+                            `, [g.id, val.name, val.extraPrice || 0]);
+                        }
+                    }
+                }
+            }
+
+            return p;
+        });
 
         await cache.del(`catalog:sections:store_${storeId}`);
 

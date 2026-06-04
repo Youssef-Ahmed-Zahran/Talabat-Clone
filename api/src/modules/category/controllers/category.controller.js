@@ -14,18 +14,25 @@ import { cache } from "../../../lib/cache.js";
 /** GET /api/categories */
 export const getAllMainCategories = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20, search } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
 
-    const cacheKey = `categories:main:p_${page}:l_${limit}`;
-    const cached = await cache.get(cacheKey);
-    if (cached) {
-      return res.json(new ApiResponse(200, cached, "Main categories fetched (cached)."));
+    const where = search
+      ? { name: { contains: search, mode: "insensitive" } }
+      : {};
+
+    const cacheKey = search ? null : `categories:main:p_${page}:l_${limit}`;
+    if (cacheKey) {
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return res.json(new ApiResponse(200, cached, "Main categories fetched (cached)."));
+      }
     }
 
     const [categories, total] = await Promise.all([
       prisma.mainCategory.findMany({
+        where,
         skip,
         take,
         orderBy: { name: "asc" },
@@ -33,7 +40,7 @@ export const getAllMainCategories = async (req, res, next) => {
           _count: { select: { subCategories: true, stores: true } },
         },
       }),
-      prisma.mainCategory.count(),
+      prisma.mainCategory.count({ where }),
     ]);
 
     const responseData = {
@@ -46,7 +53,9 @@ export const getAllMainCategories = async (req, res, next) => {
       },
     };
 
-    await cache.set(cacheKey, responseData, 600); // 10 min
+    if (cacheKey) {
+      await cache.set(cacheKey, responseData, 600); // 10 min
+    }
 
     res.json(new ApiResponse(200, responseData, "Main categories fetched."));
   } catch (err) {
@@ -152,7 +161,7 @@ export const updateMainCategory = async (req, res, next) => {
     }
 
     let imageUrl = existing.imageUrl;
-    if (image) {
+    if (image && !image.startsWith("http")) {
       if (existing.imageUrl) {
         await deleteFromCloudinary(existing.imageUrl);
       }
@@ -250,7 +259,7 @@ export const updateSubCategory = async (req, res, next) => {
     }
 
     let imageUrl = existing.imageUrl;
-    if (image) {
+    if (image && !image.startsWith("http")) {
       if (existing.imageUrl) {
         await deleteFromCloudinary(existing.imageUrl);
       }
