@@ -9,7 +9,7 @@ export function useProductsManager(sid: string) {
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
 
-  const { data: productsData, isLoading: productsLoading } = useProducts(sid, {
+  const { data: productsData, isLoading: productsLoading, isFetching: productsFetching } = useProducts(sid, {
     sectionId: activeSectionId || undefined,
     search: productSearch || undefined,
   });
@@ -59,6 +59,8 @@ export function useProductsManager(sid: string) {
           quantity: data.quantity !== "" ? Number(data.quantity) : undefined,
           sectionId: data.sectionId || undefined,
           meta: data.meta,
+          primaryImage: data.primaryImage || undefined,
+          optionGroups: data.optionGroups,
         },
         {
           onSuccess: () => {
@@ -77,6 +79,8 @@ export function useProductsManager(sid: string) {
           quantity: data.quantity !== "" ? Number(data.quantity) : undefined,
           sectionId: data.sectionId || undefined,
           meta: data.meta,
+          primaryImage: data.primaryImage || undefined,
+          images: data.images && data.images.length > 0 ? data.images : undefined,
           optionGroups: data.optionGroups,
         },
         {
@@ -100,6 +104,7 @@ export function useProductsManager(sid: string) {
     query: {
       products,
       isLoading: productsLoading,
+      isFetching: productsFetching,
     },
     modal: {
       state: modalState,

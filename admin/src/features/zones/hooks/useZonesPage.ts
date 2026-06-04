@@ -5,8 +5,8 @@ import {
   useZones,
   useUpdateZone,
   useDeleteZone,
-  type Zone,
 } from "../api/zones.api";
+import type { Zone } from "../../../types";
 
 export function useZonesPage() {
   const navigate = useNavigate();

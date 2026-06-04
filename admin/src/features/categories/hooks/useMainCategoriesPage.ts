@@ -1,5 +1,6 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { useDebounce } from "../../../hooks/useDebouncing";
 import { 
   useMainCategories, 
   useSubCategories, 
@@ -17,10 +18,12 @@ import type { CategoryFormValues } from "../../../schemas/category.schema";
 import type { SubCategoryFormValues, LinkStoreFormValues } from "../../../schemas/subCategory.schema";
 
 export function useMainCategoriesPage() {
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 500);
   const [page, setPage] = useState(1);
   const limit = 10;
 
-  const { data: categoriesData, isLoading, isError, refetch } = useMainCategories(page, limit);
+  const { data: categoriesData, isLoading, isFetching, isError, refetch } = useMainCategories(page, limit, debouncedSearch);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null,
   );
@@ -210,6 +213,7 @@ export function useMainCategoriesPage() {
       categories,
       pagination,
       isLoading,
+      isFetching,
       isError,
       refetch,
       subCategories,
@@ -217,6 +221,8 @@ export function useMainCategoriesPage() {
       selectedCategory,
     },
     state: {
+      search,
+      setSearch,
       selectedCategoryId,
       setSelectedCategoryId,
       page,

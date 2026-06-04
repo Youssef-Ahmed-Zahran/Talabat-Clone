@@ -1,19 +1,24 @@
-import { Plus, Layers3, ChevronRight, LayoutGrid } from "lucide-react";
+import {
+  Plus,
+  Layers3,
+  LayoutGrid,
+  Pencil,
+  Trash2,
+  Loader2,
+  Search,
+  X,
+} from "lucide-react";
 import PageLoader from "../../../components/loader/PageLoader";
-import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
 import Pagination from "../../../components/pagination/Pagination";
-import SubCategoriesTable from "../components/sub-category/SubCategoriesTable";
 import CategoryModal from "../components/main-category/CategoryModal";
 import SubCategoryModal from "../components/sub-category/SubCategoryModal";
 import LinkStoreModal from "../components/sub-category/LinkStoreModal";
 import LinkedStoresModal from "../components/sub-category/LinkedStoresModal";
+import SubCategoriesTable from "../components/sub-category/SubCategoriesTable";
 import { useMainCategoriesPage } from "../hooks/useMainCategoriesPage";
 
 export default function MainCategoriesPage() {
   const { query, state, modal, actions } = useMainCategoriesPage();
-
-  if (query.isLoading && !query.categories) return <PageLoader />;
-  if (query.isError) return <ErrorFallback onRetry={query.refetch} />;
 
   return (
     <div className="space-y-6">
@@ -39,25 +44,75 @@ export default function MainCategoriesPage() {
 
       <div className="flex flex-col lg:flex-row gap-8 min-h-[600px]">
         {/* ── Main Categories List (Left) ────────────────────────────── */}
-        <div className="w-full lg:w-[400px] shrink-0 space-y-4">
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-gray-50 bg-gray-50/30">
-              <h2 className="text-[13px] font-bold text-gray-900 uppercase tracking-wider">
-                Main Categories
-              </h2>
-            </div>
-            <div className="divide-y divide-gray-50 max-h-[700px] overflow-y-auto">
-              {query.categories?.map((cat) => (
+        <div className="w-full lg:w-[400px] bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col shrink-0">
+          <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+              Main Categories
+            </h2>
+            {query.isFetching && (
+              <Loader2 className="w-4 h-4 text-brand animate-spin" />
+            )}
+          </div>
+
+          {/* Search input */}
+          <div className="px-3 py-2 border-b border-gray-100">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                value={state.search}
+                onChange={(e) => {
+                  state.setSearch(e.target.value);
+                  state.setPage(1);
+                }}
+                placeholder="Search categories…"
+                className="w-full pl-8 pr-7 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-all placeholder:text-gray-400"
+              />
+              {state.search && (
                 <button
+                  onClick={() => {
+                    state.setSearch("");
+                    state.setPage(1);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="divide-y divide-gray-50 max-h-[700px] overflow-y-auto relative">
+            {query.isLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 text-brand animate-spin" />
+              </div>
+            ) : query.categories?.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Search className="w-8 h-8 text-gray-300 mb-3" />
+                <p className="text-sm font-semibold text-gray-500">
+                  No categories found
+                </p>
+                {state.search && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Try a different search term
+                  </p>
+                )}
+              </div>
+            ) : (
+              query.categories?.map((cat) => (
+                <div
                   key={cat.id}
-                  onClick={() => state.setSelectedCategoryId(cat.id)}
-                  className={`w-full flex items-center justify-between p-4 text-left transition-all group ${
+                  className={`relative flex items-center justify-between transition-all group ${
                     state.selectedCategoryId === cat.id
                       ? "bg-brand/5"
                       : "hover:bg-gray-50"
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  {/* Clickable selection area */}
+                  <button
+                    onClick={() => state.setSelectedCategoryId(cat.id)}
+                    className="flex-1 flex items-center gap-3 p-4 text-left min-w-0"
+                  >
                     <div
                       className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0 border ${state.selectedCategoryId === cat.id ? "border-brand/20 bg-white" : "border-gray-100 bg-gray-50"}`}
                     >
@@ -83,25 +138,57 @@ export default function MainCategoriesPage() {
                         {cat.isActive ? "Active" : "Inactive"}
                       </p>
                     </div>
+                  </button>
+
+                  {/* Action buttons (show on hover or when selected) */}
+                  <div
+                    className={`flex items-center gap-1 pr-3 shrink-0 transition-opacity duration-150 ${
+                      state.selectedCategoryId === cat.id
+                        ? "opacity-100"
+                        : "opacity-0 group-hover:opacity-100"
+                    }`}
+                  >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        modal.main.openEdit(cat);
+                      }}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-brand hover:bg-brand/10 transition-colors"
+                      title="Edit category"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        actions.main.delete(cat);
+                      }}
+                      disabled={actions.main.isDeletePending}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                      title="Delete category"
+                    >
+                      {actions.main.isDeletePending ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3.5 h-3.5" />
+                      )}
+                    </button>
                   </div>
-                  <ChevronRight
-                    className={`w-4 h-4 transition-transform ${state.selectedCategoryId === cat.id ? "text-brand translate-x-1" : "text-gray-300 group-hover:text-gray-400"}`}
-                  />
-                </button>
-              ))}
-            </div>
-            {query.pagination && (
-              <div className="border-t border-gray-50 bg-white p-2">
-                <Pagination
-                  currentPage={state.page}
-                  totalPages={query.pagination.totalPages}
-                  onPageChange={state.setPage}
-                  totalItems={query.pagination.total}
-                  itemsPerPage={state.limit}
-                />
-              </div>
+                </div>
+              ))
             )}
           </div>
+          {query.pagination && (
+            <div className="border-t border-gray-50 bg-white p-2">
+              <Pagination
+                currentPage={state.page}
+                totalPages={query.pagination.totalPages}
+                onPageChange={state.setPage}
+                totalItems={query.pagination.total}
+                itemsPerPage={state.limit}
+              />
+            </div>
+          )}
         </div>
 
         {/* ── Sub-Categories Content (Right) ────────────────────────── */}

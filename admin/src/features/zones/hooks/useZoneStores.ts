@@ -3,9 +3,9 @@ import {
   useAssignStoresToZone,
   useRemoveStoreFromZone,
   fetchStores,
-  type Zone,
-  type ZoneStore,
 } from "../api/zones.api";
+import type { Zone, ZoneStore } from "../../../types";
+import { useDebounce } from "../../../hooks/useDebouncing";
 import toast from "react-hot-toast";
 
 export function useZoneStores(id: string | undefined) {
@@ -14,26 +14,36 @@ export function useZoneStores(id: string | undefined) {
 
   const [assignedStores, setAssignedStores] = useState<Zone["storeZones"]>([]);
   const [storeSearch, setStoreSearch] = useState("");
+  const debouncedSearch = useDebounce(storeSearch, 400);
   const [storeResults, setStoreResults] = useState<ZoneStore[]>([]);
   const [searchingStores, setSearchingStores] = useState(false);
 
   useEffect(() => {
-    if (!storeSearch.trim()) {
-      const t = setTimeout(() => setStoreResults([]), 0);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(async () => {
+    let isMounted = true;
+
+    const fetchResults = async () => {
+      if (!debouncedSearch.trim()) {
+        if (isMounted) setStoreResults([]);
+        return;
+      }
+
       setSearchingStores(true);
       try {
-        setStoreResults(await fetchStores(storeSearch));
+        const results = await fetchStores(debouncedSearch);
+        if (isMounted) setStoreResults(results);
       } catch {
-        setStoreResults([]);
+        if (isMounted) setStoreResults([]);
       } finally {
-        setSearchingStores(false);
+        if (isMounted) setSearchingStores(false);
       }
-    }, 400);
-    return () => clearTimeout(t);
-  }, [storeSearch]);
+    };
+
+    fetchResults();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [debouncedSearch]);
 
   const handleAddStore = async (store: ZoneStore) => {
     if (!id) return;

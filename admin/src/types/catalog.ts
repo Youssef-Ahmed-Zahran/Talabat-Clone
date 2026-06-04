@@ -94,6 +94,14 @@ export interface UpdateProductPayload {
   isAvailable?: boolean;
   primaryImage?: string;
   meta?: Record<string, unknown>;
+  optionGroups?: {
+    name: string;
+    isRequired?: boolean;
+    minSelect?: number;
+    maxSelect?: number;
+    sortOrder?: number;
+    values?: { name: string; extraPrice?: number }[];
+  }[];
 }
 
 export interface CreateOptionGroupPayload {

@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 import "leaflet-draw";
 import { Info } from "lucide-react";
-import type { GeoJSONPolygon } from "../api/zones.api";
+import type { GeoJSONPolygon } from "../../../types";
 import { fetchAllZones } from "../api/zones.api";
 
 // Fix Leaflet default marker icon broken by bundlers

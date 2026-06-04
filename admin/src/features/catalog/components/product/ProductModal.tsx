@@ -46,6 +46,12 @@ export function ProductModal({
               : "",
           sectionId: editingProduct.section_id || "",
           meta: editingProduct.meta || {},
+          primaryImage: editingProduct.primary_image_url || undefined,
+          images: editingProduct.images
+            ? editingProduct.images.map((img) => img.image_url)
+            : editingProduct.primary_image_url
+              ? [editingProduct.primary_image_url]
+              : [],
           optionGroups:
             editingProduct.option_groups?.map((g) => ({
               name: g.name,
@@ -66,6 +72,8 @@ export function ProductModal({
           quantity: "",
           sectionId: activeSectionId || "",
           meta: {},
+          primaryImage: undefined,
+          images: [],
           optionGroups: [],
         },
   });

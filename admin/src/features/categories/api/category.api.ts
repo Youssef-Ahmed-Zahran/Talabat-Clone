@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import api from '../../../config/axios';
 import type {
   Category,
@@ -18,15 +18,16 @@ export interface MainCategoriesResponse {
 }
 
 // ── Fetch all main categories ──────────────────────────────────────────
-const fetchMainCategories = async (page?: number, limit?: number): Promise<MainCategoriesResponse> => {
-  const { data } = await api.get('/categories', { params: { page, limit } });
+const fetchMainCategories = async (page?: number, limit?: number, search?: string): Promise<MainCategoriesResponse> => {
+  const { data } = await api.get('/categories', { params: { page, limit, search } });
   return data.data ?? data;
 };
 
-export const useMainCategories = (page?: number, limit?: number) => {
+export const useMainCategories = (page?: number, limit?: number, search?: string) => {
   return useQuery({
-    queryKey: ['categories', 'main', page, limit],
-    queryFn: () => fetchMainCategories(page, limit),
+    queryKey: ['categories', 'main', page, limit, search],
+    queryFn: () => fetchMainCategories(page, limit, search),
+    placeholderData: keepPreviousData,
   });
 };
 

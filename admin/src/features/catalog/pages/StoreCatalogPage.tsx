@@ -40,21 +40,21 @@ export default function StoreCatalogPage() {
     return <ErrorFallback onRetry={sectionsQuery.refetch} />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-fade-in">
       {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link
             to={role === "owner" ? `/my-store` : `/stores/${sid}`}
-            className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            className="p-2.5 rounded-2xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200 border border-transparent hover:border-gray-200/50"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
               Store Catalog
             </h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-[13px] text-gray-400 font-medium mt-0.5">
               Manage menu sections &amp; products
             </p>
           </div>
@@ -62,14 +62,14 @@ export default function StoreCatalogPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={sectionsModal.openCreate}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-4.5 py-2.5 text-xs font-bold text-gray-700 bg-white border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all shadow-sm active:scale-95"
           >
-            <Layers3 className="w-4 h-4" />
+            <Layers3 className="w-4 h-4 text-brand" />
             Add Section
           </button>
           <button
             onClick={modal.openCreate}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-4.5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-brand to-brand-light rounded-2xl hover:shadow-lg hover:shadow-brand/15 transition-all active:scale-95"
           >
             <Plus className="w-4 h-4" />
             Add Product
@@ -95,24 +95,24 @@ export default function StoreCatalogPage() {
         <div className="flex-1 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="relative max-w-md w-full">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 value={filters.productSearch}
                 onChange={(e) => filters.setProductSearch(e.target.value)}
                 placeholder="Search products..."
-                className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
+                className="w-full pl-11 pr-4 py-3 text-sm bg-white border border-gray-200/60 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all premium-shadow"
               />
             </div>
           </div>
 
           {/* ── Products Grid ────────────────────────────────────────── */}
-          {query.isLoading ? (
+          {query.isLoading || query.isFetching ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-6 h-6 text-brand animate-spin" />
             </div>
           ) : query.products.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               {query.products.map((p) => (
                 <ProductCard
                   key={p.id}
@@ -125,11 +125,11 @@ export default function StoreCatalogPage() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-2xl border border-dashed border-gray-200">
-              <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4">
-                <Package className="w-8 h-8 text-gray-300" />
+            <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-gray-200/80 premium-shadow">
+              <div className="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mb-4">
+                <Package className="w-8 h-8 text-brand" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-600">
+              <h3 className="text-sm font-bold text-gray-800">
                 No products found
               </h3>
               <p className="text-[13px] text-gray-400 mt-1">
@@ -139,7 +139,7 @@ export default function StoreCatalogPage() {
               </p>
               <button
                 onClick={modal.openCreate}
-                className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-dark transition-colors"
+                className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-brand to-brand-light rounded-2xl hover:shadow-lg hover:shadow-brand/15 transition-all active:scale-95"
               >
                 <Plus className="w-4 h-4" />
                 Add First Product

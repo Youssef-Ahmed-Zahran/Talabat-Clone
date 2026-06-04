@@ -9,9 +9,7 @@ export const StoreDetailsPage = lazy(
 export const StoreCatalogPage = lazy(
   () => import("../features/catalog/pages/StoreCatalogPage"),
 );
-export const ProductOptionsPage = lazy(
-  () => import("../features/catalog/pages/ProductOptionsPage"),
-);
+
 export const ZonesPage = lazy(
   () => import("../features/zones/pages/ZonesPage"),
 );

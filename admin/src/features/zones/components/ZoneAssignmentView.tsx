@@ -9,7 +9,8 @@ import {
   AlertTriangle,
   X,
 } from "lucide-react";
-import type { ZoneDriver, ZoneStore, Zone } from "../api/zones.api";
+import type { ZoneDriver } from "../api/zones.api";
+import type { ZoneStore, Zone } from "../../../types";
 import ZoneMapEditor from "./ZoneMapEditor";
 
 import { useZoneEditor } from "../hooks/useZoneEditor";

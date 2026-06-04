@@ -13,6 +13,8 @@ export const productSchema = z.object({
   quantity: z.union([z.number().min(0), z.literal("")]).optional(),
   sectionId: z.string().optional(),
   meta: z.record(z.string(), z.unknown()).optional(),
+  primaryImage: z.string().optional(),
+  images: z.array(z.string()).optional(),
   optionGroups: z
     .array(
       z.object({

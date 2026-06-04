@@ -19,7 +19,7 @@ export function useStoresList() {
     undefined,
   );
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, 500);
   const [page, setPage] = useState(1);
   const limit = 10;
 

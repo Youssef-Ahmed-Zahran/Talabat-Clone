@@ -3,9 +3,8 @@ import { useParams } from "react-router-dom";
 import {
   fetchZoneById,
   fetchCities,
-  type GeoJSONPolygon,
-  type Zone,
 } from "../api/zones.api";
+import type { GeoJSONPolygon, Zone } from "../../../types";
 import toast from "react-hot-toast";
 
 type Mode = "create" | "edit";

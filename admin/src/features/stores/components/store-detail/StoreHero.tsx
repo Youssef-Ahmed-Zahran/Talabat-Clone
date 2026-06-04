@@ -7,12 +7,12 @@ interface StoreHeroProps {
 
 export function StoreHero({ store }: StoreHeroProps) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm relative overflow-hidden">
+    <div className="bg-white rounded-3xl border border-gray-100/80 p-8 premium-shadow relative overflow-hidden group">
       {/* Subtle decorative background */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-brand/5 rounded-bl-[100px] -z-10" />
+      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-brand/10 to-transparent rounded-bl-[100px] -z-10 transition-transform duration-700 group-hover:scale-110" />
 
       <div className="flex flex-col sm:flex-row items-start gap-6">
-        <div className="w-24 h-24 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-center shrink-0 shadow-inner overflow-hidden">
+        <div className="w-24 h-24 bg-gray-50 rounded-2xl border border-gray-100/80 flex items-center justify-center shrink-0 premium-shadow overflow-hidden group-hover:-translate-y-1 transition-all duration-300">
           {store.logoUrl ? (
             <img
               src={store.logoUrl}
@@ -26,22 +26,27 @@ export function StoreHero({ store }: StoreHeroProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">{store.name}</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+                {store.name}
+              </h2>
+              <p className="text-[13px] font-medium text-gray-400 mt-1">
                 {store.legalName || "No Legal Name Provided"}
               </p>
             </div>
             <span
-              className={`px-3 py-1 text-xs font-semibold rounded-full border ${
+              className={`px-3 py-1 text-[11px] font-bold rounded-xl border ${
                 store.isActive
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                  : "bg-red-50 text-red-600 border-red-100"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-100/60"
+                  : "bg-red-50 text-red-600 border-red-100/60"
               }`}
             >
+              <span
+                className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${store.isActive ? "bg-emerald-500" : "bg-red-500"}`}
+              />
               {store.isActive ? "Active" : "Inactive"}
             </span>
           </div>
-          <p className="text-[13px] text-gray-600 mt-4 leading-relaxed max-w-2xl bg-gray-50/50 p-3 rounded-lg border border-gray-50">
+          <p className="text-[13px] text-gray-500 mt-4 leading-relaxed max-w-2xl bg-gray-50/50 p-4 rounded-2xl border border-gray-100/50">
             {store.description || "No description provided for this store."}
           </p>
         </div>

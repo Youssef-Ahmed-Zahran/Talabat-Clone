@@ -7,7 +7,8 @@ import {
   type StoreFormValues,
 } from "../../../schemas/store.schema";
 import type { Store } from "../../../types";
-import { fetchAllZones, type Zone } from "../../zones/api/zones.api";
+import { fetchAllZones } from "../../zones/api/zones.api";
+import type { Zone } from "../../../types";
 
 const defaultValues: StoreFormValues = {
   name: "",

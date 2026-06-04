@@ -56,6 +56,24 @@ export function ProductCustomizationTab() {
                     Required
                   </span>
                 </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-500">Min:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    {...register(`optionGroups.${idx}.minSelect`, { valueAsNumber: true })}
+                    className="w-16 px-2 py-1 text-sm bg-white border border-gray-200 rounded-lg"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-500">Max:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    {...register(`optionGroups.${idx}.maxSelect`, { valueAsNumber: true })}
+                    className="w-16 px-2 py-1 text-sm bg-white border border-gray-200 rounded-lg"
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => removeGroup(idx)}

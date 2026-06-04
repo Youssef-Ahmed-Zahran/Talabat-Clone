@@ -1,6 +1,7 @@
 import { useFormContext, useFormState } from "react-hook-form";
 import type { ProductFormValues } from "../../../../../schemas/catalog.schema";
 import type { Section } from "../../../../../types";
+import { ProductImagesUploader } from "./ProductImagesUploader";
 
 interface ProductDetailsTabProps {
   sections?: Section[];
@@ -86,6 +87,8 @@ export function ProductDetailsTab({ sections }: ProductDetailsTabProps) {
             ))}
           </select>
         </div>
+
+        <ProductImagesUploader />
       </div>
     </div>
   );

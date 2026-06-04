@@ -2,7 +2,7 @@ import { useFormContext } from "react-hook-form";
 import { Navigation } from "lucide-react";
 import toast from "react-hot-toast";
 import type { StoreFormValues } from "../../../../schemas/store.schema";
-import type { Zone } from "../../../zones/api/zones.api";
+import type { Zone } from "../../../../types";
 import { LocationPicker } from "../location/LocationPicker";
 
 interface LocationStepProps {

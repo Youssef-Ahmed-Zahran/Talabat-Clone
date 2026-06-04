@@ -9,7 +9,7 @@ export function useStoreDetailsPage() {
   const authStoreId = useAuthStore((s) => s.storeId);
   const storeId = params.storeId || authStoreId || "";
 
-  const { data: store, isLoading, isError, refetch } = useStoreDetails(storeId);
+  const { data: store, isLoading, isFetching, isError, refetch } = useStoreDetails(storeId);
 
   return {
     query: {
@@ -17,6 +17,7 @@ export function useStoreDetailsPage() {
       storeId,
       store,
       isLoading,
+      isFetching,
       isError,
       refetch,
     },

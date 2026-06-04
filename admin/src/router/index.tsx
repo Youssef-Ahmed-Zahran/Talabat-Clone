@@ -20,7 +20,6 @@ import {
   StoresListPage,
   StoreDetailsPage,
   StoreCatalogPage,
-  ProductOptionsPage,
   ZonesPage,
   ZoneEditorPage,
 } from "./lazyComponents";
@@ -81,22 +80,7 @@ const router = createBrowserRouter([
           </Suspense>
         ),
       },
-      {
-        path: "stores/:storeId/catalog/products/:productId",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <ProductOptionsPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: "my-store/catalog/products/:productId",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <ProductOptionsPage />
-          </Suspense>
-        ),
-      },
+
       { path: "users", element: <UsersListPage /> },
       { path: "users/:userId", element: <UserDetailsPage /> },
       { path: "drivers", element: <DriversListPage /> },

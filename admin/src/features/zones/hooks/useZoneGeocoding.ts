@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { GeoJSONPolygon } from "../api/zones.api";
+import type { GeoJSONPolygon } from "../../../types";
 
 interface UseZoneGeocodingOptions {
   name: string;

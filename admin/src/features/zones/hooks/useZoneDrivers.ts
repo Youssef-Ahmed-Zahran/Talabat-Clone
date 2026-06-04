@@ -3,9 +3,10 @@ import {
   useAssignDriversToZone,
   useRemoveDriverFromZone,
   fetchDrivers,
-  type Zone,
   type ZoneDriver,
 } from "../api/zones.api";
+import type { Zone } from "../../../types";
+import { useDebounce } from "../../../hooks/useDebouncing";
 import toast from "react-hot-toast";
 
 export function useZoneDrivers(id: string | undefined) {
@@ -14,26 +15,36 @@ export function useZoneDrivers(id: string | undefined) {
 
   const [assignedDrivers, setAssignedDrivers] = useState<Zone["driverZones"]>([]);
   const [driverSearch, setDriverSearch] = useState("");
+  const debouncedSearch = useDebounce(driverSearch, 400);
   const [driverResults, setDriverResults] = useState<ZoneDriver[]>([]);
   const [searchingDrivers, setSearchingDrivers] = useState(false);
 
   useEffect(() => {
-    if (!driverSearch.trim()) {
-      const t = setTimeout(() => setDriverResults([]), 0);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(async () => {
+    let isMounted = true;
+
+    const fetchResults = async () => {
+      if (!debouncedSearch.trim()) {
+        if (isMounted) setDriverResults([]);
+        return;
+      }
+
       setSearchingDrivers(true);
       try {
-        setDriverResults(await fetchDrivers(driverSearch));
+        const results = await fetchDrivers(debouncedSearch);
+        if (isMounted) setDriverResults(results);
       } catch {
-        setDriverResults([]);
+        if (isMounted) setDriverResults([]);
       } finally {
-        setSearchingDrivers(false);
+        if (isMounted) setSearchingDrivers(false);
       }
-    }, 400);
-    return () => clearTimeout(t);
-  }, [driverSearch]);
+    };
+
+    fetchResults();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [debouncedSearch]);
 
   const handleAddDriver = async (driver: ZoneDriver) => {
     if (!id) return;
