@@ -151,11 +151,30 @@ enum StatusChangedByType {
 }
 
 enum WalletTransactionType {
-  CASH_ORDER_DEBIT // Deducted when driver collects cash from a customer
+  CASH_ORDER_DEBIT    // Deducted when driver collects cash from a customer
   DELIVERY_FEE_CREDIT // Credited when driver completes an online-paid order
-  ADMIN_TOP_UP // Admin clears debt after driver deposits cash
-  ADMIN_DEBIT // Manual deduction by admin
-  PAYOUT // Driver earnings payout
+  ADMIN_TOP_UP        // Admin clears debt after driver deposits cash
+  ADMIN_DEBIT         // Manual deduction by admin
+  PAYOUT              // Driver earnings payout
+  DEBT_REPAYMENT      // Driver pays off their negative balance (cash owed to Talabat)
+}
+
+enum DebtPaymentMethod {
+  CREDIT_CARD
+  VODAFONE_CASH
+  INSTAPAY
+}
+
+enum DebtPaymentStatus {
+  PENDING   // Awaiting admin confirmation (VF/InstaPay) or auto-confirm (Card simulated)
+  CONFIRMED // Wallets have been settled
+  REJECTED  // Admin rejected (wrong amount, fake receipt, etc.)
+}
+
+enum WithdrawalStatus {
+  PENDING    // Payout initiated, not yet transferred
+  COMPLETED  // Bank transfer sent to store owner
+  FAILED     // Transfer failed
 }
 
 enum WalletTransactionStatus {
@@ -400,6 +419,7 @@ model Driver {
   conversations Conversation[]
   driverZones   DriverZone[]
   wallet        DriverWallet?
+  debtPayments  DriverDebtPayment[]
 
   notifications DriverNotification[]
   fcmTokens     DriverFcmToken[]
@@ -621,6 +641,7 @@ model Store {
   storeZones      StoreZone[]
   wallet          StoreWallet?
   storeWishlists  StoreWishlist[]
+  withdrawals     StoreWithdrawal[]
 
   @@index([mainCategoryId])
   @@index([cityId])
@@ -1032,6 +1053,39 @@ model DriverWalletTransaction {
 }
 
 // ============================================================
+// DRIVER DEBT PAYMENTS
+// ============================================================
+
+/// Tracks each repayment request submitted by a driver.
+/// On CONFIRMED, both DriverWallet and PlatformWallet are updated atomically.
+model DriverDebtPayment {
+  id       String @id @default(uuid())
+  driverId String
+
+  amount          Decimal
+  method          DebtPaymentMethod
+  status          DebtPaymentStatus @default(PENDING)
+
+  referenceNumber String?  // VF Cash / InstaPay transaction reference
+  receiptUrl      String?  // Screenshot upload URL (optional)
+  note            String?
+
+  confirmedAt     DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("driver_debt_payments")
+}
+
+// ============================================================
 // USER WALLET (Customer)
 // ============================================================
 
@@ -1103,6 +1157,35 @@ model StoreWalletTransaction {
   @@index([walletId])
   @@index([orderId])
   @@map("store_wallet_transactions")
+}
+
+// ============================================================
+// STORE WITHDRAWALS (Monthly payout from Platform to Store)
+// ============================================================
+
+/// When Talabat pays the store owner their accumulated earnings.
+/// The Platform Wallet is debited; the Store Wallet balance is reduced.
+model StoreWithdrawal {
+  id      String @id @default(uuid())
+  storeId String
+
+  amount           Decimal          // Net amount paid out (after commission already deducted)
+  status           WithdrawalStatus @default(PENDING)
+  transactionRef   String?          // Bank transfer reference number
+  note             String?
+
+  processedAt  DateTime?
+  completedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("store_withdrawals")
 }
 
 // ============================================================

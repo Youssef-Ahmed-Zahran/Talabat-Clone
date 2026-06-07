@@ -478,3 +478,457 @@ export const handleWalletOnDelivery = async (orderId, tx) => {
     console.log(`[Wallet] Distribution Complete for #${orderId.slice(0, 8)}: Platform +${numAppFee}, Store +${numStoreEarnings}`);
 };
 
+// ═══════════════════════════════════════════════════════════════
+// DRIVER: SUBMIT DEBT REPAYMENT REQUEST
+// POST /api/drivers/wallet/repay
+// Body: { amount, method, referenceNumber?, note? }
+// ═══════════════════════════════════════════════════════════════
+
+export const submitDebtPayment = async (req, res, next) => {
+    try {
+        const driverId = req.driver.id;
+        const { amount, method, referenceNumber, note } = req.body;
+
+        if (!amount || Number(amount) <= 0) {
+            throw new ApiError(400, "Amount must be a positive number.");
+        }
+
+        if (!method || !["CREDIT_CARD", "VODAFONE_CASH", "INSTAPAY"].includes(method)) {
+            throw new ApiError(400, "Method must be one of: CREDIT_CARD, VODAFONE_CASH, INSTAPAY.");
+        }
+
+        const wallet = await ensureWallet(driverId);
+        const currentBalance = Number(wallet.balance);
+
+        if (currentBalance >= 0) {
+            throw new ApiError(400, "You have no outstanding debt to pay.");
+        }
+
+        const maxRepayable = Math.abs(currentBalance);
+        const repayAmount = Number(amount);
+
+        if (repayAmount > maxRepayable) {
+            throw new ApiError(400, `Amount exceeds your current debt of EGP ${maxRepayable.toFixed(2)}.`);
+        }
+
+        // Check for existing PENDING payment to prevent duplicates
+        const existingPending = await prisma.driverDebtPayment.findFirst({
+            where: { driverId, status: "PENDING" },
+        });
+        if (existingPending) {
+            throw new ApiError(409, "You already have a pending payment request. Please wait for it to be confirmed.");
+        }
+
+        // CREDIT CARD: simulated — auto-confirm immediately
+        if (method === "CREDIT_CARD") {
+            const payment = await prisma.$transaction(async (tx) => {
+                // 1. Create the payment record
+                const debtPayment = await tx.driverDebtPayment.create({
+                    data: {
+                        driverId,
+                        amount: repayAmount,
+                        method: "CREDIT_CARD",
+                        status: "CONFIRMED",
+                        note: note || "Credit card payment (simulated)",
+                        confirmedAt: new Date(),
+                    },
+                });
+
+                // 2. Update driver wallet
+                const newDriverBalance = currentBalance + repayAmount;
+                await tx.driverWallet.update({
+                    where: { id: wallet.id },
+                    data: { balance: newDriverBalance },
+                });
+                await tx.driverWalletTransaction.create({
+                    data: {
+                        walletId: wallet.id,
+                        type: "DEBT_REPAYMENT",
+                        status: "COMPLETED",
+                        amount: repayAmount,
+                        balanceAfter: newDriverBalance,
+                        note: `Debt repayment via Credit Card. Ref: ${debtPayment.id.slice(0, 8)}`,
+                    },
+                });
+
+                // 3. Update platform wallet (Talabat receives the cash)
+                const pWallet = await ensurePlatformWallet(tx);
+                const newPlatformBalance = Number(pWallet.balance) + repayAmount;
+                await tx.platformWallet.update({
+                    where: { id: pWallet.id },
+                    data: { balance: newPlatformBalance },
+                });
+                await tx.platformWalletTransaction.create({
+                    data: {
+                        walletId: pWallet.id,
+                        type: "DRIVER_CASH_SETTLEMENT",
+                        amount: repayAmount,
+                        balanceAfter: newPlatformBalance,
+                        note: `Cash settlement from driver ${driverId.slice(0, 8)} via Credit Card`,
+                    },
+                });
+
+                // 4. Restore driver status if they were suspended due to debt
+                if (newDriverBalance > -Number(wallet.creditLimit)) {
+                    const driver = await tx.driver.findUnique({ where: { id: driverId } });
+                    if (driver?.status === "SUSPENDED") {
+                        await tx.driver.update({
+                            where: { id: driverId },
+                            data: { status: "OFFLINE" },
+                        });
+                    }
+                }
+
+                return debtPayment;
+            });
+
+            return res.json(new ApiResponse(200, {
+                payment,
+                message: "Payment confirmed. Your wallet balance has been updated.",
+            }, "Debt repayment successful."));
+        }
+
+        // VODAFONE_CASH / INSTAPAY: create PENDING — requires admin confirmation
+        const payment = await prisma.driverDebtPayment.create({
+            data: {
+                driverId,
+                amount: repayAmount,
+                method,
+                status: "PENDING",
+                referenceNumber: referenceNumber || null,
+                note: note || null,
+            },
+        });
+
+        res.status(201).json(new ApiResponse(201, {
+            payment,
+            message: "Your payment request has been submitted and is awaiting admin confirmation.",
+        }, "Debt repayment request submitted."));
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// DRIVER: GET MY DEBT PAYMENT HISTORY
+// GET /api/drivers/wallet/payments
+// ═══════════════════════════════════════════════════════════════
+
+export const getMyDebtPayments = async (req, res, next) => {
+    try {
+        const driverId = req.driver.id;
+        const { page = 1, limit = 20 } = req.query;
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const [payments, total] = await Promise.all([
+            prisma.driverDebtPayment.findMany({
+                where: { driverId },
+                orderBy: { createdAt: "desc" },
+                skip,
+                take: Number(limit),
+            }),
+            prisma.driverDebtPayment.count({ where: { driverId } }),
+        ]);
+
+        res.json(new ApiResponse(200, {
+            payments,
+            pagination: {
+                total,
+                page: Number(page),
+                limit: Number(limit),
+                totalPages: Math.ceil(total / Number(limit)),
+            },
+        }, "Payment history fetched."));
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN: LIST ALL PENDING DEBT PAYMENTS
+// GET /api/admin/drivers/debt-payments?status=PENDING
+// ═══════════════════════════════════════════════════════════════
+
+export const listDebtPayments = async (req, res, next) => {
+    try {
+        const { status = "PENDING", page = 1, limit = 20, driverId } = req.query;
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const where = {};
+        if (status && status !== "ALL") where.status = status;
+        if (driverId) where.driverId = driverId;
+
+        const [payments, total] = await Promise.all([
+            prisma.driverDebtPayment.findMany({
+                where,
+                orderBy: { createdAt: "desc" },
+                skip,
+                take: Number(limit),
+                include: {
+                    driver: {
+                        select: {
+                            id: true,
+                            email: true,
+                            phone: true,
+                            application: {
+                                select: { firstName: true, familyName: true },
+                            },
+                        },
+                    },
+                },
+            }),
+            prisma.driverDebtPayment.count({ where }),
+        ]);
+
+        res.json(new ApiResponse(200, {
+            payments,
+            pagination: {
+                total,
+                page: Number(page),
+                limit: Number(limit),
+                totalPages: Math.ceil(total / Number(limit)),
+            },
+        }, "Debt payments fetched."));
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// INTERNAL: Settle driver debt — updates both wallets atomically
+// ═══════════════════════════════════════════════════════════════
+
+const settleDriverDebt = async (paymentId, tx) => {
+    const prismaClient = tx || prisma;
+
+    const payment = await prismaClient.driverDebtPayment.findUnique({
+        where: { id: paymentId },
+    });
+    if (!payment) throw new ApiError(404, "Payment record not found.");
+    if (payment.status !== "PENDING") throw new ApiError(400, "Payment is not in PENDING state.");
+
+    const repayAmount = Number(payment.amount);
+    const dWallet = await ensureWallet(payment.driverId, prismaClient);
+    const currentBalance = Number(dWallet.balance);
+    const newDriverBalance = currentBalance + repayAmount;
+
+    // 1. Confirm the payment record
+    await prismaClient.driverDebtPayment.update({
+        where: { id: paymentId },
+        data: { status: "CONFIRMED", confirmedAt: new Date() },
+    });
+
+    // 2. Update driver wallet
+    await prismaClient.driverWallet.update({
+        where: { id: dWallet.id },
+        data: { balance: newDriverBalance },
+    });
+    await prismaClient.driverWalletTransaction.create({
+        data: {
+            walletId: dWallet.id,
+            type: "DEBT_REPAYMENT",
+            status: "COMPLETED",
+            amount: repayAmount,
+            balanceAfter: newDriverBalance,
+            note: `Debt repayment via ${payment.method}. Ref: ${payment.referenceNumber || payment.id.slice(0, 8)}`,
+        },
+    });
+
+    // 3. Update platform wallet
+    const pWallet = await ensurePlatformWallet(prismaClient);
+    const newPlatformBalance = Number(pWallet.balance) + repayAmount;
+    await prismaClient.platformWallet.update({
+        where: { id: pWallet.id },
+        data: { balance: newPlatformBalance },
+    });
+    await prismaClient.platformWalletTransaction.create({
+        data: {
+            walletId: pWallet.id,
+            type: "DRIVER_CASH_SETTLEMENT",
+            amount: repayAmount,
+            balanceAfter: newPlatformBalance,
+            note: `Cash settlement from driver ${payment.driverId.slice(0, 8)} via ${payment.method}`,
+        },
+    });
+
+    // 4. Restore driver if previously suspended for debt
+    if (newDriverBalance > -Number(dWallet.creditLimit)) {
+        const driver = await prismaClient.driver.findUnique({ where: { id: payment.driverId } });
+        if (driver?.status === "SUSPENDED") {
+            await prismaClient.driver.update({
+                where: { id: payment.driverId },
+                data: { status: "OFFLINE" },
+            });
+        }
+    }
+
+    return { payment, newDriverBalance, newPlatformBalance };
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN: CONFIRM A DEBT PAYMENT (VF Cash / InstaPay)
+// POST /api/admin/drivers/debt-payments/:paymentId/confirm
+// ═══════════════════════════════════════════════════════════════
+
+export const confirmDebtPayment = async (req, res, next) => {
+    try {
+        const { paymentId } = req.params;
+
+        const result = await prisma.$transaction(async (tx) => {
+            return settleDriverDebt(paymentId, tx);
+        });
+
+        res.json(new ApiResponse(200, result, "Payment confirmed and wallets updated."));
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN: REJECT A DEBT PAYMENT
+// POST /api/admin/drivers/debt-payments/:paymentId/reject
+// Body: { rejectionReason }
+// ═══════════════════════════════════════════════════════════════
+
+export const rejectDebtPayment = async (req, res, next) => {
+    try {
+        const { paymentId } = req.params;
+        const { rejectionReason } = req.body;
+
+        const payment = await prisma.driverDebtPayment.findUnique({ where: { id: paymentId } });
+        if (!payment) throw new ApiError(404, "Payment record not found.");
+        if (payment.status !== "PENDING") throw new ApiError(400, "Payment is not in PENDING state.");
+
+        const updated = await prisma.driverDebtPayment.update({
+            where: { id: paymentId },
+            data: {
+                status: "REJECTED",
+                rejectedAt: new Date(),
+                rejectionReason: rejectionReason || "Payment could not be verified.",
+            },
+        });
+
+        res.json(new ApiResponse(200, updated, "Payment rejected."));
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN: PROCESS MONTHLY STORE PAYOUT
+// POST /api/admin/stores/:storeId/payout
+// Body: { transactionRef?, note? }
+// — Pays the store owner their accumulated wallet balance
+// — Platform Wallet is debited, Store Wallet is cleared
+// ═══════════════════════════════════════════════════════════════
+
+export const processMonthlyStorePayout = async (req, res, next) => {
+    try {
+        const { storeId } = req.params;
+        const { transactionRef, note } = req.body;
+
+        const sWallet = await ensureStoreWallet(storeId);
+        const storeBalance = Number(sWallet.balance);
+
+        if (storeBalance <= 0) {
+            throw new ApiError(400, "Store has no earnings to pay out.");
+        }
+
+        const pWallet = await ensurePlatformWallet();
+        const platformBalance = Number(pWallet.balance);
+
+        if (platformBalance < storeBalance) {
+            throw new ApiError(400, `Platform wallet has insufficient funds (EGP ${platformBalance.toFixed(2)}) to cover payout of EGP ${storeBalance.toFixed(2)}.`);
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Create withdrawal record
+            const withdrawal = await tx.storeWithdrawal.create({
+                data: {
+                    storeId,
+                    amount: storeBalance,
+                    status: "COMPLETED",
+                    transactionRef: transactionRef || null,
+                    note: note || `Monthly payout for store ${storeId.slice(0, 8)}`,
+                    processedAt: new Date(),
+                    completedAt: new Date(),
+                },
+            });
+
+            // 2. Debit store wallet (balance → 0)
+            const newStoreBalance = 0;
+            await tx.storeWallet.update({
+                where: { id: sWallet.id },
+                data: { balance: newStoreBalance },
+            });
+            await tx.storeWalletTransaction.create({
+                data: {
+                    walletId: sWallet.id,
+                    type: "WITHDRAWAL",
+                    amount: -storeBalance,
+                    balanceAfter: newStoreBalance,
+                    note: `Monthly payout processed. Withdrawal ID: ${withdrawal.id.slice(0, 8)}`,
+                },
+            });
+
+            // 3. Debit platform wallet (Talabat pays the store)
+            const newPlatformBalance = platformBalance - storeBalance;
+            await tx.platformWallet.update({
+                where: { id: pWallet.id },
+                data: { balance: newPlatformBalance },
+            });
+            await tx.platformWalletTransaction.create({
+                data: {
+                    walletId: pWallet.id,
+                    type: "STORE_PAYOUT",
+                    amount: -storeBalance,
+                    balanceAfter: newPlatformBalance,
+                    note: `Monthly payout to store ${storeId.slice(0, 8)}. Amount: EGP ${storeBalance.toFixed(2)}`,
+                },
+            });
+
+            return { withdrawal, newStoreBalance, newPlatformBalance };
+        });
+
+        res.json(new ApiResponse(200, result, `Store payout of EGP ${storeBalance.toFixed(2)} processed successfully.`));
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN: GET STORE WITHDRAWAL HISTORY
+// GET /api/admin/stores/:storeId/withdrawals
+// ═══════════════════════════════════════════════════════════════
+
+export const getStoreWithdrawals = async (req, res, next) => {
+    try {
+        const { storeId } = req.params;
+        const { page = 1, limit = 20 } = req.query;
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const [withdrawals, total] = await Promise.all([
+            prisma.storeWithdrawal.findMany({
+                where: { storeId },
+                orderBy: { createdAt: "desc" },
+                skip,
+                take: Number(limit),
+            }),
+            prisma.storeWithdrawal.count({ where: { storeId } }),
+        ]);
+
+        res.json(new ApiResponse(200, {
+            withdrawals,
+            pagination: {
+                total,
+                page: Number(page),
+                limit: Number(limit),
+                totalPages: Math.ceil(total / Number(limit)),
+            },
+        }, "Withdrawal history fetched."));
+    } catch (err) {
+        next(err);
+    }
+};
+
+

@@ -24,7 +24,13 @@ import {
     adminTopUp, 
     adminDebit, 
     updateCreditLimit,
-    getPlatformWallet
+    getPlatformWallet,
+    getStoreWallet,
+    listDebtPayments,
+    confirmDebtPayment,
+    rejectDebtPayment,
+    processMonthlyStorePayout,
+    getStoreWithdrawals,
 } from "../../driver/controllers/wallet.controller.js";
 
 const router = Router();
@@ -58,10 +64,21 @@ router.get("/drivers/:driverId/wallet", getDriverWalletByAdmin);
 router.post("/drivers/:driverId/wallet/topup", adminTopUp);
 router.post("/drivers/:driverId/wallet/debit", adminDebit);
 router.patch("/drivers/:driverId/wallet/credit-limit", updateCreditLimit);
+
+// ─── Driver Debt Payment Review (VF Cash / InstaPay) ──────────
+router.get("/debt-payments", listDebtPayments);
+router.post("/debt-payments/:paymentId/confirm", confirmDebtPayment);
+router.post("/debt-payments/:paymentId/reject", rejectDebtPayment);
+
+// ─── Platform & Store Wallets ─────────────────────────────────
 router.get("/platform/wallet", getPlatformWallet);
+router.get("/stores/:storeId/wallet", getStoreWallet);
+router.post("/stores/:storeId/payout", processMonthlyStorePayout);
+router.get("/stores/:storeId/withdrawals", getStoreWithdrawals);
 
 // ─── Admin Management (SUPER_ADMIN only) ──────────────────────
 router.post("/admins", allowAdminRoles("SUPER_ADMIN"), createAdmin);
 router.get("/admins", getAllAdmins);
 
 export default router;
+

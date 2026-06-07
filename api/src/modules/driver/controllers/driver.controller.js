@@ -214,7 +214,7 @@ export const getProfile = async (req, res, next) => {
                         governorate: { select: { id: true, name: true } },
                     },
                 },
-                application: { select: { status: true, firstName: true, familyName: true } },
+                application: { select: { status: true, firstName: true, familyName: true, vehicleType: true } },
                 _count: { select: { deliveries: true, earnings: true } },
             },
         });
@@ -374,12 +374,29 @@ export const toggleOnline = async (req, res, next) => {
 export const getMyEarnings = async (req, res, next) => {
     try {
         const driverId = req.driver.id;
-        const { page = 1, limit = 20 } = req.query;
+        const { page = 1, limit = 20, period } = req.query;
         const skip = (Number(page) - 1) * Number(limit);
+
+        const where = { driverId };
+
+        if (period && period !== "all") {
+            const now = new Date();
+            let startDate = new Date();
+            if (period === "today") {
+                startDate.setHours(0, 0, 0, 0);
+            } else if (period === "week") {
+                startDate.setDate(now.getDate() - 7);
+                startDate.setHours(0, 0, 0, 0);
+            } else if (period === "month") {
+                startDate.setMonth(now.getMonth() - 1);
+                startDate.setHours(0, 0, 0, 0);
+            }
+            where.createdAt = { gte: startDate };
+        }
 
         const [earnings, total, totals] = await Promise.all([
             prisma.driverEarning.findMany({
-                where: { driverId },
+                where,
                 skip,
                 take: Number(limit),
                 orderBy: { createdAt: "desc" },
@@ -387,9 +404,9 @@ export const getMyEarnings = async (req, res, next) => {
                     order: { select: { id: true, createdAt: true } },
                 },
             }),
-            prisma.driverEarning.count({ where: { driverId } }),
+            prisma.driverEarning.count({ where }),
             prisma.driverEarning.aggregate({
-                where: { driverId },
+                where,
                 _sum: { totalAmount: true, tipAmount: true, baseAmount: true },
             }),
         ]);

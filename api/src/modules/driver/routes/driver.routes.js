@@ -16,7 +16,7 @@ import {
     rejectOrder,
     updateDeliveryStatus,
 } from "../controllers/driver.controller.js";
-import { getMyWallet, getMyTransactions } from "../controllers/wallet.controller.js";
+import { getMyWallet, getMyTransactions, submitDebtPayment, getMyDebtPayments } from "../controllers/wallet.controller.js";
 
 const router = Router();
 
@@ -42,6 +42,8 @@ router.get("/earnings", verifyDriver, getMyEarnings);
 // ─── Wallet ───────────────────────────────────────────────────
 router.get("/wallet", verifyDriver, getMyWallet);
 router.get("/wallet/transactions", verifyDriver, getMyTransactions);
+router.post("/wallet/repay", verifyDriver, submitDebtPayment);
+router.get("/wallet/payments", verifyDriver, getMyDebtPayments);
 
 // ─── Order Dispatch (Accept / Reject) ─────────────────────────
 router.get("/orders/pending", verifyDriver, getPendingAssignment);
