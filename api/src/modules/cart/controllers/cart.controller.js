@@ -72,6 +72,32 @@ export const addItem = async (req, res, next) => {
         const [product] = await tenantQuery(storeId, `SELECT * FROM products WHERE id = $1`, [productId]);
         if (!product || !product.is_available) throw new ApiError(404, "Product not found or unavailable.");
 
+        // ── Single-store policy ──────────────────────────────────────────────
+        // Check if the user already has an active cart for a DIFFERENT store.
+        const existingCarts = await prisma.cart.findMany({
+            where: {
+                userId,
+                NOT: { storeId },
+            },
+        });
+
+        for (const existingCart of existingCarts) {
+            // Check if this existing cart actually has items in its store's DB
+            const existingItems = await tenantQuery(existingCart.storeId, `SELECT id FROM cart_items WHERE cart_id = $1 LIMIT 1`, [existingCart.id]);
+            
+            if (existingItems && existingItems.length > 0) {
+                throw new ApiError(
+                    409,
+                    `You already have items in your cart from another store. Please clear your current cart before ordering from a different store.`,
+                    [{ existingStoreId: existingCart.storeId, existingCartId: existingCart.id }]
+                );
+            } else {
+                // It's empty, we can safely delete it so it doesn't block them
+                await prisma.cart.delete({ where: { id: existingCart.id } });
+            }
+        }
+        // ────────────────────────────────────────────────────────────────────
+
         let cart = await prisma.cart.findUnique({ where: { userId_storeId: { userId, storeId } } });
         if (!cart) cart = await prisma.cart.create({ data: { userId, storeId } });
 
@@ -275,6 +301,10 @@ export const clearCart = async (req, res, next) => {
         const cart = await prisma.cart.findFirst({ where: { id: cartId, userId: req.user.id } });
         if (!cart) throw new ApiError(404, "Cart not found.");
 
+        // Delete items from the tenant DB first
+        await tenantQuery(cart.storeId, `DELETE FROM cart_items WHERE cart_id = $1`, [cartId]);
+        
+        // Then delete the cart record
         await prisma.cart.delete({ where: { id: cartId } });
 
         res.json(new ApiResponse(200, null, "Cart cleared."));
