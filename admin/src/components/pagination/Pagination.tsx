@@ -76,6 +76,7 @@ export default function Pagination({
       <div className="flex items-center gap-1.5 ml-auto">
         {/* Prev */}
         <button
+          type="button"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
           className={btnNav}
@@ -95,6 +96,7 @@ export default function Pagination({
             </span>
           ) : (
             <button
+              type="button"
               key={p}
               onClick={() => onPageChange(p)}
               aria-current={currentPage === p ? "page" : undefined}
@@ -109,6 +111,7 @@ export default function Pagination({
 
         {/* Next */}
         <button
+          type="button"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
           className={btnNav}

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import api from "../../../config/axios";
 import type { Driver } from "../../../types";
@@ -26,6 +26,7 @@ export const useDrivers = (search?: string, page?: number, limit?: number) => {
   return useQuery({
     queryKey: ["drivers", search, page, limit],
     queryFn: () => fetchDrivers(search, page, limit),
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -259,3 +260,53 @@ export const useUpdateCreditLimit = (driverId: string) => {
     },
   });
 };
+
+// ── Fetch Driver Debt Payments ─────────────────────────────────────────
+const fetchDriverDebtPayments = async (driverId: string) => {
+  const { data } = await api.get(`/admin/debt-payments`, {
+    params: { driverId, status: "PENDING", limit: 50 },
+  });
+  return data.data ?? data;
+};
+
+export const useDriverDebtPayments = (driverId: string) => {
+  return useQuery({
+    queryKey: ["drivers", driverId, "debt-payments"],
+    queryFn: () => fetchDriverDebtPayments(driverId),
+    enabled: !!driverId,
+  });
+};
+
+// ── Confirm Debt Payment ──────────────────────────────────────────────
+const confirmDebtPayment = async (paymentId: string) => {
+  const { data } = await api.post(`/admin/debt-payments/${paymentId}/confirm`);
+  return data.data ?? data;
+};
+
+export const useConfirmDebtPayment = (driverId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: confirmDebtPayment,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers", driverId, "debt-payments"] });
+      qc.invalidateQueries({ queryKey: ["drivers", driverId, "wallet"] });
+    },
+  });
+};
+
+// ── Reject Debt Payment ───────────────────────────────────────────────
+const rejectDebtPayment = async ({ paymentId, reason }: { paymentId: string; reason: string }) => {
+  const { data } = await api.post(`/admin/debt-payments/${paymentId}/reject`, { reason });
+  return data.data ?? data;
+};
+
+export const useRejectDebtPayment = (driverId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: rejectDebtPayment,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drivers", driverId, "debt-payments"] });
+    },
+  });
+};
+

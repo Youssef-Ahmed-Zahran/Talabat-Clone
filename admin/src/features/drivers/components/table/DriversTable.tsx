@@ -167,6 +167,7 @@ export function DriversTable({
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-1.5 flex-wrap">
                       <button
+                        type="button"
                         onClick={() => navigate(`/drivers/${d.id}`)}
                         className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                         title="View Details"
@@ -177,6 +178,7 @@ export function DriversTable({
                       {appStatus === "PENDING" && (
                         <>
                           <button
+                            type="button"
                             onClick={() => onApprove(d.id.toString())}
                             disabled={isApproving}
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-60"
@@ -189,6 +191,7 @@ export function DriversTable({
                             Approve
                           </button>
                           <button
+                            type="button"
                             onClick={() => onReject(d.id.toString())}
                             disabled={isRejecting}
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-60"
@@ -204,6 +207,7 @@ export function DriversTable({
                       )}
                       {d.status !== "SUSPENDED" ? (
                         <button
+                          type="button"
                           onClick={() => onSuspend(d.id.toString())}
                           disabled={isSuspending}
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors disabled:opacity-60"
@@ -218,6 +222,7 @@ export function DriversTable({
                         </button>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => onUnsuspend(d.id.toString())}
                           disabled={isUnsuspending}
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-60"
@@ -232,6 +237,7 @@ export function DriversTable({
                         </button>
                       )}
                       <button
+                        type="button"
                         onClick={() => onDelete(d.id.toString())}
                         disabled={isDeleting}
                         className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"

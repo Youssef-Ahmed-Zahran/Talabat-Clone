@@ -17,7 +17,7 @@ export function useDriversList() {
   const [page, setPage] = useState(1);
   const limit = 10;
 
-  const { data: response, isLoading, isError, refetch } = useDrivers(debouncedSearch, page, limit);
+  const { data: response, isLoading, isFetching, isError, refetch } = useDrivers(debouncedSearch, page, limit);
   const approveMutation = useApproveDriver();
   const rejectMutation = useRejectDriver();
   const suspendMutation = useSuspendDriver();
@@ -93,7 +93,7 @@ export function useDriversList() {
 
   return {
     filters: { search, setSearch, page, setPage, limit },
-    query: { drivers, pagination, isLoading, isError, refetch },
+    query: { drivers, pagination, isLoading, isFetching, isError, refetch },
     actions: {
       handleApprove,
       handleReject,

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useDriverWalletManager } from "../../hooks/useDriverWalletManager";
 import { DriverWalletModals } from "./DriverWalletModals";
+import { DriverPendingDebtPayments } from "./DriverPendingDebtPayments";
 
 interface Transaction {
   id: string;
@@ -88,7 +89,7 @@ export function DriverWalletDetails({ driverId }: DriverWalletDetailsProps) {
               className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-gray-900 rounded-2xl hover:bg-black transition-all shadow-lg shadow-gray-200"
             >
               <ArrowUpRight className="w-4 h-4" />
-              Collect Cash
+              Top Up
             </button>
             <button
               onClick={modal.openDebit}
@@ -106,6 +107,9 @@ export function DriverWalletDetails({ driverId }: DriverWalletDetailsProps) {
           </div>
         </div>
       </div>
+
+      {/* Pending Debt Payments */}
+      <DriverPendingDebtPayments driverId={driverId} />
 
       {/* Transactions List */}
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
