@@ -82,7 +82,7 @@ export const getSections = async (req, res, next) => {
         const sections = await tenantQuery(storeId, `
             SELECT 
                 s.*, 
-                (SELECT COUNT(*) FROM products p WHERE p.section_id = s.id) AS products_count,
+                (SELECT COUNT(*) FROM products p WHERE p.section_id = s.id OR p.meta->'secondarySectionIds' ? s.id) AS products_count,
                 COALESCE(
                     (SELECT json_agg(prod_with_options ORDER BY prod_with_options.created_at DESC)
                      FROM (
@@ -94,6 +94,7 @@ export const getSections = async (req, res, next) => {
                              p.primary_image_url AS "imageUrl",
                              p.is_available AS "isAvailable",
                              p.quantity,
+                             p.sort_order AS "sortOrder",
                              p.meta,
                              p.created_at,
                              COALESCE(
@@ -131,7 +132,8 @@ export const getSections = async (req, res, next) => {
                                  '[]'::json
                              ) AS "optionGroups"
                          FROM products p
-                         WHERE p.section_id = s.id AND p.is_available = true
+                         WHERE (p.section_id = s.id OR p.meta->'secondarySectionIds' ? s.id) AND p.is_available = true
+                     ORDER BY p.sort_order ASC, p.created_at ASC
                      ) AS prod_with_options
                     ),
                     '[]'::json
@@ -196,11 +198,17 @@ export const deleteSection = async (req, res, next) => {
         const [existing] = await tenantQuery(storeId, `SELECT id FROM store_sections WHERE id = $1`, [sectionId]);
         if (!existing) throw new ApiError(404, "Section not found.");
 
-        await tenantQuery(storeId, `DELETE FROM store_sections WHERE id = $1`, [sectionId]);
+        await tenantTransaction(storeId, async (client) => {
+            // Delete all products in this section first (this will cascade to images, options, etc.)
+            await client.query(`DELETE FROM products WHERE section_id = $1`, [sectionId]);
+            // Delete the section itself
+            await client.query(`DELETE FROM store_sections WHERE id = $1`, [sectionId]);
+        });
 
         await cache.del(`catalog:sections:store_${storeId}`);
+        await cache.del(`catalog:products:store_${storeId}`);
 
-        res.json(new ApiResponse(200, null, "Section deleted."));
+        res.json(new ApiResponse(200, null, "Section and its products deleted."));
     } catch (err) {
         next(err);
     }
@@ -246,6 +254,7 @@ export const createProduct = async (req, res, next) => {
             price, 
             quantity, 
             sectionId, 
+            secondarySectionIds,
             primaryImage, 
             images, 
             meta,
@@ -263,14 +272,19 @@ export const createProduct = async (req, res, next) => {
             uploadedImages = await uploadMultipleToCloudinary(images, "products/restaurant");
         }
 
+        const productMeta = meta || {};
+        if (Array.isArray(secondarySectionIds) && secondarySectionIds.length > 0) {
+            productMeta.secondarySectionIds = secondarySectionIds;
+        }
+
         // 2. Perform all DB operations in a single atomic transaction
         const product = await tenantTransaction(storeId, async (client) => {
             // A. Create Product
             const { rows } = await client.query(`
-                INSERT INTO products (store_id, section_id, name, description, price, quantity, primary_image_url, meta)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                INSERT INTO products (store_id, section_id, name, description, price, quantity, primary_image_url, meta, sort_order)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE((SELECT MAX(sort_order)+1 FROM products WHERE section_id = $2), 0))
                 RETURNING *
-            `, [storeId, sectionId || null, name, description || null, price, quantity || null, primaryImageUrl, meta || {}]);
+            `, [storeId, sectionId || null, name, description || null, price, quantity || null, primaryImageUrl, productMeta]);
 
             const p = rows[0];
 
@@ -343,8 +357,9 @@ export const getProducts = async (req, res, next) => {
         let paramIdx = 2;
 
         if (sectionId) {
-            whereClause += ` AND section_id = $${paramIdx++}`;
+            whereClause += ` AND (section_id = $${paramIdx} OR meta->'secondarySectionIds' ? $${paramIdx})`;
             params.push(sectionId);
+            paramIdx++;
         }
         if (search) {
             whereClause += ` AND name ILIKE $${paramIdx++}`;
@@ -380,7 +395,7 @@ export const getProducts = async (req, res, next) => {
                    ) AS option_groups
             FROM products p
             ${whereClause}
-            ORDER BY p.created_at DESC
+            ORDER BY p.sort_order ASC, p.created_at ASC
             LIMIT $${paramIdx++} OFFSET $${paramIdx++}
         `, [...params, Number(limit), skip]);
 
@@ -430,7 +445,7 @@ export const updateProduct = async (req, res, next) => {
         const [existing] = await tenantQuery(storeId, `SELECT * FROM products WHERE id = $1`, [productId]);
         if (!existing) throw new ApiError(404, "Product not found.");
 
-        const { name, description, price, quantity, sectionId, isAvailable, primaryImage, meta, optionGroups } = req.body;
+        const { name, description, price, quantity, sectionId, secondarySectionIds, isAvailable, primaryImage, meta, optionGroups } = req.body;
         let primaryImageUrl = existing.primary_image_url;
 
         if (primaryImage && !primaryImage.startsWith("http")) {
@@ -449,7 +464,14 @@ export const updateProduct = async (req, res, next) => {
         if (sectionId !== undefined) { updates.push(`section_id = $${paramIdx++}`); params.push(sectionId); }
         if (isAvailable !== undefined) { updates.push(`is_available = $${paramIdx++}`); params.push(isAvailable); }
         if (primaryImageUrl !== existing.primary_image_url) { updates.push(`primary_image_url = $${paramIdx++}`); params.push(primaryImageUrl); }
-        if (meta !== undefined) { updates.push(`meta = $${paramIdx++}`); params.push(meta); }
+        
+        let finalMeta = meta !== undefined ? meta : existing.meta;
+        if (secondarySectionIds !== undefined) {
+            finalMeta = { ...finalMeta, secondarySectionIds };
+        }
+        if (meta !== undefined || secondarySectionIds !== undefined) { 
+            updates.push(`meta = $${paramIdx++}`); params.push(finalMeta); 
+        }
 
         updates.push(`updated_at = NOW()`);
         params.push(productId);
@@ -536,6 +558,28 @@ export const deleteProduct = async (req, res, next) => {
         await cache.del(`catalog:sections:store_${storeId}`);
 
         res.json(new ApiResponse(200, null, "Product deleted."));
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const reorderProducts = async (req, res, next) => {
+    try {
+        const storeId = await getStoreId(req);
+        verifyOwnership(req, storeId);
+
+        const { orderedIds } = req.body;
+        if (!Array.isArray(orderedIds)) throw new ApiError(400, "orderedIds must be an array.");
+
+        await tenantTransaction(storeId, async (client) => {
+            for (let i = 0; i < orderedIds.length; i++) {
+                await client.query(`UPDATE products SET sort_order = $1 WHERE id = $2`, [i, orderedIds[i]]);
+            }
+        });
+
+        await cache.del(`catalog:sections:store_${storeId}`);
+
+        res.json(new ApiResponse(200, null, "Products reordered."));
     } catch (err) {
         next(err);
     }

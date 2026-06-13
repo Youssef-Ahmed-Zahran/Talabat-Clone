@@ -11,6 +11,7 @@ import {
     getProductById,
     updateProduct,
     deleteProduct,
+    reorderProducts,
     createOptionGroup,
     getOptionGroups,
     updateOptionGroup,
@@ -40,6 +41,7 @@ router.get("/:storeId/products", getProducts);
 router.get("/:storeId/products/:productId", getProductById);
 router.put("/products/:productId", verifyStoreManager, updateProduct);
 router.delete("/products/:productId", verifyStoreManager, deleteProduct);
+router.patch("/:storeId/products/reorder", verifyStoreManager, reorderProducts);
 
 // ─── Option Groups ────────────────────────────────────────────
 router.post("/products/:productId/option-groups", verifyStoreManager, createOptionGroup);

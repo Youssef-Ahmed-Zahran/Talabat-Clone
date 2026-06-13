@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS "${schema}"."products" (
     quantity          INTEGER       NOT NULL DEFAULT 0,
     primary_image_url TEXT,
     is_available      BOOLEAN       NOT NULL DEFAULT TRUE,
+    sort_order        INTEGER       NOT NULL DEFAULT 0,
     meta              JSONB         NOT NULL DEFAULT '{}',
     created_at        TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
     updated_at        TIMESTAMPTZ   NOT NULL DEFAULT NOW()
@@ -77,7 +78,11 @@ CREATE TABLE IF NOT EXISTS "${schema}"."products" (
 CREATE INDEX IF NOT EXISTS idx_products_store     ON "${schema}"."products"(store_id);
 CREATE INDEX IF NOT EXISTS idx_products_section   ON "${schema}"."products"(section_id);
 CREATE INDEX IF NOT EXISTS idx_products_available ON "${schema}"."products"(is_available);
+CREATE INDEX IF NOT EXISTS idx_products_sort      ON "${schema}"."products"(sort_order);
 CREATE INDEX IF NOT EXISTS idx_products_meta      ON "${schema}"."products" USING GIN (meta);
+
+-- Migration guard: add sort_order if this schema was provisioned before this column was added
+ALTER TABLE "${schema}"."products" ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
 
 -- ── 3. Product images ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "${schema}"."product_images" (
