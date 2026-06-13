@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import api from "../../../config/axios";
 import type { Driver } from "../../../types";
@@ -180,6 +180,27 @@ export const useDriverWallet = (driverId: string) => {
   });
 };
 
+// ── Fetch Driver Wallet Transactions (Infinite) ──────────────────────
+export const useDriverWalletTransactions = (driverId: string) => {
+  return useInfiniteQuery({
+    queryKey: ["drivers", driverId, "wallet-transactions"],
+    queryFn: async ({ pageParam = 1 }) => {
+      const { data } = await api.get(`/admin/drivers/${driverId}/wallet`, {
+        params: { page: pageParam, limit: 15 },
+      });
+      return data.data ?? data;
+    },
+    getNextPageParam: (lastPage) => {
+      if (lastPage.pagination.page < lastPage.pagination.totalPages) {
+        return lastPage.pagination.page + 1;
+      }
+      return undefined;
+    },
+    initialPageParam: 1,
+    enabled: !!driverId,
+  });
+};
+
 // ── Top up Driver Wallet ──────────────────────────────────────────────
 const topUpWallet = async ({
   driverId,
@@ -204,6 +225,7 @@ export const useTopUpWallet = (driverId: string) => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["drivers", driverId] });
       qc.invalidateQueries({ queryKey: ["drivers", driverId, "wallet"] });
+      qc.invalidateQueries({ queryKey: ["drivers", driverId, "wallet-transactions"] });
     },
   });
 };
@@ -232,6 +254,7 @@ export const useDebitWallet = (driverId: string) => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["drivers", driverId] });
       qc.invalidateQueries({ queryKey: ["drivers", driverId, "wallet"] });
+      qc.invalidateQueries({ queryKey: ["drivers", driverId, "wallet-transactions"] });
     },
   });
 };
@@ -257,6 +280,7 @@ export const useUpdateCreditLimit = (driverId: string) => {
     mutationFn: updateCreditLimit,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["drivers", driverId, "wallet"] });
+      qc.invalidateQueries({ queryKey: ["drivers", driverId, "wallet-transactions"] });
     },
   });
 };
@@ -290,6 +314,7 @@ export const useConfirmDebtPayment = (driverId: string) => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["drivers", driverId, "debt-payments"] });
       qc.invalidateQueries({ queryKey: ["drivers", driverId, "wallet"] });
+      qc.invalidateQueries({ queryKey: ["drivers", driverId, "wallet-transactions"] });
     },
   });
 };

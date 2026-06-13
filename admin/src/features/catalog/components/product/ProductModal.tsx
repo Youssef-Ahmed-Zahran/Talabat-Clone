@@ -45,6 +45,7 @@ export function ProductModal({
               ? Number(editingProduct.quantity)
               : "",
           sectionId: editingProduct.section_id || "",
+          secondarySectionIds: (editingProduct.meta?.secondarySectionIds as string[]) || [],
           meta: editingProduct.meta || {},
           primaryImage: editingProduct.primary_image_url || undefined,
           images: editingProduct.images
@@ -71,6 +72,7 @@ export function ProductModal({
           price: 0,
           quantity: "",
           sectionId: activeSectionId || "",
+          secondarySectionIds: [],
           meta: {},
           primaryImage: undefined,
           images: [],

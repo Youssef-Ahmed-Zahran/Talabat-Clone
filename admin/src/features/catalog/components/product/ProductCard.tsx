@@ -30,6 +30,9 @@ export function ProductCard({
             src={p.primary_image_url}
             alt={p.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={(e) => {
+              e.currentTarget.src = "https://placehold.co/400x400/f8fafc/94a3b8?text=Image+Not+Found";
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">

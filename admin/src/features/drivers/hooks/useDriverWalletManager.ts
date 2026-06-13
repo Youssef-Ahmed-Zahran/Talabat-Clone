@@ -1,27 +1,11 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
 import {
-  useDriverWallet,
   useTopUpWallet,
   useDebitWallet,
   useUpdateCreditLimit,
+  useDriverWalletTransactions,
 } from "../api/driver.api";
-interface Transaction {
-  id: string;
-  type: string;
-  amount: number | string;
-  note: string | null;
-  createdAt: string;
-}
-interface WalletData {
-  wallet: {
-    id: string;
-    balance: number | string;
-    creditLimit: number | string;
-  };
-  isSuspended: boolean;
-  transactions: Transaction[];
-}
 
 type ModalState =
   | { type: "NONE" }
@@ -30,11 +14,9 @@ type ModalState =
   | { type: "LIMIT" };
 
 export function useDriverWalletManager(driverId: string) {
-  const { data, isLoading, isError } = useDriverWallet(driverId) as {
-    data: WalletData | undefined;
-    isLoading: boolean;
-    isError: boolean;
-  };
+  // Single source of truth — the infinite query owns both wallet metadata
+  // AND the paginated transactions. No second /wallet call needed.
+  const infiniteTransactionsQuery = useDriverWalletTransactions(driverId);
 
   const topUpMutation = useTopUpWallet(driverId);
   const debitMutation = useDebitWallet(driverId);
@@ -61,11 +43,7 @@ export function useDriverWalletManager(driverId: string) {
     if (!amount || isNaN(Number(amount))) return toast.error("Invalid amount");
 
     topUpMutation.mutate(
-      {
-        driverId,
-        amount: Number(amount),
-        note,
-      },
+      { driverId, amount: Number(amount), note },
       {
         onSuccess: () => {
           toast.success("Wallet topped up successfully");
@@ -81,11 +59,7 @@ export function useDriverWalletManager(driverId: string) {
     if (!amount || isNaN(Number(amount))) return toast.error("Invalid amount");
 
     debitMutation.mutate(
-      {
-        driverId,
-        amount: Number(amount),
-        note,
-      },
+      { driverId, amount: Number(amount), note },
       {
         onSuccess: () => {
           toast.success("Wallet debited successfully");
@@ -101,10 +75,7 @@ export function useDriverWalletManager(driverId: string) {
     if (!limit || isNaN(Number(limit))) return toast.error("Invalid limit");
 
     updateLimitMutation.mutate(
-      {
-        driverId,
-        creditLimit: Number(limit),
-      },
+      { driverId, creditLimit: Number(limit) },
       {
         onSuccess: () => {
           toast.success("Credit limit updated");
@@ -116,7 +87,7 @@ export function useDriverWalletManager(driverId: string) {
   };
 
   return {
-    query: { data, isLoading, isError },
+    infiniteTransactionsQuery,
     modal: {
       state: modalState,
       close: closeModal,

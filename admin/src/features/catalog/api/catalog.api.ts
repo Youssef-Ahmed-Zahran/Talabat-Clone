@@ -70,8 +70,10 @@ export const useDeleteSection = (storeId: string) => {
       api
         .delete(`/catalog/sections/${sectionId}`, { data: { storeId } })
         .then((r) => r.data),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["catalog", "sections", storeId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["catalog", "sections", storeId] });
+      qc.invalidateQueries({ queryKey: ["catalog", "products", storeId] });
+    },
   });
 };
 
@@ -176,6 +178,20 @@ export const useDeleteProduct = (storeId: string) => {
     mutationFn: (productId: string) =>
       api
         .delete(`/catalog/products/${productId}`, { data: { storeId } })
+        .then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["catalog", "products", storeId] });
+      qc.invalidateQueries({ queryKey: ["catalog", "sections", storeId] });
+    },
+  });
+};
+
+export const useReorderProducts = (storeId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (orderedIds: string[]) =>
+      api
+        .patch(`/catalog/${storeId}/products/reorder`, { orderedIds })
         .then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["catalog", "products", storeId] });

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { useProducts, useUpdateProduct, useDeleteProduct, useCreateProduct } from "../api/catalog.api";
+import { useProducts, useUpdateProduct, useDeleteProduct, useCreateProduct, useReorderProducts } from "../api/catalog.api";
 import type { Product } from "../../../types";
 import { handleApiError } from "../../../utils/error";
 import type { ProductFormValues } from "../../../schemas/catalog.schema";
@@ -18,6 +18,7 @@ export function useProductsManager(sid: string) {
   const updateProductMut = useUpdateProduct(sid);
   const deleteProductMut = useDeleteProduct(sid);
   const createProductMut = useCreateProduct(sid);
+  const reorderProductsMut = useReorderProducts(sid);
 
   type ModalState =
     | { type: "NONE" }
@@ -58,6 +59,7 @@ export function useProductsManager(sid: string) {
           price: Number(data.price),
           quantity: data.quantity !== "" ? Number(data.quantity) : undefined,
           sectionId: data.sectionId || undefined,
+          secondarySectionIds: data.secondarySectionIds,
           meta: data.meta,
           primaryImage: data.primaryImage || undefined,
           optionGroups: data.optionGroups,
@@ -78,6 +80,7 @@ export function useProductsManager(sid: string) {
           price: Number(data.price),
           quantity: data.quantity !== "" ? Number(data.quantity) : undefined,
           sectionId: data.sectionId || undefined,
+          secondarySectionIds: data.secondarySectionIds,
           meta: data.meta,
           primaryImage: data.primaryImage || undefined,
           images: data.images && data.images.length > 0 ? data.images : undefined,
@@ -92,6 +95,12 @@ export function useProductsManager(sid: string) {
         },
       );
     }
+  };
+
+  const handleReorderProducts = (orderedIds: string[]) => {
+    reorderProductsMut.mutate(orderedIds, {
+      onError: (err) => handleApiError(err, "Couldn't save product order."),
+    });
   };
 
   return {
@@ -116,6 +125,7 @@ export function useProductsManager(sid: string) {
       handleDeleteProduct: handleDelete,
       handleToggleAvailability,
       handleSubmitProduct,
+      handleReorderProducts,
       isPending: createProductMut.isPending || updateProductMut.isPending,
     },
   };

@@ -67,21 +67,24 @@ export function SectionNav({
               </div>
 
               <div className="flex items-center gap-2">
-                {s.products_count !== undefined && s.products_count !== null && (
-                  <span
-                    className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full transition-colors ${
-                      activeSectionId === s.id
-                        ? "bg-white/20 text-white"
-                        : "bg-gray-100 text-gray-400 group-hover:bg-brand-100 group-hover:text-brand-700"
-                    }`}
-                  >
-                    {s.products_count}
-                  </span>
-                )}
+                {s.products_count !== undefined &&
+                  s.products_count !== null && (
+                    <span
+                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full transition-colors ${
+                        activeSectionId === s.id
+                          ? "bg-white/20 text-white"
+                          : "bg-gray-100 text-gray-400 group-hover:bg-brand-100 group-hover:text-brand-700"
+                      }`}
+                    >
+                      {s.products_count}
+                    </span>
+                  )}
 
                 <div
                   className={`flex items-center gap-1 transition-all duration-200 ${
-                    activeSectionId === s.id ? "opacity-100 scale-100" : "opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100"
+                    activeSectionId === s.id
+                      ? "opacity-100 scale-100"
+                      : "opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100"
                   }`}
                 >
                   <button

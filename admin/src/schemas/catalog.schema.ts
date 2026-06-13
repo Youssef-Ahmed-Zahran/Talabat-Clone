@@ -12,6 +12,7 @@ export const productSchema = z.object({
   price: z.number().min(0, "Price must be positive"),
   quantity: z.union([z.number().min(0), z.literal("")]).optional(),
   sectionId: z.string().optional(),
+  secondarySectionIds: z.array(z.string()).optional(),
   meta: z.record(z.string(), z.unknown()).optional(),
   primaryImage: z.string().optional(),
   images: z.array(z.string()).optional(),

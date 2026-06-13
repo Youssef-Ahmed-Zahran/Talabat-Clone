@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -25,6 +26,14 @@ export default function StoreCatalogPage() {
   const sid = params.storeId || authStoreId || "";
 
   const { filters, query, modal, actions } = useProductsManager(sid);
+
+  // ── Drag-and-drop reorder state ──────────────────────────────
+  const [orderedProducts, setOrderedProducts] = useState<
+    typeof query.products | null
+  >(null);
+  const draggedId = useRef<string | null>(null);
+  const dragOverId = useRef<string | null>(null);
+  const displayedProducts = orderedProducts ?? query.products;
 
   const {
     query: sectionsQuery,
@@ -84,7 +93,10 @@ export default function StoreCatalogPage() {
             <SectionNav
               sections={sectionsQuery.sections}
               activeSectionId={filters.activeSectionId}
-              onSectionChange={filters.setActiveSectionId}
+              onSectionChange={(id) => {
+                setOrderedProducts(null);
+                filters.setActiveSectionId(id);
+              }}
               onEditSection={sectionsModal.openEdit}
               onDeleteSection={sectionsActions.handleDeleteSection}
             />
@@ -99,31 +111,79 @@ export default function StoreCatalogPage() {
               <input
                 type="text"
                 value={filters.productSearch}
-                onChange={(e) => filters.setProductSearch(e.target.value)}
+                onChange={(e) => {
+                  setOrderedProducts(null);
+                  filters.setProductSearch(e.target.value);
+                }}
                 placeholder="Search products..."
                 className="w-full pl-11 pr-4 py-3 text-sm bg-white border border-gray-200/60 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all premium-shadow"
               />
             </div>
           </div>
 
-          {/* ── Products Grid ────────────────────────────────────────── */}
-          {query.isLoading || query.isFetching ? (
+          {/* ── Products Grid with Drag-and-Drop ───────────────────────── */}
+          {query.isLoading ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-6 h-6 text-brand animate-spin" />
             </div>
-          ) : query.products.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {query.products.map((p) => (
-                <ProductCard
-                  key={p.id}
-                  product={p}
-                  storeId={sid}
-                  onEdit={modal.openEdit}
-                  onDelete={actions.handleDeleteProduct}
-                  onToggleAvailability={actions.handleToggleAvailability}
-                />
-              ))}
-            </div>
+          ) : displayedProducts.length > 0 ? (
+            <>
+              {!filters.productSearch && (
+                <div className="flex items-center gap-2 px-1 py-2 text-[11px] font-semibold text-gray-400 select-none">
+                  <span className="inline-block w-4 h-4 opacity-50">⠿</span>
+                  Drag cards to reorder products
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                {displayedProducts.map((p) => (
+                  <div
+                    key={p.id}
+                    draggable={!filters.productSearch}
+                    onDragStart={() => {
+                      draggedId.current = p.id;
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      dragOverId.current = p.id;
+                    }}
+                    onDragEnd={() => {
+                      if (
+                        !draggedId.current ||
+                        !dragOverId.current ||
+                        draggedId.current === dragOverId.current
+                      ) {
+                        draggedId.current = null;
+                        dragOverId.current = null;
+                        return;
+                      }
+                      const current = orderedProducts ?? query.products;
+                      const fromIdx = current.findIndex(
+                        (x) => x.id === draggedId.current,
+                      );
+                      const toIdx = current.findIndex(
+                        (x) => x.id === dragOverId.current,
+                      );
+                      const reordered = [...current];
+                      const [moved] = reordered.splice(fromIdx, 1);
+                      reordered.splice(toIdx, 0, moved);
+                      setOrderedProducts(reordered);
+                      actions.handleReorderProducts(reordered.map((x) => x.id));
+                      draggedId.current = null;
+                      dragOverId.current = null;
+                    }}
+                    className="cursor-grab active:cursor-grabbing active:scale-[0.98] transition-transform"
+                  >
+                    <ProductCard
+                      product={p}
+                      storeId={sid}
+                      onEdit={modal.openEdit}
+                      onDelete={actions.handleDeleteProduct}
+                      onToggleAvailability={actions.handleToggleAvailability}
+                    />
+                  </div>
+                ))}
+              </div>
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-gray-200/80 premium-shadow">
               <div className="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mb-4">

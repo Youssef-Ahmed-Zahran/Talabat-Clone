@@ -72,6 +72,7 @@ export interface CreateProductPayload {
   price: number;
   quantity?: number;
   sectionId?: string;
+  secondarySectionIds?: string[];
   primaryImage?: string;
   images?: string[];
   meta?: Record<string, unknown>;
@@ -91,6 +92,7 @@ export interface UpdateProductPayload {
   price?: number;
   quantity?: number;
   sectionId?: string;
+  secondarySectionIds?: string[];
   isAvailable?: boolean;
   primaryImage?: string;
   meta?: Record<string, unknown>;

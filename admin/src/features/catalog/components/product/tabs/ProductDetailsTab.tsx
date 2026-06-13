@@ -1,4 +1,4 @@
-import { useFormContext, useFormState } from "react-hook-form";
+import { useFormContext, useFormState, useWatch } from "react-hook-form";
 import type { ProductFormValues } from "../../../../../schemas/catalog.schema";
 import type { Section } from "../../../../../types";
 import { ProductImagesUploader } from "./ProductImagesUploader";
@@ -10,6 +10,7 @@ interface ProductDetailsTabProps {
 export function ProductDetailsTab({ sections }: ProductDetailsTabProps) {
   const { register, control } = useFormContext<ProductFormValues>();
   const { errors } = useFormState({ control });
+  const currentSectionId = useWatch({ control, name: "sectionId" });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -73,7 +74,7 @@ export function ProductDetailsTab({ sections }: ProductDetailsTabProps) {
 
         <div>
           <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
-            Menu Category
+            Menu Category (Primary)
           </label>
           <select
             {...register("sectionId")}
@@ -86,6 +87,25 @@ export function ProductDetailsTab({ sections }: ProductDetailsTabProps) {
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-[13px] font-bold text-gray-700 mb-2 ml-1">
+            Show also in... (Additional Categories)
+          </label>
+          <div className="grid grid-cols-2 gap-2 bg-gray-50 border border-gray-100 rounded-2xl p-4 max-h-48 overflow-y-auto">
+            {sections?.filter(s => s.id !== currentSectionId).map((s) => (
+              <label key={s.id} className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  value={s.id}
+                  {...register("secondarySectionIds")}
+                  className="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand"
+                />
+                <span>{s.name}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
         <ProductImagesUploader />
