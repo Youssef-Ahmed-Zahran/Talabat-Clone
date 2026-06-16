@@ -1,5 +1,4 @@
-import { Stack } from "expo-router";
-
-export default function RootLayout() {
-  return <Stack />;
-}
+// global.css must be imported here (Expo Router entry point requirement)
+import '../global.css';
+import { RootLayout } from '@components/root-layout/RootLayout';
+export default RootLayout;
