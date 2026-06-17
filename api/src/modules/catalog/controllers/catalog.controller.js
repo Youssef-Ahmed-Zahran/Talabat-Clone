@@ -84,7 +84,7 @@ export const getSections = async (req, res, next) => {
                 s.*, 
                 (SELECT COUNT(*) FROM products p WHERE p.section_id = s.id OR p.meta->'secondarySectionIds' ? s.id) AS products_count,
                 COALESCE(
-                    (SELECT json_agg(prod_with_options ORDER BY prod_with_options.created_at DESC)
+                    (SELECT json_agg(prod_with_options ORDER BY prod_with_options."sortOrder" ASC, prod_with_options.created_at ASC)
                      FROM (
                          SELECT 
                              p.id,
