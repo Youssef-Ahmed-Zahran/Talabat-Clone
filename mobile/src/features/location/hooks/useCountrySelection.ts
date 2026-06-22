@@ -3,17 +3,7 @@ import { useRouter } from "expo-router";
 import { useCountries } from "../api/location.api";
 import { useLocationStore } from "@src/store/locationStore";
 import type { Country } from "@src/features/location/types/geography.types";
-
-export interface UseCountrySelectionReturn {
-  query: {
-    countries: Country[] | undefined;
-    isLoading: boolean;
-  };
-  actions: {
-    handleSelectCountry: (country: Country) => Promise<void>;
-  };
-}
-
+import { UseCountrySelectionReturn } from "../types/location.types";
 export function useCountrySelection(): UseCountrySelectionReturn {
   const router = useRouter();
   const setCountry = useLocationStore((s) => s.setCountry);

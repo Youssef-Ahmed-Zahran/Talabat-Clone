@@ -43,7 +43,11 @@ export default function PaymentScreen() {
               className="bg-white h-11 rounded-xl items-center justify-center flex-row"
               activeOpacity={0.9}
             >
-              <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} />
+              <Ionicons
+                name="add-circle-outline"
+                size={18}
+                color={COLORS.primary}
+              />
               <Text className="text-sm font-bold text-primary ml-1.5">
                 Add Credits
               </Text>
@@ -51,7 +55,9 @@ export default function PaymentScreen() {
           </View>
 
           <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-base font-bold text-textPrimary">Saved Cards</Text>
+            <Text className="text-base font-bold text-textPrimary">
+              Saved Cards
+            </Text>
             <Text className="text-sm text-textTertiary">
               {(query.cards ?? []).length} card
               {(query.cards ?? []).length !== 1 ? "s" : ""}
@@ -71,7 +77,11 @@ export default function PaymentScreen() {
             ))
           ) : (
             <View className="items-center py-10 bg-white rounded-xl border border-border/40">
-              <Ionicons name="card-outline" size={40} color={COLORS.textTertiary} />
+              <Ionicons
+                name="card-outline"
+                size={40}
+                color={COLORS.textTertiary}
+              />
               <Text className="text-sm font-semibold text-textSecondary mt-3">
                 No saved cards yet
               </Text>

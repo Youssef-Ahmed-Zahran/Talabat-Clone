@@ -4,47 +4,24 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useStoreSections } from "../api/product.api";
 import { useStoreById } from "@src/features/stores/api/store.api";
 import { useAddToCart } from "@src/features/cart/api/cart.api";
-import { useCheckWishlistStatus, useToggleWishlist } from "@src/features/account/sub-features/wishlist/api/wishlist.api";
+import {
+  useCheckWishlistStatus,
+  useToggleWishlist,
+} from "@src/features/account/sub-features/wishlist/api/wishlist.api";
 import { getErrorMessage } from "@src/utils/error";
 import type { Product } from "@src/features/stores/types/store.types";
 import { isStoreOpen, storeHoursLabel } from "@src/utils/storeHours";
-
-export interface UseProductsReturn {
-  query: {
-    store: any;
-    sections: any[] | undefined;
-    isLoading: boolean;
-    isFetching: boolean;
-    refetch: () => void;
-    isAddingToCart: boolean;
-    storeIsOpen: boolean;
-    hoursLabel: string | null;
-    isWishlisted: boolean;
-  };
-  state: {
-    selectedProduct: Product | null;
-    isModalVisible: boolean;
-  };
-  actions: {
-    handleAddToCart: (product: Product) => void;
-    handleAddToCartWithOptions: (
-      productId: string,
-      quantity: number,
-      selectedOptions: string[],
-    ) => void;
-    closeModal: () => void;
-    toggleWishlist: () => void;
-  };
-  router: {
-    navigateBack: () => void;
-  };
-}
-
+import { UseProductsReturn } from "../types/products.types";
 export function useProducts(): UseProductsReturn {
   const router = useRouter();
   const { storeId } = useLocalSearchParams<{ storeId: string }>();
   const { data: store, refetch: refetchStore } = useStoreById(storeId || "");
-  const { data: sections, isLoading, isFetching, refetch: refetchSections } = useStoreSections(storeId || "");
+  const {
+    data: sections,
+    isLoading,
+    isFetching,
+    refetch: refetchSections,
+  } = useStoreSections(storeId || "");
   const addToCart = useAddToCart();
   const { data: isWishlisted } = useCheckWishlistStatus(storeId || "");
   const toggleWishlistApi = useToggleWishlist();
@@ -79,7 +56,8 @@ export function useProducts(): UseProductsReturn {
       if (!storeIsOpen && store?.openTime && store?.closeTime) {
         Alert.alert(
           "Store is closed",
-          hoursLabel ?? "This store is currently closed. Please come back later.",
+          hoursLabel ??
+            "This store is currently closed. Please come back later.",
         );
         return;
       }

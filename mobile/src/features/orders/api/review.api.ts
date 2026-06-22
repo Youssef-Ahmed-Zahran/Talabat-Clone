@@ -1,12 +1,21 @@
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
-import api from '@src/config/axios';
-import type { ApiResponse } from '@src/types/api.types';
-import type { Review, StoreReviewsResponse } from '../types/review.types';
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
+import api from "@src/config/axios";
+import type { ApiResponse } from "@src/types/api.types";
+import type { Review, StoreReviewsResponse } from "../types/review.types";
 
 // ─── Get Store Reviews ────────────────────────────────────────
-export const useStoreReviews = (storeId: string, page: number = 1, limit: number = 10) => {
+export const useStoreReviews = (
+  storeId: string,
+  page: number = 1,
+  limit: number = 10,
+) => {
   return useQuery({
-    queryKey: ['reviews', storeId, page, limit],
+    queryKey: ["reviews", storeId, page, limit],
     queryFn: async () => {
       const res = await api.get<ApiResponse<StoreReviewsResponse>>(
         `/reviews/stores/${storeId}`,
@@ -19,9 +28,12 @@ export const useStoreReviews = (storeId: string, page: number = 1, limit: number
 };
 
 // ─── Get Store Reviews (Infinite) ─────────────────────────────
-export const useInfiniteStoreReviews = (storeId: string, limit: number = 10) => {
+export const useInfiniteStoreReviews = (
+  storeId: string,
+  limit: number = 10,
+) => {
   return useInfiniteQuery({
-    queryKey: ['reviews', storeId, 'infinite', limit],
+    queryKey: ["reviews", storeId, "infinite", limit],
     queryFn: async ({ pageParam = 1 }) => {
       const res = await api.get<ApiResponse<StoreReviewsResponse>>(
         `/reviews/stores/${storeId}`,
@@ -62,9 +74,9 @@ export const useCreateReview = () => {
       return res.data.data;
     },
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['reviews', variables.storeId] });
-      qc.invalidateQueries({ queryKey: ['store', variables.storeId] });
-      qc.invalidateQueries({ queryKey: ['orders'] });
+      qc.invalidateQueries({ queryKey: ["reviews", variables.storeId] });
+      qc.invalidateQueries({ queryKey: ["store", variables.storeId] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
     },
   });
 };
@@ -73,13 +85,19 @@ export const useCreateReview = () => {
 export const useDeleteReview = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ reviewId, storeId }: { reviewId: string; storeId: string }) => {
+    mutationFn: async ({
+      reviewId,
+      storeId,
+    }: {
+      reviewId: string;
+      storeId: string;
+    }) => {
       const res = await api.delete<ApiResponse<null>>(`/reviews/${reviewId}`);
       return res.data;
     },
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['reviews', variables.storeId] });
-      qc.invalidateQueries({ queryKey: ['store', variables.storeId] });
+      qc.invalidateQueries({ queryKey: ["reviews", variables.storeId] });
+      qc.invalidateQueries({ queryKey: ["store", variables.storeId] });
     },
   });
 };

@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { Order } from "@src/features/orders/types/order.types";
 import { useLocationStore } from "@src/store/locationStore";
 import { COLORS } from "@src/constants/theme";
+import type { OrderCardProps } from "@src/features/orders/types/order.types";
 
 import { STATUS_CONFIG, StatusBadge } from "./StatusBadge";
 
@@ -19,14 +20,6 @@ const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
       Math.sin(dLon / 2);
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
-
-interface OrderCardProps {
-  item: Order;
-  isReordering: boolean;
-  onTrack: () => void;
-  onReorder: () => void;
-  onReview: () => void;
-}
 
 export function OrderCard({
   item,

@@ -6,7 +6,11 @@ import { useLocationStore } from "@src/store/locationStore";
 import { useUIStore } from "@src/store/uiStore";
 import { useOrderTracking } from "@src/features/tracking/api/tracking.api";
 import { useOrderById } from "@src/features/orders/api/order.api";
-import type { MainCategory, Store } from "@src/features/stores/types/store.types";
+import type {
+  MainCategory,
+  Store,
+} from "@src/features/stores/types/store.types";
+import { UseHomeReturn } from "../types/home.types";
 
 const STATUS_STEPS = [
   "WAITING_FOR_DRIVER",
@@ -16,36 +20,6 @@ const STATUS_STEPS = [
   "DRIVER_HEADING_TO_CUSTOMER",
   "DELIVERED",
 ];
-
-export interface UseHomeReturn {
-  query: {
-    categories: MainCategory[] | undefined;
-    stores: Store[];
-    catLoading: boolean;
-    storesLoading: boolean;
-  };
-  state: {
-    defaultAddress: any;
-    refreshing: boolean;
-    onRefresh: () => Promise<void>;
-  };
-  tracking: {
-    activeOrderId: string | null;
-    currentStatus: string;
-    currentStep: number;
-    isFinished: boolean;
-    STATUS_STEPS: string[];
-    deliveryType: string | undefined;
-  };
-  router: {
-    navigateToCategory: (categoryId: string, categoryName: string) => void;
-    navigateToStore: (storeId: string) => void;
-    navigateToTracking: (orderId: string) => void;
-    navigateToLocation: () => void;
-    navigateToAllStores: () => void;
-  };
-}
-
 export function useHome(): UseHomeReturn {
   const router = useRouter();
   const { defaultAddress, selectedLatitude, selectedLongitude } =
@@ -54,13 +28,22 @@ export function useHome(): UseHomeReturn {
 
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data: order, refetch: refetchOrder } = useOrderById(activeOrderId || "");
-  const { data: tracking, refetch: refetchTracking } = useOrderTracking(activeOrderId || "");
-  const { data: categories, isLoading: catLoading, refetch: refetchCategories } = useMainCategories();
-  const { data: nearbyData, isLoading: storesLoading, refetch: refetchStores } = useNearbyStores(
-    selectedLatitude,
-    selectedLongitude,
+  const { data: order, refetch: refetchOrder } = useOrderById(
+    activeOrderId || "",
   );
+  const { data: tracking, refetch: refetchTracking } = useOrderTracking(
+    activeOrderId || "",
+  );
+  const {
+    data: categories,
+    isLoading: catLoading,
+    refetch: refetchCategories,
+  } = useMainCategories();
+  const {
+    data: nearbyData,
+    isLoading: storesLoading,
+    refetch: refetchStores,
+  } = useNearbyStores(selectedLatitude, selectedLongitude);
 
   const stores = nearbyData?.stores ?? [];
 
@@ -91,7 +74,13 @@ export function useHome(): UseHomeReturn {
     } finally {
       setRefreshing(false);
     }
-  }, [refetchCategories, refetchStores, refetchOrder, refetchTracking, activeOrderId]);
+  }, [
+    refetchCategories,
+    refetchStores,
+    refetchOrder,
+    refetchTracking,
+    activeOrderId,
+  ]);
 
   const navigateToCategory = useCallback(
     (categoryId: string, categoryName: string) => {
@@ -159,4 +148,3 @@ export function useHome(): UseHomeReturn {
     },
   };
 }
-

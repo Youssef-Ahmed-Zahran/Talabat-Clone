@@ -102,7 +102,9 @@ export function AddCardModal({
           {/* Default toggle */}
           <TouchableOpacity
             className="flex-row items-center mb-8"
-            onPress={() => state.setForm((f) => ({ ...f, isDefault: !f.isDefault }))}
+            onPress={() =>
+              state.setForm((f) => ({ ...f, isDefault: !f.isDefault }))
+            }
             activeOpacity={0.8}
           >
             <View

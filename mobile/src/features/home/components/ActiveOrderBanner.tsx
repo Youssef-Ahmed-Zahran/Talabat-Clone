@@ -2,16 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@src/constants/theme";
-
-interface ActiveOrderBannerProps {
-  orderId: string;
-  currentStatus: string;
-  currentStep: number;
-  STATUS_STEPS: string[];
-  deliveryType?: string;
-  onPress: () => void;
-}
-
+import { ActiveOrderBannerProps } from "../types/home.types";
 export function ActiveOrderBanner({
   currentStatus,
   currentStep,

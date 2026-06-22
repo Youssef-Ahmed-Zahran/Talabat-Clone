@@ -3,12 +3,7 @@ import { View, Text, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { MainCategory } from "@src/features/stores/types/store.types";
 import { COLORS } from "@src/constants/theme";
-
-interface CategoryCardProps {
-  category: MainCategory;
-  onPress: (categoryId: string, categoryName: string) => void;
-}
-
+import { CategoryCardProps } from "../types/home.types";
 export function CategoryCard({ category, onPress }: CategoryCardProps) {
   return (
     <TouchableOpacity

@@ -8,31 +8,7 @@ import {
   useClearCart,
 } from "../api/cart.api";
 import type { CartItem } from "@src/features/cart/types/cart.types";
-
-export interface UseCartReturn {
-  query: {
-    items: CartItem[];
-    cartId: string | null;
-    storeId: string | null;
-    itemCount: number;
-    subtotal: number;
-  };
-  state: {
-    isRemovingItem: boolean;
-    isUpdatingQty: boolean;
-    isClearingCart: boolean;
-  };
-  actions: {
-    handleRemove: (itemId: string) => void;
-    handleClear: () => void;
-    handleUpdateQty: (itemId: string, quantity: number) => void;
-  };
-  router: {
-    navigateToCheckout: () => void;
-    navigateToHome: () => void;
-  };
-}
-
+import { UseCartReturn } from "../types/cart.types";
 export function useCartScreen(): UseCartReturn {
   const router = useRouter();
   const { items, cartId, storeId, itemCount } = useCartStore();

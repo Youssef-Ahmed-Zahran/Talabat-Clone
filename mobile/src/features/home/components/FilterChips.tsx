@@ -2,6 +2,7 @@ import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@src/constants/theme";
+import { FilterChipsProps } from "../types/home.types";
 
 const FILTERS = [
   { id: "all", label: "All", icon: null },
@@ -10,12 +11,6 @@ const FILTERS = [
   { id: "fast", label: "Fast delivery", icon: "flash-outline" as const },
   { id: "pickup", label: "Pickup", icon: "bag-handle-outline" as const },
 ];
-
-interface FilterChipsProps {
-  selected: string;
-  onSelect: (id: string) => void;
-}
-
 export function FilterChips({ selected, onSelect }: FilterChipsProps) {
   return (
     <ScrollView
@@ -32,9 +27,7 @@ export function FilterChips({ selected, onSelect }: FilterChipsProps) {
             onPress={() => onSelect(filter.id)}
             activeOpacity={0.8}
             className={`flex-row items-center px-4 py-2 rounded-full border ${
-              active
-                ? "bg-primary border-primary"
-                : "bg-white border-border"
+              active ? "bg-primary border-primary" : "bg-white border-border"
             }`}
           >
             {filter.icon && (

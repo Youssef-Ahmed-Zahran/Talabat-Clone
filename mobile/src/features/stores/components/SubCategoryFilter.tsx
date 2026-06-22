@@ -2,13 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, Image, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@src/constants/theme";
-
-interface SubCategoryFilterProps {
-  subCategories: any[];
-  selectedSubCategory: string | null;
-  onSelect: (id: string | null) => void;
-}
-
+import { SubCategoryFilterProps } from "../types/stores.types";
 const getSubCategoryIcon = (name: string) => {
   const lower = name.toLowerCase();
   if (

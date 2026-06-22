@@ -1,16 +1,6 @@
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useOrderById } from "../api/order.api";
-
-// ─── Return type ──────────────────────────────────────────────
-export interface UseOrderDetailReturn {
-  query: {
-    order: ReturnType<typeof useOrderById>["data"];
-    isLoading: boolean;
-  };
-  router: {
-    goBack: () => void;
-  };
-}
+import { UseOrderDetailReturn } from "../types/order.types";
 
 // ─── Hook ─────────────────────────────────────────────────────
 export function useOrderDetail(): UseOrderDetailReturn {

@@ -3,12 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { Store } from "@src/features/stores/types/store.types";
 import { isStoreOpen } from "@src/utils/storeHours";
 import { COLORS } from "@src/constants/theme";
-
-interface StoreResultProps {
-  store: Store & { distanceKm: number | null };
-  onPress: () => void;
-}
-
+import { StoreResultProps } from "../types/home.types";
 export function StoreResult({ store, onPress }: StoreResultProps) {
   const open = isStoreOpen(
     store.openTime,
@@ -25,22 +20,35 @@ export function StoreResult({ store, onPress }: StoreResultProps) {
     >
       <View className="w-14 h-14 rounded-lg overflow-hidden bg-[#F5F5F5] mr-3">
         {store.logoUrl ? (
-          <Image source={{ uri: store.logoUrl }} className="w-full h-full" resizeMode="cover" />
+          <Image
+            source={{ uri: store.logoUrl }}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
         ) : (
           <View className="w-full h-full items-center justify-center">
-            <Ionicons name="storefront-outline" size={24} color={COLORS.textTertiary} />
+            <Ionicons
+              name="storefront-outline"
+              size={24}
+              color={COLORS.textTertiary}
+            />
           </View>
         )}
       </View>
 
       <View className="flex-1">
         <View className="flex-row items-center gap-x-2 mb-0.5">
-          <Text className="text-sm font-bold text-textPrimary flex-shrink" numberOfLines={1}>
+          <Text
+            className="text-sm font-bold text-textPrimary flex-shrink"
+            numberOfLines={1}
+          >
             {store.name}
           </Text>
           {!open && (
             <View className="bg-[#F5F5F5] px-2 py-0.5 rounded-full">
-              <Text className="text-[10px] font-semibold text-textTertiary">Closed</Text>
+              <Text className="text-[10px] font-semibold text-textTertiary">
+                Closed
+              </Text>
             </View>
           )}
         </View>

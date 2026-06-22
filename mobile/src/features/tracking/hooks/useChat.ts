@@ -6,36 +6,11 @@ import { Audio } from "expo-av";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuthStore } from "@src/store/authStore";
 import type { Message } from "@src/features/tracking/types/messaging.types";
+import { UseChatReturn } from "../types/tracking.types";
 
 const BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:8080";
-
-export interface UseChatReturn {
-  query: {
-    orderId: string;
-    userId: string | undefined;
-    messages: Message[];
-  };
-  state: {
-    text: string;
-    isConnecting: boolean;
-    connectError: string | null;
-    isSending: boolean;
-    isTyping: boolean;
-  };
-  actions: {
-    setText: (v: string) => void;
-    handleTyping: (val: string) => void;
-    handleSend: () => void;
-  };
-  refs: {
-    flatListRef: React.RefObject<FlatList | null>;
-  };
-  router: {
-    navigateBack: () => void;
-  };
-}
-
+  process.env.EXPO_PUBLIC_API_URL?.replace("/api", "") ||
+  "http://localhost:8080";
 export function useChat(): UseChatReturn {
   const router = useRouter();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
@@ -60,7 +35,10 @@ export function useChat(): UseChatReturn {
     const setup = async () => {
       const token = await AsyncStorage.getItem("token");
       if (!token) {
-        if (isMounted) { setConnectError("Not authenticated."); setIsConnecting(false); }
+        if (isMounted) {
+          setConnectError("Not authenticated.");
+          setIsConnecting(false);
+        }
         return;
       }
 
@@ -74,40 +52,56 @@ export function useChat(): UseChatReturn {
       socketRef.current = socket;
 
       socket.on("connect", () => {
-        socket.emit("chat:join", { orderId }, (res: {
-          success: boolean;
-          conversationId?: string;
-          messages?: Message[];
-          message?: string;
-        }) => {
+        socket.emit(
+          "chat:join",
+          { orderId },
+          (res: {
+            success: boolean;
+            conversationId?: string;
+            messages?: Message[];
+            message?: string;
+          }) => {
+            if (!isMounted) return;
+            if (res.success) setMessages(res.messages ?? []);
+            else setConnectError(res.message ?? "Could not join conversation.");
+            setIsConnecting(false);
+          },
+        );
+      });
+
+      socket.on(
+        "chat:message",
+        async ({ message }: { orderId: string; message: Message }) => {
           if (!isMounted) return;
-          if (res.success) setMessages(res.messages ?? []);
-          else setConnectError(res.message ?? "Could not join conversation.");
-          setIsConnecting(false);
-        });
-      });
+          setMessages((prev) => [...prev, message]);
+          if (message.senderType !== "USER" || message.senderId !== user?.id) {
+            try {
+              const { sound } = await Audio.Sound.createAsync(
+                require("@assets/sounds/message.mp3"),
+              );
+              await sound.playAsync();
+              sound.setOnPlaybackStatusUpdate((status) => {
+                if (status.isLoaded && status.didJustFinish)
+                  sound.unloadAsync();
+              });
+            } catch {
+              /* ignore sound errors */
+            }
+          }
+        },
+      );
 
-      socket.on("chat:message", async ({ message }: { orderId: string; message: Message }) => {
-        if (!isMounted) return;
-        setMessages((prev) => [...prev, message]);
-        if (message.senderType !== "USER" || message.senderId !== user?.id) {
-          try {
-            const { sound } = await Audio.Sound.createAsync(
-              require("@assets/sounds/message.mp3"),
-            );
-            await sound.playAsync();
-            sound.setOnPlaybackStatusUpdate((status) => {
-              if (status.isLoaded && status.didJustFinish) sound.unloadAsync();
-            });
-          } catch { /* ignore sound errors */ }
-        }
-      });
-
-      socket.on("chat:typing", ({ isTyping: typing }: { isTyping: boolean }) => {
-        if (!isMounted) return;
-        setIsTyping(typing);
-        if (typing) setTimeout(() => { if (isMounted) setIsTyping(false); }, 3000);
-      });
+      socket.on(
+        "chat:typing",
+        ({ isTyping: typing }: { isTyping: boolean }) => {
+          if (!isMounted) return;
+          setIsTyping(typing);
+          if (typing)
+            setTimeout(() => {
+              if (isMounted) setIsTyping(false);
+            }, 3000);
+        },
+      );
 
       socket.on("connect_error", (err) => {
         if (!isMounted) return;
@@ -128,28 +122,38 @@ export function useChat(): UseChatReturn {
   // Auto-scroll on new messages
   useEffect(() => {
     if (messages.length > 0) {
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
+      setTimeout(
+        () => flatListRef.current?.scrollToEnd({ animated: true }),
+        80,
+      );
     }
   }, [messages]);
 
-  const handleTyping = useCallback((val: string) => {
-    setText(val);
-    socketRef.current?.emit("chat:typing", { orderId, isTyping: true });
-    if (typingTimer.current) clearTimeout(typingTimer.current);
-    typingTimer.current = setTimeout(() => {
-      socketRef.current?.emit("chat:typing", { orderId, isTyping: false });
-    }, 1500);
-  }, [orderId]);
+  const handleTyping = useCallback(
+    (val: string) => {
+      setText(val);
+      socketRef.current?.emit("chat:typing", { orderId, isTyping: true });
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingTimer.current = setTimeout(() => {
+        socketRef.current?.emit("chat:typing", { orderId, isTyping: false });
+      }, 1500);
+    },
+    [orderId],
+  );
 
   const handleSend = useCallback(() => {
     const body = text.trim();
     if (!body || !orderId || isSending) return;
     setText("");
     setIsSending(true);
-    socketRef.current?.emit("chat:message", { orderId, body }, (res: { success: boolean }) => {
-      setIsSending(false);
-      if (!res?.success) setText(body);
-    });
+    socketRef.current?.emit(
+      "chat:message",
+      { orderId, body },
+      (res: { success: boolean }) => {
+        setIsSending(false);
+        if (!res?.success) setText(body);
+      },
+    );
   }, [text, orderId, isSending]);
 
   const navigateBack = useCallback(() => router.back(), [router]);

@@ -61,10 +61,18 @@ export default function MapPickingScreen() {
               className="w-10 h-10 bg-white rounded-full items-center justify-center border border-border/40"
               activeOpacity={0.8}
             >
-              <Ionicons name="arrow-back" size={20} color={COLORS.textPrimary} />
+              <Ionicons
+                name="arrow-back"
+                size={20}
+                color={COLORS.textPrimary}
+              />
             </TouchableOpacity>
             <View className="flex-1 flex-row items-center bg-white rounded-xl h-12 px-3 border border-border/40">
-              <Ionicons name="search-outline" size={18} color={COLORS.textTertiary} />
+              <Ionicons
+                name="search-outline"
+                size={18}
+                color={COLORS.textTertiary}
+              />
               <TextInput
                 className="flex-1 text-sm text-textPrimary h-full ml-2"
                 value={state.searchQuery}
@@ -75,7 +83,10 @@ export default function MapPickingScreen() {
                 returnKeyType="search"
               />
               {state.searchQuery.length > 0 && (
-                <TouchableOpacity onPress={actions.handleSearch} className="ml-2">
+                <TouchableOpacity
+                  onPress={actions.handleSearch}
+                  className="ml-2"
+                >
                   <View className="bg-primary px-3 py-1.5 rounded-xl">
                     <Text className="text-white text-xs font-black">Go</Text>
                   </View>

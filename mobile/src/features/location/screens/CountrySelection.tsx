@@ -1,6 +1,12 @@
 import { SafeAreaView } from "react-native-safe-area-context";
 import React from "react";
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -10,9 +16,16 @@ import { COLORS } from "@src/constants/theme";
 import type { Country } from "@src/features/location/types/geography.types";
 
 const FLAG: Record<string, string> = {
-  EG: "🇪🇬", SA: "🇸🇦", AE: "🇦🇪", KW: "🇰🇼",
-  QA: "🇶🇦", BH: "🇧🇭", JO: "🇯🇴", LB: "🇱🇧",
-  IQ: "🇮🇶", OM: "🇴🇲",
+  EG: "🇪🇬",
+  SA: "🇸🇦",
+  AE: "🇦🇪",
+  KW: "🇰🇼",
+  QA: "🇶🇦",
+  BH: "🇧🇭",
+  JO: "🇯🇴",
+  LB: "🇱🇧",
+  IQ: "🇮🇶",
+  OM: "🇴🇲",
 };
 
 export default function CountrySelectionScreen() {
@@ -29,7 +42,9 @@ export default function CountrySelectionScreen() {
         <Text className="text-2xl">{FLAG[item.code] ?? "🌍"}</Text>
       </View>
       <View className="flex-1">
-        <Text className="text-base font-bold text-textPrimary">{item.name}</Text>
+        <Text className="text-base font-bold text-textPrimary">
+          {item.name}
+        </Text>
         <Text className="text-xs text-textTertiary mt-0.5">{item.code}</Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
@@ -60,7 +75,9 @@ export default function CountrySelectionScreen() {
       {query.isLoading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text className="text-sm text-textSecondary mt-3">Fetching countries...</Text>
+          <Text className="text-sm text-textSecondary mt-3">
+            Fetching countries...
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -71,8 +88,14 @@ export default function CountrySelectionScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View className="items-center justify-center py-16">
-              <Ionicons name="globe-outline" size={48} color={COLORS.textTertiary} />
-              <Text className="text-base font-bold text-textPrimary mt-3">No countries found</Text>
+              <Ionicons
+                name="globe-outline"
+                size={48}
+                color={COLORS.textTertiary}
+              />
+              <Text className="text-base font-bold text-textPrimary mt-3">
+                No countries found
+              </Text>
             </View>
           }
         />

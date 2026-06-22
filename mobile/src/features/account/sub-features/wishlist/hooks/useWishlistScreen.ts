@@ -29,15 +29,18 @@ export function useWishlistScreen() {
             });
           },
         },
-      ]
+      ],
     );
   }, [clearWishlistApi]);
 
-  const handleToggleWishlist = useCallback((storeId: string) => {
-    toggleWishlistApi.mutate(storeId, {
-      onError: (err) => Alert.alert("Error", getErrorMessage(err)),
-    });
-  }, [toggleWishlistApi]);
+  const handleToggleWishlist = useCallback(
+    (storeId: string) => {
+      toggleWishlistApi.mutate(storeId, {
+        onError: (err) => Alert.alert("Error", getErrorMessage(err)),
+      });
+    },
+    [toggleWishlistApi],
+  );
 
   const navigateBack = useCallback(() => router.back(), [router]);
 
@@ -47,7 +50,7 @@ export function useWishlistScreen() {
     (storeId: string) => {
       router.push({ pathname: "/stores/detail", params: { storeId } });
     },
-    [router]
+    [router],
   );
 
   return {

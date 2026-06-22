@@ -2,7 +2,11 @@
 // Store Types
 // ============================================================
 
-export type DeliveryType = 'TALABAT' | 'STORE' | 'TALABAT_DELIVERY' | 'STORE_DELIVERY';
+export type DeliveryType =
+  | "TALABAT"
+  | "STORE"
+  | "TALABAT_DELIVERY"
+  | "STORE_DELIVERY";
 
 export interface Store {
   id: string;

@@ -1,14 +1,17 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '@src/config/axios';
-import type { UserAddress, CreateAddressRequest } from '@src/features/location/types/address.types';
-import type { ApiResponse } from '@src/types/api.types';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "@src/config/axios";
+import type {
+  UserAddress,
+  CreateAddressRequest,
+} from "@src/features/location/types/address.types";
+import type { ApiResponse } from "@src/types/api.types";
 
 // ─── Get My Addresses ─────────────────────────────────────────
 export const useMyAddresses = () => {
   return useQuery({
-    queryKey: ['addresses'],
+    queryKey: ["addresses"],
     queryFn: async () => {
-      const res = await api.get<ApiResponse<UserAddress[]>>('/addresses');
+      const res = await api.get<ApiResponse<UserAddress[]>>("/addresses");
       return res.data.data;
     },
   });
@@ -19,11 +22,11 @@ export const useCreateAddress = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (data: CreateAddressRequest) => {
-      const res = await api.post<ApiResponse<UserAddress>>('/addresses', data);
+      const res = await api.post<ApiResponse<UserAddress>>("/addresses", data);
       return res.data.data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['addresses'] });
+      qc.invalidateQueries({ queryKey: ["addresses"] });
     },
   });
 };
@@ -32,12 +35,18 @@ export const useCreateAddress = () => {
 export const useUpdateAddress = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...data }: Partial<CreateAddressRequest> & { id: string }) => {
-      const res = await api.put<ApiResponse<UserAddress>>(`/addresses/${id}`, data);
+    mutationFn: async ({
+      id,
+      ...data
+    }: Partial<CreateAddressRequest> & { id: string }) => {
+      const res = await api.put<ApiResponse<UserAddress>>(
+        `/addresses/${id}`,
+        data,
+      );
       return res.data.data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['addresses'] });
+      qc.invalidateQueries({ queryKey: ["addresses"] });
     },
   });
 };
@@ -50,7 +59,7 @@ export const useDeleteAddress = () => {
       await api.delete(`/addresses/${id}`);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['addresses'] });
+      qc.invalidateQueries({ queryKey: ["addresses"] });
     },
   });
 };
@@ -60,11 +69,13 @@ export const useSetDefaultAddress = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const res = await api.patch<ApiResponse<UserAddress>>(`/addresses/${id}/default`);
+      const res = await api.patch<ApiResponse<UserAddress>>(
+        `/addresses/${id}/default`,
+      );
       return res.data.data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['addresses'] });
+      qc.invalidateQueries({ queryKey: ["addresses"] });
     },
   });
 };

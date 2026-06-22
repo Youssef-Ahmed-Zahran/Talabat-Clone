@@ -2,7 +2,7 @@
 // Messaging Types
 // ============================================================
 
-export type MessageSender = 'USER' | 'DRIVER';
+export type MessageSender = "USER" | "DRIVER";
 
 export interface Conversation {
   id: string;

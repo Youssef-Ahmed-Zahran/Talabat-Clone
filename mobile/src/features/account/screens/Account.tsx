@@ -9,11 +9,36 @@ import { TalabatLogo } from "@src/components/ui/TalabatLogo";
 import { COLORS } from "@src/constants/theme";
 
 const MENU_ITEMS = [
-  { id: "profile", icon: "person-outline" as const, label: "My Profile", route: "/account/profile" },
-  { id: "addresses", icon: "location-outline" as const, label: "My Addresses", route: "/account/addresses" },
-  { id: "wishlist", icon: "heart-outline" as const, label: "Wishlist", route: "/account/wishlist" },
-  { id: "help", icon: "headset-outline" as const, label: "Help & Support", route: null },
-  { id: "about", icon: "information-circle-outline" as const, label: "About", route: null },
+  {
+    id: "profile",
+    icon: "person-outline" as const,
+    label: "My Profile",
+    route: "/account/profile",
+  },
+  {
+    id: "addresses",
+    icon: "location-outline" as const,
+    label: "My Addresses",
+    route: "/account/addresses",
+  },
+  {
+    id: "wishlist",
+    icon: "heart-outline" as const,
+    label: "Wishlist",
+    route: "/account/wishlist",
+  },
+  {
+    id: "help",
+    icon: "headset-outline" as const,
+    label: "Help & Support",
+    route: null,
+  },
+  {
+    id: "about",
+    icon: "information-circle-outline" as const,
+    label: "About",
+    route: null,
+  },
 ];
 
 export default function AccountScreen() {
@@ -40,7 +65,11 @@ export default function AccountScreen() {
             className="mt-4 bg-[#F5F5F5] px-5 py-2 rounded-full flex-row items-center"
             onPress={router.navigateToProfile}
           >
-            <Ionicons name="create-outline" size={16} color={COLORS.textPrimary} />
+            <Ionicons
+              name="create-outline"
+              size={16}
+              color={COLORS.textPrimary}
+            />
             <Text className="text-sm font-semibold text-textPrimary ml-1.5">
               Edit Profile
             </Text>
@@ -67,7 +96,9 @@ export default function AccountScreen() {
           onPress={actions.handleLogout}
         >
           <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
-          <Text className="text-base font-semibold text-error ml-2">Logout</Text>
+          <Text className="text-base font-semibold text-error ml-2">
+            Logout
+          </Text>
         </TouchableOpacity>
 
         <View className="py-10 items-center">

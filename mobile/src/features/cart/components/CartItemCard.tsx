@@ -1,14 +1,8 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { CartItem as CartItemType } from "@src/features/cart/types/cart.types";
 import { COLORS } from "@src/constants/theme";
-
-interface CartItemCardProps {
-  item: CartItemType;
-  onUpdateQty: (itemId: string, quantity: number) => void;
-}
-
+import { CartItemCardProps } from "../types/cart.types";
 export function CartItemCard({ item, onUpdateQty }: CartItemCardProps) {
   const total =
     Number(item.unitPrice) +
@@ -26,12 +20,19 @@ export function CartItemCard({ item, onUpdateQty }: CartItemCardProps) {
             className="w-full h-full"
           />
         ) : (
-          <Ionicons name="fast-food-outline" size={28} color={COLORS.textTertiary} />
+          <Ionicons
+            name="fast-food-outline"
+            size={28}
+            color={COLORS.textTertiary}
+          />
         )}
       </View>
 
       <View className="flex-1">
-        <Text className="text-sm font-bold text-textPrimary mb-0.5" numberOfLines={1}>
+        <Text
+          className="text-sm font-bold text-textPrimary mb-0.5"
+          numberOfLines={1}
+        >
           {item.product?.name || "Item"}
         </Text>
         {item.options && item.options.length > 0 && (
@@ -42,7 +43,9 @@ export function CartItemCard({ item, onUpdateQty }: CartItemCardProps) {
               .join(", ")}
           </Text>
         )}
-        <Text className="text-sm font-bold text-primary">{total.toFixed(2)} EGP</Text>
+        <Text className="text-sm font-bold text-primary">
+          {total.toFixed(2)} EGP
+        </Text>
       </View>
 
       <View className="flex-row items-center bg-[#F5F5F5] rounded-lg p-0.5">
@@ -52,7 +55,9 @@ export function CartItemCard({ item, onUpdateQty }: CartItemCardProps) {
         >
           <Ionicons name="remove" size={16} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text className="mx-2.5 text-sm font-bold text-textPrimary">{item.quantity}</Text>
+        <Text className="mx-2.5 text-sm font-bold text-textPrimary">
+          {item.quantity}
+        </Text>
         <TouchableOpacity
           className="w-8 h-8 rounded-md items-center justify-center bg-primary"
           onPress={() => onUpdateQty(item.id, item.quantity + 1)}

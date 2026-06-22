@@ -12,15 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@src/constants/theme";
 import { useReviewModal } from "../hooks/useReviewModal";
-
-interface ReviewModalProps {
-  visible: boolean;
-  onClose: () => void;
-  storeId: string;
-  orderId: string;
-  storeName: string;
-}
-
+import { ReviewModalProps } from "../types/order.types";
 export function ReviewModal({
   visible,
   onClose,

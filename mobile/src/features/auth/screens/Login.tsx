@@ -64,7 +64,9 @@ export default function LoginScreen() {
               rightElement={
                 <TouchableOpacity onPress={state.toggleShowPassword}>
                   <Ionicons
-                    name={state.showPassword ? "eye-off-outline" : "eye-outline"}
+                    name={
+                      state.showPassword ? "eye-off-outline" : "eye-outline"
+                    }
                     size={20}
                     color={COLORS.textTertiary}
                   />
@@ -93,7 +95,9 @@ export default function LoginScreen() {
         {/* Divider */}
         <View className="flex-row items-center my-8">
           <View className="flex-1 h-px bg-border" />
-          <Text className="mx-4 text-textTertiary text-sm">or continue with</Text>
+          <Text className="mx-4 text-textTertiary text-sm">
+            or continue with
+          </Text>
           <View className="flex-1 h-px bg-border" />
         </View>
 
@@ -112,7 +116,9 @@ export default function LoginScreen() {
 
         {/* Footer */}
         <View className="flex-row justify-center items-center mt-10 pb-6">
-          <Text className="text-textSecondary">Don&apos;t have an account? </Text>
+          <Text className="text-textSecondary">
+            Don&apos;t have an account?{" "}
+          </Text>
           <TouchableOpacity onPress={router.navigateToRegister}>
             <Text className="text-primary font-bold">Sign Up</Text>
           </TouchableOpacity>

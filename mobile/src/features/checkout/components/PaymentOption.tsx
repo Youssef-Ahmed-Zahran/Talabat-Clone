@@ -2,22 +2,19 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@src/constants/theme";
-
-type IconName = keyof typeof Ionicons.glyphMap;
+import { PaymentOptionProps } from "../types/checkout.types";
+import type { IconName } from "@src/features/account/types/account.types";
 
 const METHOD_ICONS: Record<string, IconName> = {
   CASH: "cash-outline",
   CARD: "card-outline",
   PAYPAL: "logo-paypal",
 };
-
-interface PaymentOptionProps {
-  method: any;
-  isSelected: boolean;
-  onSelect: (id: string) => void;
-}
-
-export function PaymentOption({ method, isSelected, onSelect }: PaymentOptionProps) {
+export function PaymentOption({
+  method,
+  isSelected,
+  onSelect,
+}: PaymentOptionProps) {
   const icon = METHOD_ICONS[method.name] || "wallet-outline";
 
   return (

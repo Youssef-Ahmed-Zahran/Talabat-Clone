@@ -1,15 +1,15 @@
-import { useQuery } from '@tanstack/react-query';
-import api from '@src/config/axios';
-import type { TrackingData } from '@src/features/tracking/types/tracking.types';
-import type { ApiResponse } from '@src/types/api.types';
+import { useQuery } from "@tanstack/react-query";
+import api from "@src/config/axios";
+import type { TrackingData } from "@src/features/tracking/types/tracking.types";
+import type { ApiResponse } from "@src/types/api.types";
 
 // ─── Get Order Tracking ──────────────────────────────────────
 export const useOrderTracking = (orderId: string) => {
   return useQuery({
-    queryKey: ['tracking', orderId],
+    queryKey: ["tracking", orderId],
     queryFn: async () => {
       const res = await api.get<ApiResponse<TrackingData>>(
-        `/tracking/${orderId}`
+        `/tracking/${orderId}`,
       );
       return res.data.data;
     },

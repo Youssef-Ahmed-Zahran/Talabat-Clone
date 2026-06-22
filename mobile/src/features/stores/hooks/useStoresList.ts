@@ -3,33 +3,12 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useNearbyStores } from "../api/store.api";
 import { useLocationStore } from "@src/store/locationStore";
 import { useSubCategories } from "@src/features/home/api/mainCategory.api";
-import { useWishlist, useToggleWishlist } from "@src/features/account/sub-features/wishlist/api/wishlist.api";
+import {
+  useWishlist,
+  useToggleWishlist,
+} from "@src/features/account/sub-features/wishlist/api/wishlist.api";
 import type { Store } from "@src/features/stores/types/store.types";
-
-export interface UseStoresListReturn {
-  query: {
-    categoryName: string | undefined;
-    stores: Store[];
-    zone: any;
-    outsideZone: boolean;
-    isLoading: boolean;
-    isFetching: boolean;
-    subCategories: any[] | undefined;
-    wishlistedStoreIds: Set<string>;
-  };
-  state: {
-    selectedSubCategory: string | null;
-    setSelectedSubCategory: (id: string | null) => void;
-  };
-  router: {
-    navigateToStore: (storeId: string) => void;
-    navigateBack: () => void;
-  };
-  actions: {
-    toggleWishlist: (storeId: string) => void;
-  };
-}
-
+import { UseStoresListReturn } from "../types/stores.types";
 export function useStoresList(): UseStoresListReturn {
   const router = useRouter();
   const { categoryId, categoryName } = useLocalSearchParams<{
@@ -37,10 +16,16 @@ export function useStoresList(): UseStoresListReturn {
     categoryName?: string;
   }>();
   const { selectedLatitude, selectedLongitude } = useLocationStore();
-  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(
+    null,
+  );
 
   const { data: subCategories } = useSubCategories(categoryId as string | null);
-  const { data: nearbyData, isLoading, isFetching } = useNearbyStores(
+  const {
+    data: nearbyData,
+    isLoading,
+    isFetching,
+  } = useNearbyStores(
     selectedLatitude,
     selectedLongitude,
     categoryId as string | null,
@@ -67,9 +52,12 @@ export function useStoresList(): UseStoresListReturn {
 
   const navigateBack = useCallback(() => router.back(), [router]);
 
-  const toggleWishlist = useCallback((storeId: string) => {
-    toggleWishlistApi.mutate(storeId);
-  }, [toggleWishlistApi]);
+  const toggleWishlist = useCallback(
+    (storeId: string) => {
+      toggleWishlistApi.mutate(storeId);
+    },
+    [toggleWishlistApi],
+  );
 
   return {
     query: {

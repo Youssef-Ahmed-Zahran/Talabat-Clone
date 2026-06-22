@@ -2,14 +2,12 @@ import { useState, useCallback } from "react";
 import { Alert } from "react-native";
 import { useCreateReview } from "../api/review.api";
 import { getErrorMessage } from "@src/utils/error";
-
-interface UseReviewModalProps {
-  storeId: string;
-  orderId: string;
-  onClose: () => void;
-}
-
-export function useReviewModal({ storeId, orderId, onClose }: UseReviewModalProps) {
+import { UseReviewModalProps } from "../types/order.types";
+export function useReviewModal({
+  storeId,
+  orderId,
+  onClose,
+}: UseReviewModalProps) {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const createReview = useCreateReview();

@@ -3,27 +3,7 @@ import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useLogin as useLoginMutation } from "../api/auth.api";
 import { getErrorMessage } from "@src/utils/error";
-
-export interface UseLoginReturn {
-  form: {
-    email: string;
-    password: string;
-    setEmail: (v: string) => void;
-    setPassword: (v: string) => void;
-  };
-  state: {
-    showPassword: boolean;
-    isPending: boolean;
-    toggleShowPassword: () => void;
-  };
-  actions: {
-    handleLogin: () => void;
-  };
-  router: {
-    navigateToRegister: () => void;
-  };
-}
-
+import { UseLoginReturn } from "../types/auth.types";
 export function useLoginScreen(): UseLoginReturn {
   const router = useRouter();
   const loginMutation = useLoginMutation();
@@ -32,10 +12,7 @@ export function useLoginScreen(): UseLoginReturn {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const toggleShowPassword = useCallback(
-    () => setShowPassword((v) => !v),
-    [],
-  );
+  const toggleShowPassword = useCallback(() => setShowPassword((v) => !v), []);
 
   const navigateToRegister = useCallback(() => {
     router.push("/auth/register");

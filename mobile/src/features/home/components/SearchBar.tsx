@@ -3,11 +3,7 @@ import { Text, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@src/constants/theme";
-
-interface SearchBarProps {
-  onPress?: () => void;
-}
-
+import { SearchBarProps } from "../types/home.types";
 export const SearchBar: React.FC<SearchBarProps> = ({ onPress }) => {
   const router = useRouter();
   const handlePress = () => {

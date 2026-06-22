@@ -1,19 +1,30 @@
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import api from '@src/config/axios';
-import type { Order, PlaceOrderRequest } from '@src/features/orders/types/order.types';
-import type { ApiResponse } from '@src/types/api.types';
-import { useCartStore } from '@src/store/cartStore';
-import { useUIStore } from '@src/store/uiStore';
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
+import api from "@src/config/axios";
+import type {
+  Order,
+  PlaceOrderRequest,
+} from "@src/features/orders/types/order.types";
+import type { ApiResponse } from "@src/types/api.types";
+import { useCartStore } from "@src/store/cartStore";
+import { useUIStore } from "@src/store/uiStore";
 
 // ─── Get My Orders ────────────────────────────────────────────
 export const useMyOrders = () => {
   return useQuery({
-    queryKey: ['orders', 'my'],
+    queryKey: ["orders", "my"],
     queryFn: async () => {
-      const res = await api.get<ApiResponse<{ orders: Order[]; pagination: any }>>('/orders/my');
+      const res =
+        await api.get<ApiResponse<{ orders: Order[]; pagination: any }>>(
+          "/orders/my",
+        );
       return res?.data?.data?.orders;
     },
-    staleTime: 30_000,          // treat data as fresh for 30s — no background flicker
+    staleTime: 30_000, // treat data as fresh for 30s — no background flicker
     // placeholderData: keepPreviousData, // keep showing old data while refetching
   });
 };
@@ -21,7 +32,7 @@ export const useMyOrders = () => {
 // ─── Get Order by ID ──────────────────────────────────────────
 export const useOrderById = (orderId: string) => {
   return useQuery({
-    queryKey: ['order', orderId],
+    queryKey: ["order", orderId],
     queryFn: async () => {
       const res = await api.get<ApiResponse<Order>>(`/orders/my/${orderId}`);
       return res.data.data;
@@ -39,14 +50,14 @@ export const usePlaceOrder = () => {
 
   return useMutation({
     mutationFn: async (data: PlaceOrderRequest) => {
-      const res = await api.post<ApiResponse<Order>>('/orders', data);
+      const res = await api.post<ApiResponse<Order>>("/orders", data);
       return res.data.data;
     },
     onSuccess: (order) => {
       clearCart();
       setActiveOrder(order.id, order.status);
-      qc.invalidateQueries({ queryKey: ['orders'] });
-      qc.invalidateQueries({ queryKey: ['cart'] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      qc.invalidateQueries({ queryKey: ["cart"] });
     },
   });
 };
@@ -65,12 +76,12 @@ export const useCancelOrder = () => {
     }) => {
       const res = await api.patch<ApiResponse<Order>>(
         `/orders/${orderId}/cancel`,
-        { cancellationReason: reason }
+        { cancellationReason: reason },
       );
       return res.data.data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['orders'] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
     },
   });
 };
@@ -81,11 +92,13 @@ export const useReorder = () => {
 
   return useMutation({
     mutationFn: async (orderId: string) => {
-      const res = await api.post<ApiResponse<Order>>(`/orders/${orderId}/reorder`);
+      const res = await api.post<ApiResponse<Order>>(
+        `/orders/${orderId}/reorder`,
+      );
       return res.data.data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['cart'] });
+      qc.invalidateQueries({ queryKey: ["cart"] });
     },
   });
 };

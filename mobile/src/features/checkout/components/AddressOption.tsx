@@ -2,14 +2,12 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@src/constants/theme";
-
-interface AddressOptionProps {
-  address: any;
-  isSelected: boolean;
-  onSelect: (id: string) => void;
-}
-
-export function AddressOption({ address, isSelected, onSelect }: AddressOptionProps) {
+import { AddressOptionProps } from "../types/checkout.types";
+export function AddressOption({
+  address,
+  isSelected,
+  onSelect,
+}: AddressOptionProps) {
   return (
     <TouchableOpacity
       className={`flex-row items-center bg-white p-4 rounded-xl border ${

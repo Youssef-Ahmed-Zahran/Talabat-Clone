@@ -6,31 +6,9 @@ import { useMyOrders, useReorder } from "../api/order.api";
 import { useCartStore } from "@src/store/cartStore";
 import api from "@src/config/axios";
 import type { Order } from "@src/features/orders/types/order.types";
+import { UseOrderHistoryReturn } from "../types/order.types";
 
-// ─── Return type ──────────────────────────────────────────────
-export interface UseOrderHistoryReturn {
-  query: {
-    orders: Order[] | undefined;
-    isLoading: boolean;
-  };
-  state: {
-    refreshing: boolean;
-    reorderingId: string | null;
-    selectedReviewOrder: Order | null;
-  };
-  actions: {
-    onRefresh: () => Promise<void>;
-    handleReorder: (orderId: string, storeId: string) => void;
-    handleTrack: (orderId: string) => void;
-    handleReview: (order: Order) => void;
-    closeReviewModal: () => void;
-  };
-  router: {
-    navigateHome: () => void;
-  };
-}
-
-// ─── Hook ─────────────────────────────────────────────────────
+// ─── Return type ──────────────────────────────────────────────// ─── Hook ─────────────────────────────────────────────────────
 export function useOrderHistory(): UseOrderHistoryReturn {
   const router = useRouter();
   const qc = useQueryClient();
@@ -40,9 +18,11 @@ export function useOrderHistory(): UseOrderHistoryReturn {
 
   const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Review state
-  const [selectedReviewOrder, setSelectedReviewOrder] = useState<Order | null>(null);
+  const [selectedReviewOrder, setSelectedReviewOrder] = useState<Order | null>(
+    null,
+  );
 
   // ── Refetch on screen focus ───────────────────────────────
   useFocusEffect(

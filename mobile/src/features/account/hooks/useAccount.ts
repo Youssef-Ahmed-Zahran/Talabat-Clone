@@ -5,23 +5,7 @@ import { useAuthStore } from "@src/store/authStore";
 import { useLocationStore } from "@src/store/locationStore";
 import { useLogout } from "@src/features/auth/api/auth.api";
 import type { AuthUser } from "@src/features/auth/types/auth.types";
-
-export interface UseAccountReturn {
-  query: {
-    user: AuthUser | null;
-  };
-  state: {
-    isLoggingOut: boolean;
-  };
-  actions: {
-    handleLogout: () => void;
-  };
-  router: {
-    navigateTo: (route: string) => void;
-    navigateToProfile: () => void;
-  };
-}
-
+import { UseAccountReturn } from "../types/account.types";
 export function useAccount(): UseAccountReturn {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);

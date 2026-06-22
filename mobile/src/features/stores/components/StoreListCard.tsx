@@ -3,14 +3,7 @@ import { View, Text, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { Store } from "@src/features/stores/types/store.types";
 import { COLORS } from "@src/constants/theme";
-
-interface StoreListCardProps {
-  store: Store;
-  onPress: (storeId: string) => void;
-  isWishlisted?: boolean;
-  onToggleWishlist?: (storeId: string) => void;
-}
-
+import { StoreListCardProps } from "../types/stores.types";
 export function StoreListCard({
   store,
   onPress,

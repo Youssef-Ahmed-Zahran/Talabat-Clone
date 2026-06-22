@@ -5,40 +5,7 @@ import { useCreateAddress } from "@src/features/account/sub-features/address/api
 import { useLocationStore } from "@src/store/locationStore";
 import { getErrorMessage } from "@src/utils/error";
 import type { AddressType } from "@src/features/location/types/address.types";
-
-export interface UseAddressReturn {
-  form: {
-    cityName: string;
-    setCityName: (v: string) => void;
-    type: AddressType;
-    setType: (v: AddressType) => void;
-    label: string;
-    setLabel: (v: string) => void;
-    buildingName: string;
-    setBuildingName: (v: string) => void;
-    apartmentNumber: string;
-    setApartmentNumber: (v: string) => void;
-    floor: string;
-    setFloor: (v: string) => void;
-    street: string;
-    setStreet: (v: string) => void;
-    phone: string;
-    setPhone: (v: string) => void;
-  };
-  query: {
-    params: { latitude: string; longitude: string; countryCode: string; countryName: string; cityName?: string };
-  };
-  state: {
-    isPending: boolean;
-  };
-  actions: {
-    handleSave: () => void;
-  };
-  router: {
-    navigateBack: () => void;
-  };
-}
-
+import { UseAddressReturn } from "../types/location.types";
 export function useAddress(): UseAddressReturn {
   const router = useRouter();
   const params = useLocalSearchParams<{

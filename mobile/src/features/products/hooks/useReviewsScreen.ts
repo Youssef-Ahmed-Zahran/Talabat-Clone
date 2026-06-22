@@ -48,14 +48,14 @@ export function useReviewsScreen() {
                 { reviewId, storeId: storeId || "" },
                 {
                   onError: (err) => Alert.alert("Error", getErrorMessage(err)),
-                }
+                },
               );
             },
           },
-        ]
+        ],
       );
     },
-    [deleteReviewApi, storeId]
+    [deleteReviewApi, storeId],
   );
 
   const navigateBack = useCallback(() => router.back(), [router]);

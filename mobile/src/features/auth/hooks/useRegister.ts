@@ -3,33 +3,7 @@ import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useRegister as useRegisterMutation } from "../api/auth.api";
 import { getErrorMessage } from "@src/utils/error";
-
-export interface UseRegisterReturn {
-  form: {
-    fullName: string;
-    email: string;
-    phone: string;
-    password: string;
-    confirmPassword: string;
-    setFullName: (v: string) => void;
-    setEmail: (v: string) => void;
-    setPhone: (v: string) => void;
-    setPassword: (v: string) => void;
-    setConfirmPassword: (v: string) => void;
-  };
-  state: {
-    showPassword: boolean;
-    isPending: boolean;
-    toggleShowPassword: () => void;
-  };
-  actions: {
-    handleRegister: () => void;
-  };
-  router: {
-    navigateToLogin: () => void;
-  };
-}
-
+import { UseRegisterReturn } from "../types/auth.types";
 export function useRegisterScreen(): UseRegisterReturn {
   const router = useRouter();
   const registerMutation = useRegisterMutation();
@@ -73,7 +47,15 @@ export function useRegisterScreen(): UseRegisterReturn {
           Alert.alert("Registration Failed", getErrorMessage(err)),
       },
     );
-  }, [fullName, email, phone, password, confirmPassword, registerMutation, router]);
+  }, [
+    fullName,
+    email,
+    phone,
+    password,
+    confirmPassword,
+    registerMutation,
+    router,
+  ]);
 
   return {
     form: {

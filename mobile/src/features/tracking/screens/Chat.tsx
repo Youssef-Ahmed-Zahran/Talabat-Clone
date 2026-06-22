@@ -36,7 +36,9 @@ export default function ChatScreen() {
           <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View>
-          <Text className="text-lg font-bold text-textPrimary">Driver Chat</Text>
+          <Text className="text-lg font-bold text-textPrimary">
+            Driver Chat
+          </Text>
           <View className="flex-row items-center mt-0.5">
             <View
               className={`w-2 h-2 rounded-full mr-1.5 ${
@@ -61,7 +63,9 @@ export default function ChatScreen() {
       {state.isConnecting && (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text className="text-sm text-textTertiary mt-3">Connecting to chat...</Text>
+          <Text className="text-sm text-textTertiary mt-3">
+            Connecting to chat...
+          </Text>
         </View>
       )}
 
@@ -91,8 +95,14 @@ export default function ChatScreen() {
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               <View className="flex-1 items-center justify-center py-16">
-                <Ionicons name="chatbubble-outline" size={48} color={COLORS.textTertiary} />
-                <Text className="text-base font-semibold text-textPrimary mt-3">Say hello!</Text>
+                <Ionicons
+                  name="chatbubble-outline"
+                  size={48}
+                  color={COLORS.textTertiary}
+                />
+                <Text className="text-base font-semibold text-textPrimary mt-3">
+                  Say hello!
+                </Text>
                 <Text className="text-sm text-textTertiary mt-1 text-center px-6">
                   Chat with your driver for delivery updates
                 </Text>
@@ -101,7 +111,9 @@ export default function ChatScreen() {
             ListFooterComponent={
               state.isTyping ? (
                 <View className="bg-white self-start rounded-2xl rounded-bl-sm px-4 py-2.5 mb-3 border border-border/20">
-                  <Text className="text-textTertiary text-sm">Driver is typing…</Text>
+                  <Text className="text-textTertiary text-sm">
+                    Driver is typing…
+                  </Text>
                 </View>
               ) : null
             }
@@ -118,7 +130,9 @@ export default function ChatScreen() {
             />
             <TouchableOpacity
               className={`w-11 h-11 rounded-xl items-center justify-center ml-3 ${
-                !state.text.trim() || state.isSending ? "bg-slate-200" : "bg-primary"
+                !state.text.trim() || state.isSending
+                  ? "bg-slate-200"
+                  : "bg-primary"
               }`}
               onPress={actions.handleSend}
               disabled={!state.text.trim() || state.isSending}
@@ -129,7 +143,9 @@ export default function ChatScreen() {
                 <Ionicons
                   name="send"
                   size={18}
-                  color={!state.text.trim() ? COLORS.textTertiary : COLORS.white}
+                  color={
+                    !state.text.trim() ? COLORS.textTertiary : COLORS.white
+                  }
                 />
               )}
             </TouchableOpacity>

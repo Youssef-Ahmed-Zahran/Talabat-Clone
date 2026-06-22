@@ -1,20 +1,7 @@
 import React, { useState } from "react";
 import { Alert } from "react-native";
 import { useAddCard, type AddCardRequest } from "../api/payment.api";
-
-export interface UseAddCardFormReturn {
-  state: {
-    form: AddCardRequest;
-    setForm: React.Dispatch<React.SetStateAction<AddCardRequest>>;
-    expiry: string;
-  };
-  actions: {
-    handleExpiryChange: (val: string) => void;
-    handleSubmit: () => void;
-    isPending: boolean;
-  };
-}
-
+import { UseAddCardFormReturn } from "../types/payment.types";
 export function useAddCardForm(onClose: () => void): UseAddCardFormReturn {
   const addCard = useAddCard();
   const [form, setForm] = useState<AddCardRequest>({

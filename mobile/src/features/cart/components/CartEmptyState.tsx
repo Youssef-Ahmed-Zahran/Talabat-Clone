@@ -2,11 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@src/constants/theme";
-
-interface CartEmptyStateProps {
-  onExplore: () => void;
-}
-
+import { CartEmptyStateProps } from "../types/cart.types";
 export function CartEmptyState({ onExplore }: CartEmptyStateProps) {
   return (
     <View className="flex-1 justify-center items-center px-10">

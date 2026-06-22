@@ -1,13 +1,8 @@
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { SearchProduct } from "../api/search.api";
+import type { SearchProduct } from "../types/home.types";
 import { COLORS } from "@src/constants/theme";
-
-interface ProductResultProps {
-  product: SearchProduct;
-  onPress: () => void;
-}
-
+import { ProductResultProps } from "../types/home.types";
 export function ProductResult({ product, onPress }: ProductResultProps) {
   return (
     <TouchableOpacity
@@ -17,10 +12,18 @@ export function ProductResult({ product, onPress }: ProductResultProps) {
     >
       <View className="w-14 h-14 rounded-lg overflow-hidden bg-[#F5F5F5] mr-3">
         {product.imageUrl ? (
-          <Image source={{ uri: product.imageUrl }} className="w-full h-full" resizeMode="cover" />
+          <Image
+            source={{ uri: product.imageUrl }}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
         ) : (
           <View className="w-full h-full items-center justify-center">
-            <Ionicons name="restaurant-outline" size={24} color={COLORS.textTertiary} />
+            <Ionicons
+              name="restaurant-outline"
+              size={24}
+              color={COLORS.textTertiary}
+            />
           </View>
         )}
       </View>

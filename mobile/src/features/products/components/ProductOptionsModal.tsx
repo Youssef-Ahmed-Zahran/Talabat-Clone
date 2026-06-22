@@ -14,14 +14,7 @@ import { Product, OptionGroup } from "@src/features/stores/types/store.types";
 import { useAddToCart, useClearCart } from "@src/features/cart/api/cart.api";
 import { getErrorMessage } from "@src/utils/error";
 import { COLORS } from "@src/constants/theme";
-
-interface ProductOptionsModalProps {
-  visible: boolean;
-  product: Product | null;
-  storeId: string;
-  onClose: () => void;
-}
-
+import { ProductOptionsModalProps } from "../types/products.types";
 export const ProductOptionsModal: React.FC<ProductOptionsModalProps> = ({
   visible,
   product,

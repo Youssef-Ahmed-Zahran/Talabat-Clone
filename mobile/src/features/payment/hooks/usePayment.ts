@@ -1,28 +1,11 @@
 import { useState, useCallback } from "react";
 import { Alert } from "react-native";
+import { UsePaymentReturn } from "../types/payment.types";
 import {
   useSavedCards,
   useDeleteCard,
   useSetDefaultCard,
 } from "../api/payment.api";
-
-export interface UsePaymentReturn {
-  query: {
-    cards: any[] | undefined;
-    isLoading: boolean;
-  };
-  state: {
-    showModal: boolean;
-    deletingId: string | null;
-    settingDefaultId: string | null;
-  };
-  actions: {
-    openModal: () => void;
-    closeModal: () => void;
-    handleDelete: (id: string) => void;
-    handleSetDefault: (id: string) => void;
-  };
-}
 
 export function usePayment(): UsePaymentReturn {
   const { data: cards, isLoading } = useSavedCards();

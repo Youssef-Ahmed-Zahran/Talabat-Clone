@@ -80,9 +80,15 @@ const BannerItem = ({
         contentFit="cover"
         style={{ width: "100%", height: "100%", position: "absolute" }}
       />
-      <View className="absolute inset-0" style={{ backgroundColor: "rgba(0, 0, 0, 0.25)" }} />
+      <View
+        className="absolute inset-0"
+        style={{ backgroundColor: "rgba(0, 0, 0, 0.25)" }}
+      />
       <View className="flex-1 p-5 justify-end">
-        <Text className="text-xs font-medium mb-0.5" style={{ color: "rgba(255, 255, 255, 0.8)" }}>
+        <Text
+          className="text-xs font-medium mb-0.5"
+          style={{ color: "rgba(255, 255, 255, 0.8)" }}
+        >
           {item.subtitle}
         </Text>
         <Text className="text-white text-xl font-bold">{item.title}</Text>

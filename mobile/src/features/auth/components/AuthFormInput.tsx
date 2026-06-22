@@ -2,21 +2,7 @@ import React from "react";
 import { View, Text, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@src/constants/theme";
-
-type IconName = keyof typeof Ionicons.glyphMap;
-
-interface AuthFormInputProps {
-  label: string;
-  icon: IconName;
-  value: string;
-  onChangeText: (v: string) => void;
-  placeholder: string;
-  keyboardType?: any;
-  autoCapitalize?: any;
-  autoCorrect?: boolean;
-  secureTextEntry?: boolean;
-  rightElement?: React.ReactNode;
-}
+import { AuthFormInputProps } from "../types/auth.types";
 
 export function AuthFormInput({
   label,

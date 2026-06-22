@@ -37,7 +37,9 @@ export default function CheckoutScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-6">
-          <Text className="text-base font-bold text-textPrimary mb-3">Delivery Address</Text>
+          <Text className="text-base font-bold text-textPrimary mb-3">
+            Delivery Address
+          </Text>
           <View className="gap-y-2">
             {(query.addresses || []).map((a) => (
               <AddressOption
@@ -52,15 +54,23 @@ export default function CheckoutScreen() {
                 className="bg-white p-4 rounded-xl border border-dashed border-primary/40 items-center flex-row justify-center"
                 onPress={router.navigateToAddresses}
               >
-                <Ionicons name="add-circle-outline" size={20} color={COLORS.primary} />
-                <Text className="text-primary font-semibold ml-1.5">Add New Address</Text>
+                <Ionicons
+                  name="add-circle-outline"
+                  size={20}
+                  color={COLORS.primary}
+                />
+                <Text className="text-primary font-semibold ml-1.5">
+                  Add New Address
+                </Text>
               </TouchableOpacity>
             )}
           </View>
         </View>
 
         <View className="mb-6">
-          <Text className="text-base font-bold text-textPrimary mb-3">Payment Method</Text>
+          <Text className="text-base font-bold text-textPrimary mb-3">
+            Payment Method
+          </Text>
           <View className="gap-y-2">
             {(query.methods || []).map((m) => (
               <PaymentOption
@@ -76,8 +86,14 @@ export default function CheckoutScreen() {
         <View className="mb-6">
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center">
-              <Ionicons name="bicycle-outline" size={18} color={COLORS.textPrimary} />
-              <Text className="text-base font-bold text-textPrimary ml-1.5">Tip the Driver</Text>
+              <Ionicons
+                name="bicycle-outline"
+                size={18}
+                color={COLORS.textPrimary}
+              />
+              <Text className="text-base font-bold text-textPrimary ml-1.5">
+                Tip the Driver
+              </Text>
             </View>
             {state.tipAmount > 0 && (
               <Text className="text-sm font-semibold text-primary">
@@ -114,7 +130,9 @@ export default function CheckoutScreen() {
               <TouchableOpacity
                 onPress={() => state.setIsCustom(true)}
                 className={`flex-1 py-2.5 rounded-lg items-center border ${
-                  state.isCustom ? "bg-primary border-primary" : "bg-white border-border/40"
+                  state.isCustom
+                    ? "bg-primary border-primary"
+                    : "bg-white border-border/40"
                 }`}
               >
                 <Text
@@ -129,7 +147,9 @@ export default function CheckoutScreen() {
 
             {state.isCustom && (
               <View className="flex-row items-center bg-[#F5F5F5] rounded-lg px-3 py-2.5 border border-primary/20">
-                <Text className="text-sm font-semibold text-textSecondary mr-2">EGP</Text>
+                <Text className="text-sm font-semibold text-textSecondary mr-2">
+                  EGP
+                </Text>
                 <TextInput
                   value={state.customTip}
                   onChangeText={state.handleCustomTipChange}
@@ -145,7 +165,9 @@ export default function CheckoutScreen() {
         </View>
 
         <View className="bg-white p-4 rounded-xl border border-border/40">
-          <Text className="text-base font-bold text-textPrimary mb-4">Order Summary</Text>
+          <Text className="text-base font-bold text-textPrimary mb-4">
+            Order Summary
+          </Text>
           {(query.cart?.items || []).map((item: any) => (
             <View key={item.id} className="flex-row justify-between mb-3">
               <Text className="text-sm text-textSecondary flex-1 pr-4">
@@ -190,19 +212,25 @@ export default function CheckoutScreen() {
       <View className="absolute bottom-0 left-0 right-0 bg-white px-4 pt-4 pb-8 border-t border-border/40">
         <TouchableOpacity
           className={`h-12 rounded-xl justify-center items-center ${
-            actions.isPlacingOrder || !state.selectedPayment || !state.selectedAddress
+            actions.isPlacingOrder ||
+            !state.selectedPayment ||
+            !state.selectedAddress
               ? "bg-slate-200"
               : "bg-primary"
           }`}
           onPress={actions.handlePlaceOrder}
           disabled={
-            actions.isPlacingOrder || !state.selectedPayment || !state.selectedAddress
+            actions.isPlacingOrder ||
+            !state.selectedPayment ||
+            !state.selectedAddress
           }
           activeOpacity={0.9}
         >
           <Text
             className={`text-base font-bold ${
-              actions.isPlacingOrder || !state.selectedPayment || !state.selectedAddress
+              actions.isPlacingOrder ||
+              !state.selectedPayment ||
+              !state.selectedAddress
                 ? "text-slate-400"
                 : "text-white"
             }`}

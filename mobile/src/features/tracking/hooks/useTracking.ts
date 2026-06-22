@@ -6,6 +6,7 @@ import { useOrderTracking } from "../api/tracking.api";
 import { useOrderById } from "@src/features/orders/api/order.api";
 import { trackingSocket, connectSocket } from "@src/config/socket";
 import { useUIStore } from "@src/store/uiStore";
+import { UseTrackingReturn } from "../types/tracking.types";
 
 const STATUS_STEPS = [
   "WAITING_FOR_DRIVER",
@@ -24,44 +25,13 @@ const STATUS_LABELS: Record<string, string> = {
   DRIVER_HEADING_TO_CUSTOMER: "On the way to you!",
   DELIVERED: "Order Delivered",
 };
-
-export interface UseTrackingReturn {
-  query: {
-    orderId: string;
-    order: any;
-    tracking: any;
-    trackLoading: boolean;
-    currentStatus: string;
-    currentStep: number;
-    STATUS_STEPS: string[];
-    STATUS_LABELS: Record<string, string>;
-    isFinished: boolean;
-  };
-  coords: {
-    lat: number | null;
-    lng: number | null;
-    driverLat: number | null;
-    driverLng: number | null;
-    storeLat: number | undefined;
-    storeLng: number | undefined;
-    destLat: number | undefined;
-    destLng: number | undefined;
-  };
-  actions: {
-    handleCallDriver: () => Promise<void>;
-    handleFinishTracking: () => void;
-  };
-  router: {
-    navigateBack: () => void;
-    navigateToChat: () => void;
-  };
-}
-
 export function useTracking(): UseTrackingReturn {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
-  const { data: tracking, isLoading: trackLoading } = useOrderTracking(orderId || "");
+  const { data: tracking, isLoading: trackLoading } = useOrderTracking(
+    orderId || "",
+  );
   const { data: order } = useOrderById(orderId || "");
   const setActiveOrder = useUIStore((s) => s.setActiveOrder);
 
@@ -112,9 +82,12 @@ export function useTracking(): UseTrackingReturn {
   const lat = driverLat ?? tracking?.driverLatitude ?? null;
   const lng = driverLng ?? tracking?.driverLongitude ?? null;
   const storeLat = tracking?.storeLatitude ?? tracking?.order?.store?.latitude;
-  const storeLng = tracking?.storeLongitude ?? tracking?.order?.store?.longitude;
-  const destLat = tracking?.deliveryLatitude ?? tracking?.order?.address?.latitude;
-  const destLng = tracking?.deliveryLongitude ?? tracking?.order?.address?.longitude;
+  const storeLng =
+    tracking?.storeLongitude ?? tracking?.order?.store?.longitude;
+  const destLat =
+    tracking?.deliveryLatitude ?? tracking?.order?.address?.latitude;
+  const destLng =
+    tracking?.deliveryLongitude ?? tracking?.order?.address?.longitude;
 
   const isFinished =
     currentStatus === "DELIVERED" ||
@@ -142,8 +115,6 @@ export function useTracking(): UseTrackingReturn {
 
     return () => clearTimeout(timer);
   }, [isFinished, setActiveOrder, router]);
-
-
 
   const handleCallDriver = useCallback(async () => {
     const phone = tracking?.driver?.phone;

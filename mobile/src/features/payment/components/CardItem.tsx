@@ -28,7 +28,9 @@ export function CardItem({
   return (
     <View
       className={`bg-white rounded-xl p-4 mb-3 border ${
-        card.isDefault ? "border-primary/30 bg-primary/[0.02]" : "border-border/40"
+        card.isDefault
+          ? "border-primary/30 bg-primary/[0.02]"
+          : "border-border/40"
       }`}
     >
       <View className="flex-row items-center mb-3">
@@ -39,12 +41,18 @@ export function CardItem({
           <Ionicons name="card-outline" size={20} color={brandColor} />
         </View>
         <View className="flex-1">
-          <Text className="text-sm font-bold text-textPrimary capitalize">{card.brand}</Text>
-          <Text className="text-xs text-textTertiary">•••• •••• •••• {card.lastFour}</Text>
+          <Text className="text-sm font-bold text-textPrimary capitalize">
+            {card.brand}
+          </Text>
+          <Text className="text-xs text-textTertiary">
+            •••• •••• •••• {card.lastFour}
+          </Text>
         </View>
         {card.isDefault && (
           <View className="bg-primary/10 px-2 py-0.5 rounded-full">
-            <Text className="text-[10px] font-semibold text-primary">Default</Text>
+            <Text className="text-[10px] font-semibold text-primary">
+              Default
+            </Text>
           </View>
         )}
       </View>
@@ -64,7 +72,9 @@ export function CardItem({
             {isSettingDefault ? (
               <ActivityIndicator size="small" color={COLORS.primary} />
             ) : (
-              <Text className="text-xs font-semibold text-primary">Set as Default</Text>
+              <Text className="text-xs font-semibold text-primary">
+                Set as Default
+              </Text>
             )}
           </TouchableOpacity>
         )}

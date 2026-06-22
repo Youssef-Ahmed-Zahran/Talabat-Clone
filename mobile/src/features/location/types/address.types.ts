@@ -2,7 +2,7 @@
 // Address Types
 // ============================================================
 
-export type AddressType = 'APARTMENT' | 'VILLA' | 'OFFICE';
+export type AddressType = "APARTMENT" | "VILLA" | "OFFICE";
 
 export interface UserAddress {
   id: string;

@@ -20,7 +20,11 @@ export default function OrderDetailScreen() {
         edges={["top"]}
       >
         <StatusBar style="dark" />
-        <Ionicons name="receipt-outline" size={56} color={COLORS.textTertiary} />
+        <Ionicons
+          name="receipt-outline"
+          size={56}
+          color={COLORS.textTertiary}
+        />
         <Text className="text-lg font-bold text-textPrimary mt-4">
           Order not found
         </Text>
@@ -53,12 +57,19 @@ export default function OrderDetailScreen() {
       <StatusBar style="dark" />
 
       <View className="px-4 py-4 bg-white border-b border-border/40">
-        <TouchableOpacity onPress={router.goBack} className="flex-row items-center mb-2">
+        <TouchableOpacity
+          onPress={router.goBack}
+          className="flex-row items-center mb-2"
+        >
           <Ionicons name="arrow-back" size={20} color={COLORS.primary} />
           <Text className="text-primary font-semibold text-sm ml-1">Back</Text>
         </TouchableOpacity>
-        <Text className="text-xl font-bold text-textPrimary">Order Details</Text>
-        <Text className="text-sm text-textTertiary mt-0.5">{formattedDate}</Text>
+        <Text className="text-xl font-bold text-textPrimary">
+          Order Details
+        </Text>
+        <Text className="text-sm text-textTertiary mt-0.5">
+          {formattedDate}
+        </Text>
       </View>
 
       <ScrollView
@@ -75,7 +86,9 @@ export default function OrderDetailScreen() {
 
             <View className="flex-row justify-between py-2 border-b border-border/20">
               <Text className="text-sm text-textSecondary">Date</Text>
-              <Text className="text-sm font-medium text-textPrimary">{formattedDate}</Text>
+              <Text className="text-sm font-medium text-textPrimary">
+                {formattedDate}
+              </Text>
             </View>
 
             <View className="flex-row justify-between py-2 border-b border-border/20">
@@ -88,7 +101,9 @@ export default function OrderDetailScreen() {
             </View>
 
             <View className="flex-row justify-between py-2">
-              <Text className="text-base font-bold text-textPrimary">Total</Text>
+              <Text className="text-base font-bold text-textPrimary">
+                Total
+              </Text>
               <Text className="text-base font-bold text-primary">
                 {Number(order.totalAmount ?? 0).toFixed(2)} EGP
               </Text>
@@ -133,7 +148,9 @@ export default function OrderDetailScreen() {
                 );
               })
             ) : (
-              <Text className="text-sm text-textTertiary">No item details available.</Text>
+              <Text className="text-sm text-textTertiary">
+                No item details available.
+              </Text>
             )}
           </View>
         </View>
@@ -144,7 +161,9 @@ export default function OrderDetailScreen() {
               <Text className="text-xs font-semibold text-textTertiary uppercase mb-2">
                 Delivery Instructions
               </Text>
-              <Text className="text-sm text-textPrimary">{order.deliveryInstructions}</Text>
+              <Text className="text-sm text-textPrimary">
+                {order.deliveryInstructions}
+              </Text>
             </View>
           </View>
         )}

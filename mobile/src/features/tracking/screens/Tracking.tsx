@@ -43,7 +43,11 @@ export default function TrackingScreen() {
             }}
           >
             <View className="bg-white p-2 rounded-lg border border-border/40">
-              <Ionicons name="storefront" size={18} color={COLORS.textPrimary} />
+              <Ionicons
+                name="storefront"
+                size={18}
+                color={COLORS.textPrimary}
+              />
             </View>
           </Marker>
         )}
@@ -69,7 +73,11 @@ export default function TrackingScreen() {
         >
           <View className="items-center px-8">
             <View className="w-20 h-20 rounded-full bg-white/20 items-center justify-center mb-4">
-              <Ionicons name="checkmark-circle" size={56} color={COLORS.white} />
+              <Ionicons
+                name="checkmark-circle"
+                size={56}
+                color={COLORS.white}
+              />
             </View>
             <Text className="text-white text-2xl font-bold text-center">
               Order Delivered!
@@ -78,7 +86,9 @@ export default function TrackingScreen() {
               Enjoy your meal
             </Text>
             <View className="mt-6 bg-white/20 px-5 py-2.5 rounded-xl">
-              <Text className="text-white text-sm font-semibold">Returning home…</Text>
+              <Text className="text-white text-sm font-semibold">
+                Returning home…
+              </Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -109,8 +119,13 @@ export default function TrackingScreen() {
 
           <View className="flex-row justify-between items-start mb-4">
             <View className="flex-1 mr-3">
-              <Text className="text-xs text-textTertiary mb-0.5">Coming from</Text>
-              <Text className="text-base font-bold text-textPrimary" numberOfLines={1}>
+              <Text className="text-xs text-textTertiary mb-0.5">
+                Coming from
+              </Text>
+              <Text
+                className="text-base font-bold text-textPrimary"
+                numberOfLines={1}
+              >
                 {query.order?.store?.name || "Store"}
               </Text>
             </View>
@@ -118,10 +133,13 @@ export default function TrackingScreen() {
               <View className="items-end">
                 <Text className="text-xs text-textTertiary mb-0.5">ETA</Text>
                 <Text className="text-base font-bold text-primary">
-                  {new Date(query.tracking.estimatedArrival).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {new Date(query.tracking.estimatedArrival).toLocaleTimeString(
+                    [],
+                    {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    },
+                  )}
                 </Text>
               </View>
             )}
@@ -144,8 +162,14 @@ export default function TrackingScreen() {
               className="flex-1 flex-row items-center justify-center bg-[#F5F5F5] h-12 rounded-xl border border-border/40"
               onPress={router.navigateToChat}
             >
-              <Ionicons name="chatbubble-outline" size={18} color={COLORS.textPrimary} />
-              <Text className="text-sm font-semibold text-textPrimary ml-1.5">Chat</Text>
+              <Ionicons
+                name="chatbubble-outline"
+                size={18}
+                color={COLORS.textPrimary}
+              />
+              <Text className="text-sm font-semibold text-textPrimary ml-1.5">
+                Chat
+              </Text>
             </TouchableOpacity>
             {query.tracking?.driver?.phone && (
               <TouchableOpacity
@@ -153,7 +177,9 @@ export default function TrackingScreen() {
                 onPress={actions.handleCallDriver}
               >
                 <Ionicons name="call-outline" size={18} color={COLORS.white} />
-                <Text className="text-sm font-semibold text-white ml-1.5">Call Driver</Text>
+                <Text className="text-sm font-semibold text-white ml-1.5">
+                  Call Driver
+                </Text>
               </TouchableOpacity>
             )}
           </View>

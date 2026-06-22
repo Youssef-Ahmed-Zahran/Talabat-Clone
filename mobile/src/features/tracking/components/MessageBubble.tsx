@@ -1,12 +1,6 @@
 import React from "react";
 import { View, Text } from "react-native";
-
-interface MessageBubbleProps {
-  body: string;
-  createdAt: string;
-  isMe: boolean;
-}
-
+import { MessageBubbleProps } from "../types/tracking.types";
 export function MessageBubble({ body, createdAt, isMe }: MessageBubbleProps) {
   return (
     <View
@@ -16,7 +10,9 @@ export function MessageBubble({ body, createdAt, isMe }: MessageBubbleProps) {
           : "bg-white self-start rounded-bl-sm border border-border/40"
       }`}
     >
-      <Text className={`text-sm leading-relaxed ${isMe ? "text-white" : "text-textPrimary"}`}>
+      <Text
+        className={`text-sm leading-relaxed ${isMe ? "text-white" : "text-textPrimary"}`}
+      >
         {body}
       </Text>
       <Text

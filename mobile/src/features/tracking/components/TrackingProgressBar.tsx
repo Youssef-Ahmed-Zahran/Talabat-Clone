@@ -1,11 +1,6 @@
 import React from "react";
 import { View, Text } from "react-native";
-
-interface TrackingProgressBarProps {
-  STATUS_STEPS: string[];
-  currentStep: number;
-}
-
+import { TrackingProgressBarProps } from "../types/tracking.types";
 export function TrackingProgressBar({
   STATUS_STEPS,
   currentStep,

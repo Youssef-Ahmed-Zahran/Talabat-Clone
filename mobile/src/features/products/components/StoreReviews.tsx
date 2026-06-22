@@ -3,11 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@src/constants/theme";
 import { useStoreReviews } from "@src/features/orders/api/review.api";
-
-interface StoreReviewsProps {
-  storeId: string;
-}
-
+import { StoreReviewsProps } from "../types/products.types";
 function StarRow({ rating }: { rating: number }) {
   return (
     <View className="flex-row">

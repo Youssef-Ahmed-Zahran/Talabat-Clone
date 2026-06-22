@@ -3,19 +3,19 @@
 // ============================================================
 
 export type OrderStatus =
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'PREPARING'
-  | 'READY_FOR_PICKUP'
-  | 'WAITING_FOR_DRIVER'
-  | 'PICKED_UP'
-  | 'ON_THE_WAY'
-  | 'DELIVERED'
-  | 'CANCELLED';
+  | "PENDING"
+  | "CONFIRMED"
+  | "PREPARING"
+  | "READY_FOR_PICKUP"
+  | "WAITING_FOR_DRIVER"
+  | "PICKED_UP"
+  | "ON_THE_WAY"
+  | "DELIVERED"
+  | "CANCELLED";
 
-export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED";
 
-export type PaymentMethodType = 'CASH' | 'CARD' | 'PAYPAL';
+export type PaymentMethodType = "CASH" | "CARD" | "PAYPAL";
 
 // Snapshot of a single item as returned by order history
 export interface OrderItem {
@@ -80,12 +80,12 @@ export interface PaymentMethod {
 }
 
 export type LiveTrackingStatus =
-  | 'WAITING_FOR_DRIVER'
-  | 'DRIVER_ASSIGNED'
-  | 'DRIVER_HEADING_TO_STORE'
-  | 'DRIVER_AT_STORE'
-  | 'DRIVER_HEADING_TO_CUSTOMER'
-  | 'DELIVERED';
+  | "WAITING_FOR_DRIVER"
+  | "DRIVER_ASSIGNED"
+  | "DRIVER_HEADING_TO_STORE"
+  | "DRIVER_AT_STORE"
+  | "DRIVER_HEADING_TO_CUSTOMER"
+  | "DELIVERED";
 
 export interface LiveTracking {
   id: string;
@@ -108,4 +108,62 @@ export interface OrderStatusHistory {
   changedByType: string;
   note: string | null;
   createdAt: string;
+}
+
+// ============================================================
+// UI & Hook Types
+// ============================================================
+
+export interface ReviewModalProps {
+  visible: boolean;
+  onClose: () => void;
+  storeId: string;
+  orderId: string;
+  storeName: string;
+}
+
+export interface UseOrderHistoryReturn {
+  query: {
+    orders: Order[] | undefined;
+    isLoading: boolean;
+  };
+  state: {
+    refreshing: boolean;
+    reorderingId: string | null;
+    selectedReviewOrder: Order | null;
+  };
+  actions: {
+    onRefresh: () => Promise<void>;
+    handleReorder: (orderId: string, storeId: string) => void;
+    handleTrack: (orderId: string) => void;
+    handleReview: (order: Order) => void;
+    closeReviewModal: () => void;
+  };
+  router: {
+    navigateHome: () => void;
+  };
+}
+
+export interface UseReviewModalProps {
+  storeId: string;
+  orderId: string;
+  onClose: () => void;
+}
+
+export interface UseOrderDetailReturn {
+  query: {
+    order: Order | undefined;
+    isLoading: boolean;
+  };
+  router: {
+    goBack: () => void;
+  };
+}
+
+export interface OrderCardProps {
+  item: Order;
+  isReordering: boolean;
+  onTrack: () => void;
+  onReorder: () => void;
+  onReview: () => void;
 }

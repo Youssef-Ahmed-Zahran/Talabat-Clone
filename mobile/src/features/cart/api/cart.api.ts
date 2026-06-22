@@ -1,15 +1,19 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '@src/config/axios';
-import type { Cart, AddToCartRequest, UpdateCartItemQuantityRequest } from '@src/features/cart/types/cart.types';
-import type { ApiResponse } from '@src/types/api.types';
-import { useCartStore } from '@src/store/cartStore';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "@src/config/axios";
+import type {
+  Cart,
+  AddToCartRequest,
+  UpdateCartItemQuantityRequest,
+} from "@src/features/cart/types/cart.types";
+import type { ApiResponse } from "@src/types/api.types";
+import { useCartStore } from "@src/store/cartStore";
 
 // ─── Get Cart ─────────────────────────────────────────────────
 export const useCart = (storeId: string) => {
   const setCart = useCartStore((s) => s.setCart);
 
   return useQuery({
-    queryKey: ['cart', storeId],
+    queryKey: ["cart", storeId],
     queryFn: async () => {
       const res = await api.get<ApiResponse<Cart>>(`/carts/${storeId}`);
       const cart = res.data.data;
@@ -28,7 +32,7 @@ export const useAddToCart = () => {
 
   return useMutation({
     mutationFn: async (data: AddToCartRequest) => {
-      const res = await api.post<ApiResponse<Cart>>('/carts/items', data);
+      const res = await api.post<ApiResponse<Cart>>("/carts/items", data);
       return res.data.data;
     },
     onSuccess: (cart) => {
@@ -37,11 +41,10 @@ export const useAddToCart = () => {
         // The API now returns { id, storeId, items: [...] }
         setCart(cart.id, cart.storeId, cart.items || []);
       }
-      qc.invalidateQueries({ queryKey: ['cart'] });
+      qc.invalidateQueries({ queryKey: ["cart"] });
     },
   });
 };
-
 
 // ─── Update Item Quantity ─────────────────────────────────────
 export const useUpdateCartQuantity = () => {
@@ -55,7 +58,7 @@ export const useUpdateCartQuantity = () => {
     }: UpdateCartItemQuantityRequest & { itemId: string }) => {
       const res = await api.patch<ApiResponse<Cart>>(
         `/carts/items/${itemId}/quantity`,
-        { ...data, storeId }
+        { ...data, storeId },
       );
       return res.data.data;
     },
@@ -64,7 +67,7 @@ export const useUpdateCartQuantity = () => {
       if (cart) {
         setCart(cart.id, cart.storeId, cart.items || []);
       }
-      qc.invalidateQueries({ queryKey: ['cart'] });
+      qc.invalidateQueries({ queryKey: ["cart"] });
     },
   });
 };
@@ -76,7 +79,9 @@ export const useRemoveCartItem = () => {
 
   return useMutation({
     mutationFn: async (itemId: string) => {
-      const res = await api.delete<ApiResponse<Cart>>(`/carts/items/${itemId}?storeId=${storeId}`);
+      const res = await api.delete<ApiResponse<Cart>>(
+        `/carts/items/${itemId}?storeId=${storeId}`,
+      );
       return res.data.data;
     },
     onSuccess: (cart) => {
@@ -84,7 +89,7 @@ export const useRemoveCartItem = () => {
       if (cart) {
         setCart(cart.id, cart.storeId, cart.items || []);
       }
-      qc.invalidateQueries({ queryKey: ['cart'] });
+      qc.invalidateQueries({ queryKey: ["cart"] });
     },
   });
 };
@@ -100,7 +105,7 @@ export const useClearCart = () => {
     },
     onSuccess: () => {
       clearCartStore();
-      qc.invalidateQueries({ queryKey: ['cart'] });
+      qc.invalidateQueries({ queryKey: ["cart"] });
     },
   });
 };

@@ -53,3 +53,42 @@ export interface AddToCartRequest {
 export interface UpdateCartItemQuantityRequest {
   quantity: number;
 }
+
+export interface CartEmptyStateProps {
+  onExplore: () => void;
+}
+
+export interface CartItemCardProps {
+  item: CartItem;
+  onUpdateQty: (itemId: string, quantity: number) => void;
+}
+
+export interface CartSummaryFooterProps {
+  subtotal: number;
+  itemCount: number;
+  onCheckout: () => void;
+}
+
+export interface UseCartReturn {
+  query: {
+    items: CartItem[];
+    cartId: string | null;
+    storeId: string | null;
+    itemCount: number;
+    subtotal: number;
+  };
+  state: {
+    isRemovingItem: boolean;
+    isUpdatingQty: boolean;
+    isClearingCart: boolean;
+  };
+  actions: {
+    handleRemove: (itemId: string) => void;
+    handleClear: () => void;
+    handleUpdateQty: (itemId: string, quantity: number) => void;
+  };
+  router: {
+    navigateToCheckout: () => void;
+    navigateToHome: () => void;
+  };
+}
