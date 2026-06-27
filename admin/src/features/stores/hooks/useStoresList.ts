@@ -74,7 +74,7 @@ export function useStoresList() {
   const handleSubmit = (data: StoreFormValues, selectedZoneId: string) => {
     const payload: CreateStorePayload = {
       ...data,
-      mainCategoryId: data.mainCategoryId,
+      mainCategoryId: data.mainCategoryId || "",
       deliveryType: (data.deliveryType || "TALABAT_DELIVERY") as
         | "TALABAT_DELIVERY"
         | "STORE_DELIVERY",

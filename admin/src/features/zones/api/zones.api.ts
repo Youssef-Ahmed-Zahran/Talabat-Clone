@@ -160,7 +160,7 @@ export const useUpdateZone = () => {
       isActive?: boolean;
       geojson?: GeoJSONPolygon;
     }) => updateZone(id, data),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["zones"] });
       qc.invalidateQueries({ queryKey: ["zones", "detail", variables.id] });
     },
@@ -182,7 +182,7 @@ export const useAssignStoresToZone = () => {
   return useMutation({
     mutationFn: ({ zoneId, storeIds }: { zoneId: string; storeIds: string[] }) =>
       assignStoresToZone(zoneId, storeIds),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["zones"] });
       qc.invalidateQueries({ queryKey: ["zones", "detail", variables.zoneId] });
     },
@@ -194,7 +194,7 @@ export const useRemoveStoreFromZone = () => {
   return useMutation({
     mutationFn: ({ zoneId, storeId }: { zoneId: string; storeId: string }) =>
       removeStoreFromZone(zoneId, storeId),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["zones"] });
       qc.invalidateQueries({ queryKey: ["zones", "detail", variables.zoneId] });
     },
@@ -206,7 +206,7 @@ export const useAssignDriversToZone = () => {
   return useMutation({
     mutationFn: ({ zoneId, driverIds }: { zoneId: string; driverIds: string[] }) =>
       assignDriversToZone(zoneId, driverIds),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["zones"] });
       qc.invalidateQueries({ queryKey: ["zones", "detail", variables.zoneId] });
     },
@@ -218,7 +218,7 @@ export const useRemoveDriverFromZone = () => {
   return useMutation({
     mutationFn: ({ zoneId, driverId }: { zoneId: string; driverId: string }) =>
       removeDriverFromZone(zoneId, driverId),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["zones"] });
       qc.invalidateQueries({ queryKey: ["zones", "detail", variables.zoneId] });
     },

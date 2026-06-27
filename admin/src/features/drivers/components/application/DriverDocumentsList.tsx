@@ -1,5 +1,5 @@
 import { FileText, Eye, CheckCircle, XCircle, AlertCircle } from "lucide-react";
-import type { DriverDocument } from "../../types/driver";
+import type { DriverDocument } from "../../../../types/driver";
 
 interface DriverDocumentsListProps {
   documents?: DriverDocument[];

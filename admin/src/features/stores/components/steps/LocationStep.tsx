@@ -31,11 +31,11 @@ export function LocationStep({
       <div className="space-y-4">
         <div className="h-[300px] rounded-3xl overflow-hidden border border-gray-100 shadow-inner">
           <LocationPicker
-            latitude={lat}
-            longitude={lng}
+            latitude={lat || ""}
+            longitude={lng || ""}
             onChange={(nLat, nLng, addr) => {
-              setValue("latitude", nLat);
-              setValue("longitude", nLng);
+              setValue("latitude", nLat || "");
+              setValue("longitude", nLng || "");
               if (addr) setValue("address", addr);
             }}
           />

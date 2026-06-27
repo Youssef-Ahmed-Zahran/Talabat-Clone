@@ -1,5 +1,5 @@
 import { Shield, Phone, Calendar, MapPin, Truck } from "lucide-react";
-import type { Driver } from "../../../types";
+import type { Driver } from "../../../../types";
 
 interface DriverApplicationDetailsProps {
   driver: Driver;

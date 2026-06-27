@@ -6,7 +6,7 @@ import {
   ExternalLink,
   DollarSign,
 } from "lucide-react";
-import type { Driver } from "../../../types";
+import type { Driver } from "../../../../types";
 
 interface DriverProfileCardProps {
   driver: Driver;
