@@ -6,32 +6,6 @@ export function LoginForm() {
 
   return (
     <div className="space-y-6">
-      {/* Role Selection Tabs */}
-      <div className="flex p-1 bg-gray-100 rounded-xl">
-        <button
-          type="button"
-          onClick={() => state.setRole("admin")}
-          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-            state.role === "admin"
-              ? "bg-white text-gray-900 shadow-sm"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Admin
-        </button>
-        <button
-          type="button"
-          onClick={() => state.setRole("owner")}
-          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-            state.role === "owner"
-              ? "bg-white text-gray-900 shadow-sm"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Store Owner
-        </button>
-      </div>
-
       <form onSubmit={form.handleSubmit} className="space-y-5">
         {/* Email */}
         <div>
@@ -115,7 +89,7 @@ export function LoginForm() {
               Signing in…
             </>
           ) : (
-            "Sign in"
+            "Sign in to Admin"
           )}
         </button>
       </form>

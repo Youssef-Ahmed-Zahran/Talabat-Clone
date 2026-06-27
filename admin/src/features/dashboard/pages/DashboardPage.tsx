@@ -73,7 +73,7 @@ export default function DashboardPage() {
           label={isAdmin ? "Registered Users" : "Pending Orders"}
           value={
             isAdmin
-              ? stats?.users?.toLocaleString()
+              ? stats?.users?.toLocaleString() || "0"
               : stats?.orders?.pending?.toLocaleString() || "0"
           }
           icon={
@@ -89,7 +89,7 @@ export default function DashboardPage() {
           label={isAdmin ? "Active Drivers" : "Average Rating"}
           value={
             isAdmin
-              ? stats?.drivers?.toLocaleString()
+              ? stats?.drivers?.toLocaleString() || "0"
               : Number(stats?.reviews?.averageRating || 0).toFixed(1)
           }
           icon={

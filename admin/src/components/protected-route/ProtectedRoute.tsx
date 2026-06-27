@@ -6,9 +6,9 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const token = useAuthStore((s) => s.token);
+  const role = useAuthStore((s) => s.role);
 
-  if (!token) {
+  if (!role) {
     return <Navigate to="/login" replace />;
   }
 

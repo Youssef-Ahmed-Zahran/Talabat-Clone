@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Menu, ChevronDown, LogOut } from "lucide-react";
-import { useAuthStore } from "../../store/authStore";
 import NotificationDropdown from "./NotificationDropdown";
 
 interface HeaderProps {
@@ -17,7 +16,7 @@ export default function Header({
   handleLogout,
 }: HeaderProps) {
   const [profileOpen, setProfileOpen] = useState(false);
-  const role = useAuthStore((s) => s.role);
+  // Admin portal — role is always "admin"
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-white/80 backdrop-blur-md border-b border-gray-200/60 flex items-center justify-between px-4 lg:px-8">
@@ -52,10 +51,10 @@ export default function Header({
             </div>
             <div className="hidden sm:block text-left">
               <p className="text-[13px] font-semibold text-gray-800 leading-tight">
-                {role === "owner" ? "Store Owner" : "Admin"}
+                Admin
               </p>
               <p className="text-[11px] text-gray-400 leading-tight">
-                {role === "owner" ? "Partner Portal" : "Super Admin"}
+                Super Admin
               </p>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-gray-400 hidden sm:block" />

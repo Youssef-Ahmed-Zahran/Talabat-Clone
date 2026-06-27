@@ -57,14 +57,6 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "my-store",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <StoreDetailsPage />
-          </Suspense>
-        ),
-      },
-      {
         path: "stores/:storeId/catalog",
         element: (
           <Suspense fallback={<PageLoader />}>
@@ -72,15 +64,6 @@ const router = createBrowserRouter([
           </Suspense>
         ),
       },
-      {
-        path: "my-store/catalog",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <StoreCatalogPage />
-          </Suspense>
-        ),
-      },
-
       { path: "users", element: <UsersListPage /> },
       { path: "users/:userId", element: <UserDetailsPage /> },
       { path: "drivers", element: <DriversListPage /> },

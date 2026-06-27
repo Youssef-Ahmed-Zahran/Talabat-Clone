@@ -7,21 +7,17 @@ import {
   loginSchema,
   type LoginFormValues,
 } from "../../../schemas/login.schema";
-import { useLoginAdmin, useLoginOwner } from "../api/auth.api";
+import { useLoginAdmin } from "../api/auth.api";
 import { useAuthStore } from "../../../store/authStore";
 import { handleApiError } from "../../../utils/error";
 
 export function useLoginForm() {
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<"admin" | "owner">("admin");
   const navigate = useNavigate();
-  const setToken = useAuthStore((s) => s.setToken);
+  const setAuth = useAuthStore((s) => s.setAuth);
 
   const loginAdminMutation = useLoginAdmin();
-  const loginOwnerMutation = useLoginOwner();
-
-  const isPending =
-    loginAdminMutation.isPending || loginOwnerMutation.isPending;
+  const isPending = loginAdminMutation.isPending;
 
   const formMethods = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -32,43 +28,25 @@ export function useLoginForm() {
   });
 
   const onSubmit = (data: LoginFormValues) => {
-    if (role === "admin") {
-      loginAdminMutation.mutate(data, {
-        onSuccess: (res) => {
-          setToken(res.token, "admin");
-          toast.success("Welcome back, Admin!");
-          navigate("/dashboard", { replace: true });
-        },
-        onError: (error: unknown) => {
-          handleApiError(
-            error,
-            "We couldn't sign you in. Please check your email and password.",
-          );
-        },
-      });
-    } else {
-      loginOwnerMutation.mutate(data, {
-        onSuccess: (res) => {
-          setToken(res.token, "owner", res.owner.storeId);
-          toast.success(`Welcome back! Managing ${res.owner.store.name}`);
-          navigate(`/dashboard`, { replace: true });
-        },
-        onError: (error: unknown) => {
-          handleApiError(
-            error,
-            "We couldn't sign you in. Please check your store owner credentials.",
-          );
-        },
-      });
-    }
+    loginAdminMutation.mutate(data, {
+      onSuccess: () => {
+        setAuth("admin");
+        toast.success("Welcome back, Admin!");
+        navigate("/dashboard", { replace: true });
+      },
+      onError: (error: unknown) => {
+        handleApiError(
+          error,
+          "We couldn't sign you in. Please check your email and password.",
+        );
+      },
+    });
   };
 
   return {
     state: {
       showPassword,
       setShowPassword,
-      role,
-      setRole,
       isPending,
     },
     form: {

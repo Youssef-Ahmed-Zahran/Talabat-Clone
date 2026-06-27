@@ -10,9 +10,8 @@ import {
   X,
   MapPin,
 } from "lucide-react";
-import { useAuthStore } from "../../store/authStore";
 
-const ADMIN_NAV_ITEMS = [
+const NAV_ITEMS = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { label: "Categories", icon: Layers3, path: "/categories" },
   { label: "Stores", icon: Store, path: "/stores" },
@@ -35,17 +34,6 @@ export default function Sidebar({
   sidebarCollapsed,
   handleLogout,
 }: SidebarProps) {
-  const role = useAuthStore((s) => s.role);
-
-  const NAV_ITEMS =
-    role === "owner"
-      ? [
-          { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-          { label: "My Store", icon: Store, path: `/my-store` },
-          { label: "Orders", icon: ShoppingBag, path: "/orders" },
-        ]
-      : ADMIN_NAV_ITEMS;
-
   return (
     <>
       {/* ── Mobile Overlay ───────────────────────────────────────── */}
@@ -78,11 +66,7 @@ export default function Sidebar({
             {!sidebarCollapsed && (
               <span className="text-[17px] font-bold text-gray-900 tracking-tight whitespace-nowrap animate-fade-in">
                 Talabat
-                <span
-                  className={role === "owner" ? "text-blue-600" : "text-brand"}
-                >
-                  {role === "owner" ? "Partner" : "Admin"}
-                </span>
+                <span className="text-brand">Admin</span>
               </span>
             )}
           </div>
