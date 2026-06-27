@@ -72,8 +72,10 @@ const makeVerifier = (role) => async (req, res, next) => {
 
         if (authHeader?.startsWith("Bearer ")) {
             token = authHeader.split(" ")[1];
+        } else if (req.cookies?.[`jwt_${role}`]) {
+            token = req.cookies[`jwt_${role}`];
         } else if (req.cookies?.jwt) {
-            token = req.cookies.jwt;
+            token = req.cookies.jwt; // Fallback
         }
 
         if (!token) {
@@ -204,8 +206,8 @@ export const verifyStoreManager = async (req, res, next) => {
 
         if (authHeader?.startsWith("Bearer ")) {
             token = authHeader.split(" ")[1];
-        } else if (req.cookies?.jwt) {
-            token = req.cookies.jwt;
+        } else if (req.cookies?.jwt_admin || req.cookies?.jwt_owner || req.cookies?.jwt) {
+            token = req.cookies.jwt_admin || req.cookies.jwt_owner || req.cookies.jwt;
         }
 
         if (!token) {
@@ -303,6 +305,8 @@ export const optionalUser = async (req, _res, next) => {
 
         if (authHeader?.startsWith("Bearer ")) {
             token = authHeader.split(" ")[1];
+        } else if (req.cookies?.jwt_user) {
+            token = req.cookies.jwt_user;
         } else if (req.cookies?.jwt) {
             token = req.cookies.jwt;
         }
@@ -333,8 +337,8 @@ export const optionalAuth = async (req, res, next) => {
 
         if (authHeader?.startsWith("Bearer ")) {
             token = authHeader.split(" ")[1];
-        } else if (req.cookies?.jwt) {
-            token = req.cookies.jwt;
+        } else {
+            token = req.cookies?.jwt_user || req.cookies?.jwt_driver || req.cookies?.jwt_admin || req.cookies?.jwt_owner || req.cookies?.jwt;
         }
 
         if (!token) return next();

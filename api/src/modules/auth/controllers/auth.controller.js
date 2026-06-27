@@ -10,12 +10,13 @@ import {
 } from "../../../utils/createToken.js";
 import { resolveGeographyData } from "../../../utils/geography.util.js";
 
-const setTokenCookie = (res, token) => {
-    res.cookie("jwt", token, {
+const setTokenCookie = (res, token, role) => {
+    res.cookie(`jwt_${role}`, token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
         maxAge: 30 * 24 * 60 * 60 * 1000,
+        path: "/",
     });
 };
 
@@ -29,11 +30,17 @@ const setTokenCookie = (res, token) => {
  */
 export const logout = (req, res, next) => {
     try {
-        res.clearCookie("jwt", {
+        const cookieOpts = {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-        });
+            sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+            path: "/",
+        };
+        res.clearCookie("jwt_user", cookieOpts);
+        res.clearCookie("jwt_driver", cookieOpts);
+        res.clearCookie("jwt_admin", cookieOpts);
+        res.clearCookie("jwt_owner", cookieOpts);
+        res.clearCookie("jwt", cookieOpts); // Fallback for old sessions
 
         res.status(200).json(new ApiResponse(200, null, "Logout successful."));
     } catch (err) {
@@ -76,7 +83,7 @@ export const registerUser = async (req, res, next) => {
         });
 
         const token = createUserToken(user.id);
-        setTokenCookie(res, token);
+        setTokenCookie(res, token, "user");
 
         res.status(201).json(
             new ApiResponse(201, { user, token }, "Registration successful.")
@@ -112,7 +119,7 @@ export const loginUser = async (req, res, next) => {
         }
 
         const token = createUserToken(user.id);
-        setTokenCookie(res, token);
+        setTokenCookie(res, token, "user");
 
         res.json(
             new ApiResponse(200, {
@@ -187,7 +194,7 @@ export const registerDriver = async (req, res, next) => {
         });
 
         const token = createDriverToken(driver.id);
-        setTokenCookie(res, token);
+        setTokenCookie(res, token, "driver");
 
         res.status(201).json(
             new ApiResponse(201, {
@@ -245,7 +252,7 @@ export const loginDriver = async (req, res, next) => {
         }
 
         const token = createDriverToken(driver.id);
-        setTokenCookie(res, token);
+        setTokenCookie(res, token, "driver");
 
         res.json(
             new ApiResponse(200, {
@@ -300,7 +307,7 @@ export const loginAdmin = async (req, res, next) => {
         }
 
         const token = createAdminToken(admin.id);
-        setTokenCookie(res, token);
+        setTokenCookie(res, token, "admin");
 
         res.json(
             new ApiResponse(200, {
@@ -355,7 +362,7 @@ export const loginOwner = async (req, res, next) => {
         }
 
         const token = createOwnerToken(owner.id);
-        setTokenCookie(res, token);
+        setTokenCookie(res, token, "owner");
 
         res.json(
             new ApiResponse(200, {
