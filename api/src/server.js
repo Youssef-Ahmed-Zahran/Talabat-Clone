@@ -59,7 +59,7 @@ app.use(helmet());
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 app.use(
     cors({
-        origin: process.env.ALLOWED_ORIGINS?.split(",") || "*",
+        origin: process.env.ALLOWED_ORIGINS?.split(",") || true,
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Authorization"],
         credentials: true,

@@ -18,7 +18,7 @@ export const initSocket = (httpServer) => {
 
     _io = new Server(httpServer, {
         cors: {
-            origin: process.env.ALLOWED_ORIGINS?.split(",") || "*",
+            origin: process.env.ALLOWED_ORIGINS?.split(",") || true,
             methods: ["GET", "POST"],
             credentials: true,
         },
