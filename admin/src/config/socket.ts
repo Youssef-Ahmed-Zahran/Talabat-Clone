@@ -4,8 +4,8 @@ import { useAuthStore } from "../store/authStore";
 let notificationSocket: Socket | null = null;
 
 export const initNotificationSocket = () => {
-  const token = useAuthStore.getState().token;
-  if (!token) return null;
+  const role = useAuthStore.getState().role;
+  if (!role) return null;
 
   if (!notificationSocket) {
     // Determine backend URL
@@ -13,7 +13,7 @@ export const initNotificationSocket = () => {
     const baseURL = isDev ? "http://localhost:8080" : "";
 
     notificationSocket = io(`${baseURL}/notifications`, {
-      auth: { token },
+      withCredentials: true,
       transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: 5,

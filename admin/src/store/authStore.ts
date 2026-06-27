@@ -1,10 +1,10 @@
 import { create } from "zustand";
+import api from "../config/axios";
 
 interface AuthState {
-  token: string | null;
-  role: "admin" | "owner" | null;
+  role: "admin" | null;
   storeId: string | null;
-  setToken: (token: string, role: "admin" | "owner", storeId?: string) => void;
+  setAuth: (role: "admin") => void;
   logout: () => void;
 }
 
@@ -16,23 +16,21 @@ const getCookie = (name: string) => {
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
-  token: getCookie("adminToken"),
-  role: (getCookie("userRole") as "admin" | "owner" | null) || "admin",
-  storeId: getCookie("storeId"),
+  role: getCookie("userRole") as "admin" | null,
+  storeId: null,
 
-  setToken: (token: string, role: "admin" | "owner", storeId?: string) => {
-    document.cookie = `adminToken=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+  setAuth: (role: "admin") => {
     document.cookie = `userRole=${role}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-    if (storeId) {
-      document.cookie = `storeId=${storeId}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-    }
-    set({ token, role, storeId: storeId || null });
+    set({ role, storeId: null });
   },
 
-  logout: () => {
-    document.cookie = "adminToken=; path=/; max-age=0";
+  logout: async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Ignore
+    }
     document.cookie = "userRole=; path=/; max-age=0";
-    document.cookie = "storeId=; path=/; max-age=0";
-    set({ token: null, role: null, storeId: null });
+    set({ role: null, storeId: null });
   },
 }));
