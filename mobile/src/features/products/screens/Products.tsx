@@ -29,6 +29,10 @@ export default function ProductsScreen() {
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
   const mainScrollRef = useRef<ScrollView>(null);
   const tabScrollRef = useRef<ScrollView>(null);
+  const stickyTabScrollRef = useRef<ScrollView>(null);
+  const [isSticky, setIsSticky] = useState(false);
+  const isStickyRef = useRef(false);
+  const tabsY = useRef(0);
   // Stores the Y offset of each section header in the main ScrollView
   const sectionYOffsets = useRef<number[]>([]);
   // Height of the fixed header above the sections (cover + info card + offer strip + tabs)
@@ -46,7 +50,9 @@ export default function ProductsScreen() {
 
     // Auto-scroll the tab bar to keep active tab visible
     tabScrollRef.current?.scrollTo({ x: index * 100, animated: true });
-    mainScrollRef.current.scrollTo({ y, animated: true });
+    stickyTabScrollRef.current?.scrollTo({ x: index * 100, animated: true });
+
+    mainScrollRef.current.scrollTo({ y: Math.max(0, y - 150), animated: true });
 
     // After animation (~400ms), allow scroll events to update active tab again
     setTimeout(() => {
@@ -74,13 +80,22 @@ export default function ProductsScreen() {
   // ── Scroll event → update active tab ─────────────────────────
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (isScrollingToSection.current) return;
       const scrollY = e.nativeEvent.contentOffset.y;
+
+      if (tabsY.current > 0) {
+        const shouldBeSticky = scrollY >= tabsY.current - 100;
+        if (shouldBeSticky !== isStickyRef.current) {
+          isStickyRef.current = shouldBeSticky;
+          setIsSticky(shouldBeSticky);
+        }
+      }
+
+      if (isScrollingToSection.current) return;
 
       const offsets = sectionYOffsets.current;
       let newIndex = 0;
       for (let i = offsets.length - 1; i >= 0; i--) {
-        if (scrollY >= offsets[i] - 80) {
+        if (scrollY >= offsets[i] - 160) {
           newIndex = i;
           break;
         }
@@ -88,9 +103,66 @@ export default function ProductsScreen() {
       if (newIndex !== activeSectionIndex) {
         setActiveSectionIndex(newIndex);
         tabScrollRef.current?.scrollTo({ x: newIndex * 100, animated: true });
+        stickyTabScrollRef.current?.scrollTo({
+          x: newIndex * 100,
+          animated: true,
+        });
       }
     },
     [activeSectionIndex],
+  );
+
+  const renderTabs = (
+    ref: React.RefObject<ScrollView | null>,
+    isStickyVariant: boolean,
+  ) => (
+    <View
+      className={`bg-white border-b border-border/20 shadow-sm ${!isStickyVariant ? "z-10" : ""}`}
+      onLayout={
+        !isStickyVariant
+          ? (e) => {
+              tabsY.current = e.nativeEvent.layout.y;
+            }
+          : undefined
+      }
+    >
+      <ScrollView
+        ref={ref}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          flexDirection: "row",
+          paddingHorizontal: 16,
+          height: 52,
+          alignItems: "center",
+        }}
+      >
+        <TouchableOpacity className="mr-6">
+          <Ionicons
+            name="menu-outline"
+            size={24}
+            color={COLORS.textSecondary}
+          />
+        </TouchableOpacity>
+
+        {(query.sections || []).map((sec, idx) => {
+          const isActive = idx === activeSectionIndex;
+          return (
+            <TouchableOpacity
+              key={sec.id}
+              onPress={() => handleTabPress(idx)}
+              className={`h-full justify-center mr-6 ${isActive ? "border-b-[3px] border-black" : ""}`}
+            >
+              <Text
+                className={`text-sm font-bold ${isActive ? "text-black" : "text-textSecondary"}`}
+              >
+                {sec.name} {idx === 0 ? "🔥" : ""}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 
   return (
@@ -145,13 +217,17 @@ export default function ProductsScreen() {
       <View
         style={{
           position: "absolute",
-          bottom: 0,
+          top: 0,
           left: 0,
           right: 0,
           zIndex: 10,
+          opacity: isSticky ? 1 : 0,
         }}
-        pointerEvents="box-none"
-      />
+        pointerEvents={isSticky ? "auto" : "none"}
+      >
+        <View style={{ height: 100, backgroundColor: "white" }} />
+        {renderTabs(stickyTabScrollRef, true)}
+      </View>
 
       <ScrollView
         ref={mainScrollRef}
@@ -323,45 +399,7 @@ export default function ProductsScreen() {
         </View>
 
         {/* ── Horizontal Section Tabs ────────────────────────────────── */}
-        <View className="bg-white border-b border-border/20 shadow-sm z-10">
-          <ScrollView
-            ref={tabScrollRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              flexDirection: "row",
-              paddingHorizontal: 16,
-              height: 52,
-              alignItems: "center",
-            }}
-          >
-            {/* Hamburger Icon Tab */}
-            <TouchableOpacity className="mr-6">
-              <Ionicons
-                name="menu-outline"
-                size={24}
-                color={COLORS.textSecondary}
-              />
-            </TouchableOpacity>
-
-            {(query.sections || []).map((sec, idx) => {
-              const isActive = idx === activeSectionIndex;
-              return (
-                <TouchableOpacity
-                  key={sec.id}
-                  onPress={() => handleTabPress(idx)}
-                  className={`h-full justify-center mr-6 ${isActive ? "border-b-[3px] border-black" : ""}`}
-                >
-                  <Text
-                    className={`text-sm font-bold ${isActive ? "text-black" : "text-textSecondary"}`}
-                  >
-                    {sec.name} {idx === 0 ? "🔥" : ""}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
+        {renderTabs(tabScrollRef, false)}
 
         {/* ── Section title & Menu ───────────────────────────────────── */}
         <View className="px-4 py-4">
