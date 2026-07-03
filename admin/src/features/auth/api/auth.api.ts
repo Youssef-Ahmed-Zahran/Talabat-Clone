@@ -30,7 +30,7 @@ interface OwnerLoginResponse {
 }
 
 const loginAdmin = async (payload: LoginPayload): Promise<LoginResponse> => {
-  const { data } = await api.post('/auth/user/login', payload);
+  const { data } = await api.post('/auth/admin/login', payload);
   return data.data ?? data;
 };
 
