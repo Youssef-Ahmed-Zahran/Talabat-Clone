@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import pg from "pg";
 import prisma from "../../../config/db.js";
 import { ApiError } from "../../../utils/ApiError.js";
 import { ApiResponse } from "../../../utils/ApiResponse.js";
@@ -9,6 +10,36 @@ import {
     createOwnerToken,
 } from "../../../utils/createToken.js";
 import { resolveGeographyData } from "../../../utils/geography.util.js";
+import { provisionTenantSchema, schemaName } from "../../../lib/tenantDb.js";
+
+// ── Lazy schema provisioning (for bulk-imported stores) ──────────────────────
+const { Pool } = pg;
+async function ensureTenantSchema(storeId, storeType) {
+    try {
+        const schema = schemaName(storeId);
+        // Quick check: does the schema already exist?
+        const adminPool = new Pool({ connectionString: process.env.DATABASE_URL });
+        const client = await adminPool.connect();
+        let exists = false;
+        try {
+            const { rows } = await client.query(
+                `SELECT 1 FROM information_schema.schemata WHERE schema_name = $1`,
+                [schema]
+            );
+            exists = rows.length > 0;
+        } finally {
+            client.release();
+            await adminPool.end();
+        }
+        if (!exists) {
+            console.log(`[Auth] Lazy-provisioning tenant schema for store ${storeId}`);
+            await provisionTenantSchema(storeId, storeType);
+        }
+    } catch (err) {
+        // Non-fatal: log but don't block login
+        console.error(`[Auth] Lazy schema provisioning failed for store ${storeId}:`, err.message);
+    }
+}
 
 const setTokenCookie = (res, token, role) => {
     res.cookie(`jwt_${role}`, token, {
@@ -360,6 +391,9 @@ export const loginOwner = async (req, res, next) => {
         if (!valid) {
             throw new ApiError(401, "Invalid email or password.");
         }
+
+        // Lazy provisioning: ensures the tenant schema exists for bulk-imported stores
+        await ensureTenantSchema(owner.store.id, owner.store.storeType);
 
         const token = createOwnerToken(owner.id);
         setTokenCookie(res, token, "owner");
