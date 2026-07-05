@@ -1,27 +1,30 @@
 import { useFormContext } from "react-hook-form";
 import { Navigation } from "lucide-react";
 import toast from "react-hot-toast";
+import { useQuery } from "@tanstack/react-query";
 import type { StoreFormValues } from "../../../../schemas/store.schema";
 import type { Zone } from "../../../../types";
+import { fetchAllZones } from "../../../zones/api/zones.api";
 import { LocationPicker } from "../location/LocationPicker";
 
-interface LocationStepProps {
-  zones: Zone[];
-  selectedZoneId: string;
-  setSelectedZoneId: (id: string) => void;
-}
-
-export function LocationStep({
-  zones,
-  selectedZoneId,
-  setSelectedZoneId,
-}: LocationStepProps) {
+export function LocationStep() {
   const {
     register,
     setValue,
     watch,
     formState: { errors },
   } = useFormContext<StoreFormValues>();
+
+  const { data: zonesResponse } = useQuery({
+    queryKey: ["zones"],
+    queryFn: () => fetchAllZones(undefined, 1, 100),
+  });
+
+  const zones = Array.isArray(zonesResponse?.zones)
+    ? zonesResponse.zones
+    : Array.isArray(zonesResponse)
+      ? zonesResponse
+      : [];
 
   const lat = watch("latitude");
   const lng = watch("longitude");
@@ -74,12 +77,11 @@ export function LocationStep({
             Assigned Zone
           </label>
           <select
-            value={selectedZoneId}
-            onChange={(e) => setSelectedZoneId(e.target.value)}
+            {...register("zoneId")}
             className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all appearance-none"
           >
             <option value="">Auto-detect from coordinates</option>
-            {zones.map((z) => (
+            {zones.map((z: Zone) => (
               <option key={z.id} value={z.id}>
                 {z.name}
               </option>

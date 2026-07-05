@@ -7,8 +7,6 @@ import {
   type StoreFormValues,
 } from "../../../schemas/store.schema";
 import type { Store } from "../../../types";
-import { fetchAllZones } from "../../zones/api/zones.api";
-import type { Zone } from "../../../types";
 
 const defaultValues: StoreFormValues = {
   name: "",
@@ -39,8 +37,14 @@ const defaultValues: StoreFormValues = {
 
 export function useStoreForm(isOpen: boolean, editingStore: Store | null) {
   const [currentStep, setCurrentStep] = useState(1);
-  const [zones, setZones] = useState<Zone[]>([]);
-  const [selectedZoneId, setSelectedZoneId] = useState("");
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) {
+      setCurrentStep(1);
+    }
+  }
 
   const methods = useForm<StoreFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -50,17 +54,6 @@ export function useStoreForm(isOpen: boolean, editingStore: Store | null) {
 
   useEffect(() => {
     if (isOpen) {
-      fetchAllZones(undefined, 1, 100)
-        .then((response) => {
-          const zones = response?.zones ?? response ?? [];
-          setZones(Array.isArray(zones) ? zones : []);
-          setCurrentStep(1);
-          setSelectedZoneId(editingStore?.storeZones?.[0]?.zoneId ?? "");
-        })
-        .catch(() => {
-          setCurrentStep(1);
-          setSelectedZoneId(editingStore?.storeZones?.[0]?.zoneId ?? "");
-        });
       if (editingStore) {
         methods.reset({
           name: editingStore.name || "",
@@ -71,6 +64,7 @@ export function useStoreForm(isOpen: boolean, editingStore: Store | null) {
           address: editingStore.address || "",
           latitude: editingStore.latitude || "30.0444",
           longitude: editingStore.longitude || "31.2357",
+          zoneId: editingStore.storeZones?.[0]?.zoneId ?? "",
           mainCategoryId: editingStore.categoryId
             ? String(editingStore.categoryId)
             : "",
@@ -131,12 +125,12 @@ export function useStoreForm(isOpen: boolean, editingStore: Store | null) {
   const handleBack = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
   return {
-    methods,
-    currentStep,
-    zones,
-    selectedZoneId,
-    setSelectedZoneId,
-    handleNext,
-    handleBack,
+    form: methods,
+    wizard: {
+      currentStep,
+      handleNext,
+      handleBack,
+      isLastStep: currentStep >= (editingStore ? 4 : 5),
+    }
   };
 }

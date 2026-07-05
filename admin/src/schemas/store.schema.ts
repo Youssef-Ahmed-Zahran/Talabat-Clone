@@ -9,6 +9,7 @@ export const storeSchema = z.object({
   address: z.string().optional(),
   latitude: z.string().optional(),
   longitude: z.string().optional(),
+  zoneId: z.string().optional(),
   mainCategoryId: z.string().optional(),
   storeType: z.string().min(1, "Store type is required"),
   deliveryType: z.enum(["TALABAT_DELIVERY", "STORE_DELIVERY", ""]),

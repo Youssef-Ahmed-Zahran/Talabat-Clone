@@ -1,13 +1,16 @@
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Upload } from "lucide-react";
+import { useState } from "react";
 import PageLoader from "../../../components/loader/PageLoader";
 import ErrorFallback from "../../../components/error-boundary/ErrorFallback";
 import Pagination from "../../../components/pagination/Pagination";
 import { StoreFormModal } from "../components/modals/StoreFormModal";
+import { BulkImportModal } from "../components/modals/BulkImportModal";
 import { StoresTable } from "../components/table/StoresTable";
 import { useStoresList } from "../hooks/useStoresList";
 
 export default function StoresListPage() {
   const { filters, query, modal, actions } = useStoresList();
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
 
   // Only show full page loader on initial mount if categories aren't ready
   if (query.isLoading && !query.categories) return <PageLoader />;
@@ -24,13 +27,22 @@ export default function StoresListPage() {
             Manage all vendor stores across categories
           </p>
         </div>
-        <button
-          onClick={modal.openCreateStore}
-          className="inline-flex items-center gap-2 px-4.5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-brand to-brand-light rounded-2xl hover:shadow-lg hover:shadow-brand/15 transition-all active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          Add Store
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setBulkImportOpen(true)}
+            className="inline-flex items-center gap-2 px-4.5 py-2.5 text-xs font-bold text-brand bg-brand/8 hover:bg-brand/15 rounded-2xl border border-brand/20 transition-all active:scale-95"
+          >
+            <Upload className="w-4 h-4" />
+            Import Excel
+          </button>
+          <button
+            onClick={modal.openCreateStore}
+            className="inline-flex items-center gap-2 px-4.5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-brand to-brand-light rounded-2xl hover:shadow-lg hover:shadow-brand/15 transition-all active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            Add Store
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
@@ -154,6 +166,11 @@ export default function StoresListPage() {
           isPending={actions.isPending}
         />
       )}
+
+      <BulkImportModal
+        isOpen={bulkImportOpen}
+        onClose={() => setBulkImportOpen(false)}
+      />
     </div>
   );
 }

@@ -3,13 +3,7 @@ import { useClientStoreEditForm } from "../../hooks/useClientStoreEditForm";
 import { ClientBrandingStep } from "../client-store-edit/ClientBrandingStep";
 import { ClientGeneralInfoStep } from "../client-store-edit/ClientGeneralInfoStep";
 import { ClientOperationsStep } from "../client-store-edit/ClientOperationsStep";
-import type { Store } from "../../../../types";
-
-interface ClientStoreEditModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  store: Store;
-}
+import type { ClientStoreEditModalProps } from "../../../../types";
 
 export function ClientStoreEditModal({
   isOpen,

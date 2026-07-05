@@ -33,3 +33,4 @@ export * from "./dashboard";
 export * from "./category_payloads";
 export * from "./catalog";
 export * from "./zone";
+export * from "./store-modals";

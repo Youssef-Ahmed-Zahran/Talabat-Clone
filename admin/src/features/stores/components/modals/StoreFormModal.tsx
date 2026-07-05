@@ -10,7 +10,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { type StoreFormValues } from "../../../../schemas/store.schema";
-import type { Category, Store } from "../../../../types";
+import type { StoreFormModalProps } from "../../../../types";
 import { SlideOver } from "../../../../components/layout/SlideOver";
 import { useStoreForm } from "../../hooks/useStoreForm";
 import { GeneralInfoStep } from "../steps/GeneralInfoStep";
@@ -18,15 +18,6 @@ import { BrandingStep } from "../steps/BrandingStep";
 import { LocationStep } from "../steps/LocationStep";
 import { OperationsStep } from "../steps/OperationsStep";
 import { OwnerAccountStep } from "../steps/OwnerAccountStep";
-
-interface StoreFormModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  editingStore: Store | null;
-  categories?: Category[];
-  onSubmit: (data: StoreFormValues, selectedZoneId: string) => void;
-  isPending: boolean;
-}
 
 const steps = [
   { id: 1, name: "General Info", icon: Building2 },
@@ -44,21 +35,14 @@ export function StoreFormModal({
   onSubmit,
   isPending,
 }: StoreFormModalProps) {
-  const {
-    methods,
-    currentStep,
-    zones,
-    selectedZoneId,
-    setSelectedZoneId,
-    handleNext,
-    handleBack,
-  } = useStoreForm(isOpen, editingStore);
+  const { form, wizard } = useStoreForm(isOpen, editingStore);
+  const { currentStep, handleNext, handleBack } = wizard;
 
   const currentSteps = editingStore ? steps.filter((s) => s.id !== 5) : steps;
   const totalSteps = editingStore ? 4 : 5;
 
   const handleFormSubmit = (data: StoreFormValues) => {
-    onSubmit(data, selectedZoneId);
+    onSubmit(data, data.zoneId || "");
   };
 
   return (
@@ -90,7 +74,7 @@ export function StoreFormModal({
             ) : (
               <button
                 type="button"
-                onClick={methods.handleSubmit(handleFormSubmit)}
+                onClick={form.handleSubmit(handleFormSubmit)}
                 disabled={isPending}
                 className="inline-flex items-center gap-2 px-8 py-2.5 bg-brand text-white text-sm font-bold rounded-xl hover:bg-brand-dark transition-all shadow-md shadow-brand/10 disabled:opacity-70"
               >
@@ -139,20 +123,14 @@ export function StoreFormModal({
         </div>
 
         {/* Step Content */}
-        <FormProvider {...methods}>
+        <FormProvider {...form}>
           <form
             className="animate-fade-in"
             onSubmit={(e) => e.preventDefault()}
           >
             {currentStep === 1 && <GeneralInfoStep categories={categories} />}
             {currentStep === 2 && <BrandingStep />}
-            {currentStep === 3 && (
-              <LocationStep
-                zones={zones}
-                selectedZoneId={selectedZoneId}
-                setSelectedZoneId={setSelectedZoneId}
-              />
-            )}
+            {currentStep === 3 && <LocationStep />}
             {currentStep === 4 && <OperationsStep />}
             {currentStep === 5 && (
               <OwnerAccountStep isEditing={!!editingStore} />
