@@ -316,6 +316,7 @@ export const getNearbyStores = async (req, res, next) => {
             mainCategoryId,
             subCategoryId,
             storeType,
+            page = 1,
             limit = 30,
         } = req.query;
 
@@ -326,14 +327,15 @@ export const getNearbyStores = async (req, res, next) => {
         const userLat = Number(lat);
         const userLng = Number(lng);
         const take = Number(limit);
+        const skip = (Number(page) - 1) * take;
 
         // ── Step 1: Find which delivery zone the user is in ──────────────────
         const zone = await detectZone(userLat, userLng);
 
         // Generate dynamic cache key using the zone ID if found, otherwise fall back to 3-decimal rounded coordinates
         const zoneCacheKey = zone 
-            ? `stores:nearby:zone_${zone.id}:cat_${mainCategoryId || 'any'}:sub_${subCategoryId || 'any'}:type_${storeType || 'any'}:l_${limit}`
-            : `stores:nearby:coords_${userLat.toFixed(3)}_${userLng.toFixed(3)}:cat_${mainCategoryId || 'any'}:sub_${subCategoryId || 'any'}:type_${storeType || 'any'}:l_${limit}`;
+            ? `stores:nearby:zone_${zone.id}:cat_${mainCategoryId || 'any'}:sub_${subCategoryId || 'any'}:type_${storeType || 'any'}:p_${page}:l_${limit}`
+            : `stores:nearby:coords_${userLat.toFixed(3)}_${userLng.toFixed(3)}:cat_${mainCategoryId || 'any'}:sub_${subCategoryId || 'any'}:type_${storeType || 'any'}:p_${page}:l_${limit}`;
 
         const cachedResponse = await cache.get(zoneCacheKey);
         if (cachedResponse) {
@@ -407,7 +409,7 @@ export const getNearbyStores = async (req, res, next) => {
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         };
 
-        const withDistance = stores
+        const sortedStores = stores
             .map((s) => ({
                 ...s,
                 storeType: s.storeType?.name || s.storeType,
@@ -421,12 +423,15 @@ export const getNearbyStores = async (req, res, next) => {
                 if (s.maxDeliveryDistanceKm && s.distanceKm <= Number(s.maxDeliveryDistanceKm)) return true;
                 return false;
             })
-            .sort((a, b) => a.distanceKm - b.distanceKm)
-            .slice(0, take);
+            .sort((a, b) => a.distanceKm - b.distanceKm);
+
+        const totalStores = sortedStores.length;
+        const withDistance = sortedStores.slice(skip, skip + take);
 
         if (withDistance.length === 0) {
             const emptyResponse = {
                 stores: [],
+                pagination: { total: totalStores, page: Number(page), limit: take, totalPages: Math.ceil(totalStores / take) },
                 zone: zone || null,
                 userLocation: { lat: userLat, lng: userLng },
             };
@@ -440,7 +445,12 @@ export const getNearbyStores = async (req, res, next) => {
 
         const successResponse = {
             stores: withDistance,
-            total: withDistance.length,
+            pagination: {
+                total: totalStores,
+                page: Number(page),
+                limit: take,
+                totalPages: Math.ceil(totalStores / take),
+            },
             zone,
             userLocation: { lat: userLat, lng: userLng },
         };
