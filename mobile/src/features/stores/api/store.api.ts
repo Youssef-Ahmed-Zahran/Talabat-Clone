@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import api from "@src/config/axios";
 import type { Store } from "@src/features/stores/types/store.types";
 import type { ApiResponse } from "@src/types/api.types";
@@ -10,22 +10,26 @@ export const useNearbyStores = (
   mainCategoryId?: string | null,
   subCategoryId?: string | null,
 ) => {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["stores", "nearby", lat, lng, mainCategoryId, subCategoryId],
-    queryFn: async () => {
+    initialPageParam: 1,
+    queryFn: async ({ pageParam = 1 }) => {
       try {
         const res = await api.get("/stores/nearby", {
           params: {
             lat,
             lng,
+            page: pageParam,
+            limit: 30,
             ...(mainCategoryId ? { mainCategoryId } : {}),
             ...(subCategoryId ? { subCategoryId } : {}),
           },
         });
-        // New response shape: { stores, zone, userLocation }
+        // New response shape: { stores, pagination, zone, userLocation }
         const data = res.data.data;
         return {
           stores: (data.stores ?? []) as Store[],
+          pagination: data.pagination,
           zone: data.zone as {
             id: string;
             name: string;
@@ -36,10 +40,15 @@ export const useNearbyStores = (
       } catch (err: any) {
         if (err?.response?.status === 404) {
           // Outside all delivery zones
-          return { stores: [] as Store[], zone: null, outsideZone: true };
+          return { stores: [] as Store[], pagination: null, zone: null, outsideZone: true };
         }
         throw err;
       }
+    },
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.pagination) return undefined;
+      const { page, totalPages } = lastPage.pagination;
+      return page < totalPages ? page + 1 : undefined;
     },
     enabled: lat != null && lng != null,
   });
