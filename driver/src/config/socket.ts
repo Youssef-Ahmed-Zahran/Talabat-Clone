@@ -12,8 +12,9 @@ export const createSocket = (namespace: string): Socket => {
     autoConnect: false,
     transports: ['websocket'],
     reconnection: true,
-    reconnectionAttempts: 5,
+    reconnectionAttempts: Infinity,
     reconnectionDelay: 2000,
+    reconnectionDelayMax: 5000,
   });
 };
 
