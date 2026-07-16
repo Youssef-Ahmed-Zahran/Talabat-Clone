@@ -101,6 +101,21 @@ export const useToggleStoreStatus = () => {
   });
 };
 
+// ── Delete store ───────────────────────────────────────────────────────
+const deleteStore = async (storeId: string): Promise<void> => {
+  await api.delete(`/stores/${storeId}`);
+};
+
+export const useDeleteStore = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteStore,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["stores"] });
+    },
+  });
+};
+
 // ── Fetch single store details ─────────────────────────────────────────
 const fetchStoreDetails = async (storeId: string): Promise<Store> => {
   const { data } = await api.get(`/stores/${storeId}`);
