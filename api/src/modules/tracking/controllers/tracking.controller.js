@@ -154,6 +154,7 @@ export const updateTrackingStatus = async (req, res, next) => {
                         id: true,
                         userId: true,
                         status: true,
+                        storeId: true,
                         store: { select: { name: true } },
                     },
                 },
@@ -242,11 +243,29 @@ export const updateTrackingStatus = async (req, res, next) => {
 
             // Push notification to user
             if (notifMap[status]) {
-                const { emitToUser } = await import("../../../sockets/notifications.socket.js");
+                const { emitToUser, emitToOwner, emitToAdmins } = await import("../../../sockets/notifications.socket.js");
                 await emitToUser(io, tracking.order.userId, {
                     ...notifMap[status],
                     type: "ORDER_UPDATE",
                     relatedOrderId: orderId,
+                });
+
+                const storeOwner = await prisma.ownerAccount.findFirst({
+                    where: { storeId: tracking.order.storeId, isActive: true }
+                });
+                
+                if (storeOwner) {
+                    await emitToOwner(io, storeOwner.id, {
+                        ...notifMap[status],
+                        type: "ORDER_UPDATE",
+                        relatedOrderId: orderId,
+                    });
+                }
+
+                emitToAdmins(io, {
+                    ...notifMap[status],
+                    type: "ORDER_UPDATE",
+                    meta: { orderId }
                 });
             }
         } catch (socketErr) {
