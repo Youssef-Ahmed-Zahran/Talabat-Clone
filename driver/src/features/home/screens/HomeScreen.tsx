@@ -17,6 +17,7 @@ import { StatsCard } from "@features/home/components/StatsCard";
 import { useActiveDelivery } from "@features/deliveries/api/deliveries.api";
 import { IncomingOrderSheet } from "@features/deliveries/components/IncomingOrderSheet";
 import { useDispatchListener } from "@features/deliveries/hooks/useDispatchListener";
+import { useNotificationsListener } from "@hooks/useNotificationsListener";
 import { useAuthStore } from "@store/authStore";
 import { useUIStore } from "@store/uiStore";
 import { COLORS } from "@constants/theme";
@@ -63,6 +64,8 @@ export default function HomeScreen() {
 
   // Mount the dispatch socket listener — listens for dispatch:new_order
   useDispatchListener();
+  // Mount the notifications socket listener — listens for server-pushed notifications
+  useNotificationsListener();
 
   return (
     <SafeAreaView className="flex-1 bg-surfaceAlt" edges={["top"]}>
