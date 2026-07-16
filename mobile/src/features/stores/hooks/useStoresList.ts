@@ -25,6 +25,9 @@ export function useStoresList(): UseStoresListReturn {
     data: nearbyData,
     isLoading,
     isFetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useNearbyStores(
     selectedLatitude,
     selectedLongitude,
@@ -34,14 +37,15 @@ export function useStoresList(): UseStoresListReturn {
 
   const { data: wishlistItems } = useWishlist();
   const toggleWishlistApi = useToggleWishlist();
-
   const wishlistedStoreIds = new Set(
-    (wishlistItems || []).map((item) => item.store.id),
+    wishlistItems?.pages.flatMap((page) =>
+      page.wishlist.map((item) => item.store.id),
+    ) || [],
   );
 
-  const stores = nearbyData?.stores || [];
-  const zone = nearbyData?.zone ?? null;
-  const outsideZone = nearbyData?.outsideZone ?? false;
+  const stores = nearbyData?.pages.flatMap((page) => page.stores) || [];
+  const zone = nearbyData?.pages[0]?.zone ?? null;
+  const outsideZone = nearbyData?.pages[0]?.outsideZone ?? false;
 
   const navigateToStore = useCallback(
     (storeId: string) => {
@@ -67,6 +71,8 @@ export function useStoresList(): UseStoresListReturn {
       outsideZone,
       isLoading,
       isFetching,
+      hasNextPage,
+      isFetchingNextPage,
       subCategories,
       wishlistedStoreIds,
     },
@@ -80,6 +86,7 @@ export function useStoresList(): UseStoresListReturn {
     },
     actions: {
       toggleWishlist,
+      fetchNextPage,
     },
   };
 }
