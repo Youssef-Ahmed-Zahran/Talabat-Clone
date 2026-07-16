@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DispatchPayload } from '@features/deliveries/hooks/useDispatchListener';
+import type { DispatchPayload } from '@features/deliveries/types/delivery.types';
 
 // Driver-specific order status types
 export type OrderStatus =
