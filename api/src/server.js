@@ -75,12 +75,13 @@ if (process.env.NODE_ENV !== "test") {
 }
 
 // ─── Body parsers ─────────────────────────────────────────────────────────────
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+// 2MB is enough for any JSON API call; file uploads go through Cloudinary (multipart)
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 app.use(cookieParser());
 
 // ─── Global rate limiter (applied to all API routes) ─────────────────────────
-// app.use("/api", apiLimiter); // Temporarily disabled for development
+// app.use("/api", apiLimiter);
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ROUTES
@@ -155,17 +156,15 @@ const HOST = process.env.HOST || "0.0.0.0";
  */
 const warmupTenantSchemas = async () => {
     try {
-        const { tenantQuery, schemaName } = await import("./lib/tenantDb.js");
+        const { tenantQuery } = await import("./lib/tenantDb.js");
         const stores = await prisma.store.findMany({ select: { id: true, name: true } });
         if (!stores.length) return;
 
         await Promise.all(
             stores.map(async (s) => {
                 try {
+                    // Lightweight ping — just keep compute warm
                     await tenantQuery(s.id, `SELECT 1`);
-                    // ── Migration: add sort_order to products if it doesn't exist ──
-                    const schema = schemaName(s.id);
-                    await tenantQuery(s.id, `ALTER TABLE "${schema}"."products" ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0`);
                 } catch {
                     // Schema may not exist for this store yet — ignore
                 }
