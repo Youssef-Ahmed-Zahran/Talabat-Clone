@@ -14,6 +14,17 @@ export const getCart = async (req, res, next) => {
 
         const cart = await prisma.cart.findUnique({
             where: { userId_storeId: { userId, storeId } },
+            include: {
+                store: {
+                    select: {
+                        id: true,
+                        name: true,
+                        logoUrl: true,
+                        deliveryFees: true,
+                        minimumOrderCost: true,
+                    },
+                },
+            },
         });
 
         if (!cart) {
@@ -50,11 +61,18 @@ export const getCart = async (req, res, next) => {
 
         cart.items = items;
 
+        // Serialize Decimal fields to plain numbers so JSON doesn't send strings
+        if (cart.store) {
+            cart.store.deliveryFees = Number(cart.store.deliveryFees ?? 0);
+            cart.store.minimumOrderCost = Number(cart.store.minimumOrderCost ?? 0);
+        }
+
         res.json(new ApiResponse(200, cart, "Cart fetched."));
     } catch (err) {
         next(err);
     }
 };
+
 
 
 
