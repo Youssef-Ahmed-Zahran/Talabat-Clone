@@ -17,6 +17,7 @@ export interface UseCheckoutReturn {
     cart: any;
     cartLoading: boolean;
     addresses: any[] | undefined;
+    selectedAddressObj: any | null;
     methods: any[];
   };
   state: {
