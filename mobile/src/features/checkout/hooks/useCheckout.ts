@@ -50,20 +50,17 @@ export function useCheckout(): UseCheckoutReturn {
     setTipAmount(isNaN(parsed) || parsed < 0 ? 0 : parsed);
   }, []);
 
-  // Auto-select best saved address
+  // Sync selectedAddress whenever the defaultAddress from locationStore changes
   useEffect(() => {
-    if (!addresses?.length) return;
-    const defaultSaved = addresses.find((a) => a.isDefault);
-    const preferred = defaultSaved ?? addresses[0];
-    setSelectedAddress((prev) => prev || preferred.id);
-  }, [addresses]);
-
-  // Pre-select from location store if available
-  useEffect(() => {
-    if (defaultAddress?.id && !selectedAddress) {
+    if (defaultAddress?.id) {
       setSelectedAddress(defaultAddress.id);
+    } else if (addresses?.length) {
+      // Fallback: pick the default saved address or the first one
+      const defaultSaved = addresses.find((a) => a.isDefault);
+      const preferred = defaultSaved ?? addresses[0];
+      setSelectedAddress((prev) => prev || preferred.id);
     }
-  }, [defaultAddress]);
+  }, [defaultAddress, addresses]);
 
   // Auto-select first payment method
   useEffect(() => {
@@ -127,12 +124,19 @@ export function useCheckout(): UseCheckoutReturn {
     );
   }, [selectedAddress, selectedPayment, storeId, placeOrder, router]);
 
+  // Resolve the full address object for the currently selected address
+  const selectedAddressObj =
+    defaultAddress?.id === selectedAddress
+      ? defaultAddress
+      : (addresses || []).find((a) => a.id === selectedAddress) ?? null;
+
   return {
     query: {
       storeId: storeId || "",
       cart,
       cartLoading,
       addresses,
+      selectedAddressObj,
       methods,
     },
     state: {
