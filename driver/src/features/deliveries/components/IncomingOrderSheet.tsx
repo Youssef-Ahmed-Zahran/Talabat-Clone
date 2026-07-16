@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -8,14 +8,19 @@ import {
   ActivityIndicator,
   Alert,
   Vibration,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useUIStore } from '@store/uiStore';
-import { useAcceptDelivery, useRejectDelivery } from '@features/deliveries/api/deliveries.api';
-import { COLORS } from '@constants/theme';
-import { getErrorMessage } from '@utils/error';
-import { dispatchSocket } from '@config/socket';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useUIStore } from "@store/uiStore";
+import {
+  useAcceptDelivery,
+  useRejectDelivery,
+  DELIVERY_KEYS,
+} from "@features/deliveries/api/deliveries.api";
+import { useQueryClient } from "@tanstack/react-query";
+import { COLORS } from "@constants/theme";
+import { getErrorMessage } from "@utils/error";
+import { dispatchSocket } from "@config/socket";
 
 // Auto-reject countdown matches server's DISPATCH_TIMEOUT_SEC (60s)
 const TIMEOUT_SEC = 55;
@@ -24,11 +29,19 @@ export function IncomingOrderSheet() {
   const router = useRouter();
   const isOpen = useUIStore((s) => s.isIncomingOrderSheetOpen);
   const incomingOrder = useUIStore((s) => s.incomingOrder);
-  const setIncomingOrderSheetOpen = useUIStore((s) => s.setIncomingOrderSheetOpen);
+  const setIncomingOrderSheetOpen = useUIStore(
+    (s) => s.setIncomingOrderSheetOpen,
+  );
   const setIncomingOrder = useUIStore((s) => s.setIncomingOrder);
 
   const { mutateAsync: accept, isPending: isAccepting } = useAcceptDelivery();
   const { mutateAsync: reject, isPending: isRejecting } = useRejectDelivery();
+
+  const queryClient = useQueryClient();
+  // Tracks which button is loading so each shows its own spinner
+  const [busyAction, setBusyAction] = useState<"accept" | "reject" | null>(
+    null,
+  );
 
   const [countdown, setCountdown] = useState(TIMEOUT_SEC);
   const slideAnim = useRef(new Animated.Value(400)).current;
@@ -50,8 +63,6 @@ export function IncomingOrderSheet() {
       timerRef.current = setInterval(() => {
         setCountdown((c) => {
           if (c <= 1) {
-            // Auto-dismiss when countdown reaches 0 (server will auto-reject)
-            dismiss();
             return 0;
           }
           return c - 1;
@@ -71,63 +82,109 @@ export function IncomingOrderSheet() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isOpen]);
+  }, [isOpen, slideAnim]);
 
-  const dismiss = () => {
+  const dismiss = useCallback(() => {
     setIncomingOrderSheetOpen(false);
     setIncomingOrder(null);
-  };
+  }, [setIncomingOrderSheetOpen, setIncomingOrder]);
+
+  useEffect(() => {
+    if (isOpen && countdown <= 0) {
+      dismiss();
+    }
+  }, [isOpen, countdown, dismiss]);
 
   const handleAccept = async () => {
     if (!incomingOrder) return;
-    try {
-      // Use socket for real-time accept
+
+    // ── Socket path (fast: server acks in <100ms) ─────────────────────────────
+    // When the socket is connected, we use it exclusively and skip the REST call.
+    // Firing BOTH simultaneously causes the REST call to hit an already-accepted
+    // order, returning a 400 error, making the UI feel broken and slow.
+    if (dispatchSocket.connected) {
+      setBusyAction("accept");
       dispatchSocket.emit(
-        'dispatch:accept',
+        "dispatch:accept",
         { orderId: incomingOrder.order.id },
         (ack: { success: boolean; message: string }) => {
+          setBusyAction(null);
           if (ack?.success) {
+            // Immediately refresh the active delivery query so Home Screen
+            // shows the delivery right away instead of waiting 30s for next poll.
+            queryClient.invalidateQueries({ queryKey: DELIVERY_KEYS.active() });
+            queryClient.invalidateQueries({
+              queryKey: DELIVERY_KEYS.pending(),
+            });
             dismiss();
-            router.push('/(tabs)');
+            router.push("/(tabs)");
           } else {
-            Alert.alert('Error', ack?.message || 'Failed to accept order');
+            Alert.alert("Error", ack?.message || "Failed to accept order");
           }
-        }
+        },
       );
-      // Also call REST as fallback if socket doesn't ack
+      return; // ← Critical: don't also fire the REST call below
+    }
+
+    // ── REST fallback (only when socket is disconnected) ──────────────────────
+    try {
       await accept(incomingOrder.order.id);
       dismiss();
-      router.push('/(tabs)');
+      router.push("/(tabs)");
     } catch (err) {
-      Alert.alert('Error', getErrorMessage(err));
+      Alert.alert("Error", getErrorMessage(err));
     }
   };
 
   const handleReject = async () => {
     if (!incomingOrder) return;
-    try {
-      // Use socket for real-time reject
+
+    // Socket path
+    if (dispatchSocket.connected) {
+      setBusyAction("reject");
       dispatchSocket.emit(
-        'dispatch:reject',
-        { orderId: incomingOrder.order.id, reason: 'DRIVER_REJECTED' },
-        (_ack: any) => {}
+        "dispatch:reject",
+        { orderId: incomingOrder.order.id, reason: "DRIVER_REJECTED" },
+        (_ack: any) => {
+          setBusyAction(null);
+          queryClient.invalidateQueries({ queryKey: DELIVERY_KEYS.pending() });
+          dismiss();
+        },
       );
-      await reject({ orderId: incomingOrder.order.id, reason: 'DRIVER_REJECTED' });
-      dismiss();
+      return;
+    }
+
+    // REST fallback
+    try {
+      await reject({
+        orderId: incomingOrder.order.id,
+        reason: "DRIVER_REJECTED",
+      });
     } catch (err) {
-      Alert.alert('Error', getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      if (!msg.toLowerCase().includes("already")) {
+        Alert.alert("Error", msg);
+      }
+    } finally {
+      dismiss();
     }
   };
 
   if (!isOpen || !incomingOrder) return null;
 
   const { order, store, userAddress, distanceToStoreKm } = incomingOrder;
-  const isBusy = isAccepting || isRejecting;
+  const isAcceptBusy = busyAction === "accept" || isAccepting;
+  const isRejectBusy = busyAction === "reject" || isRejecting;
+  const isBusy = isAcceptBusy || isRejectBusy;
 
   // Progress ring percentage
   const progress = countdown / TIMEOUT_SEC;
   const progressColor =
-    progress > 0.5 ? COLORS.success : progress > 0.25 ? COLORS.warning : COLORS.danger;
+    progress > 0.5
+      ? COLORS.success
+      : progress > 0.25
+        ? COLORS.warning
+        : COLORS.danger;
 
   return (
     <Modal
@@ -152,14 +209,19 @@ export function IncomingOrderSheet() {
           <View className="px-5 pb-3 border-b border-border flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
               <View className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
-              <Text className="text-base font-bold text-textPrimary">New Delivery Request</Text>
+              <Text className="text-base font-bold text-textPrimary">
+                New Delivery Request
+              </Text>
             </View>
             {/* Countdown badge */}
             <View
               className="w-12 h-12 rounded-full border-4 items-center justify-center"
               style={{ borderColor: progressColor }}
             >
-              <Text className="text-sm font-bold" style={{ color: progressColor }}>
+              <Text
+                className="text-sm font-bold"
+                style={{ color: progressColor }}
+              >
                 {countdown}s
               </Text>
             </View>
@@ -175,7 +237,9 @@ export function IncomingOrderSheet() {
               </View>
               <View className="flex-1 gap-3">
                 <View>
-                  <Text className="text-xs text-textTertiary">Pick up from</Text>
+                  <Text className="text-xs text-textTertiary">
+                    Pick up from
+                  </Text>
                   <Text className="text-base font-semibold text-textPrimary mt-0.5">
                     {store.name}
                   </Text>
@@ -188,7 +252,7 @@ export function IncomingOrderSheet() {
                 <View>
                   <Text className="text-xs text-textTertiary">Deliver to</Text>
                   <Text className="text-base font-semibold text-textPrimary mt-0.5">
-                    {userAddress.street || 'Customer address'}
+                    {userAddress.street || "Customer address"}
                   </Text>
                 </View>
               </View>
@@ -225,12 +289,23 @@ export function IncomingOrderSheet() {
               disabled={isBusy}
               activeOpacity={0.8}
             >
-              {isRejecting ? (
+              {isRejectBusy ? (
                 <ActivityIndicator color={COLORS.danger} size="small" />
               ) : (
                 <>
-                  <Ionicons name="close-circle-outline" size={22} color={COLORS.danger} />
-                  <Text className="font-semibold text-danger text-base">Reject</Text>
+                  <Ionicons
+                    name="close-circle-outline"
+                    size={22}
+                    color={isBusy ? COLORS.textTertiary : COLORS.danger}
+                  />
+                  <Text
+                    className="font-semibold text-base"
+                    style={{
+                      color: isBusy ? COLORS.textTertiary : COLORS.danger,
+                    }}
+                  >
+                    Reject
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -241,13 +316,20 @@ export function IncomingOrderSheet() {
               onPress={handleAccept}
               disabled={isBusy}
               activeOpacity={0.85}
+              style={{ opacity: isBusy ? 0.75 : 1 }}
             >
-              {isAccepting ? (
+              {isAcceptBusy ? (
                 <ActivityIndicator color={COLORS.white} />
               ) : (
                 <>
-                  <Ionicons name="checkmark-circle-outline" size={22} color={COLORS.white} />
-                  <Text className="font-bold text-white text-base">Accept Order</Text>
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={22}
+                    color={COLORS.white}
+                  />
+                  <Text className="font-bold text-white text-base">
+                    Accept Order
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
