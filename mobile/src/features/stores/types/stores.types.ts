@@ -21,6 +21,8 @@ export interface UseStoresListReturn {
     outsideZone: boolean;
     isLoading: boolean;
     isFetching: boolean;
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
     subCategories: any[] | undefined;
     wishlistedStoreIds: Set<string>;
   };
@@ -34,5 +36,6 @@ export interface UseStoresListReturn {
   };
   actions: {
     toggleWishlist: (storeId: string) => void;
+    fetchNextPage: () => void;
   };
 }
