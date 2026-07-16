@@ -115,6 +115,15 @@ export default function StoresListScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 32 }}
             ListEmptyComponent={renderEmpty}
+            onEndReached={() => {
+              if (query.hasNextPage && !query.isFetchingNextPage) {
+                actions.fetchNextPage();
+              }
+            }}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              query.isFetchingNextPage ? <Loader fullScreen={false} /> : null
+            }
           />
         )}
       </View>
