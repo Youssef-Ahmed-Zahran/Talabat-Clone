@@ -42,7 +42,7 @@ export function SummaryCard({
             Base
           </Text>
           <Text className="text-white text-base font-black mt-0.5">
-            {base.toFixed(0)} EGP
+            {base.toFixed(2)} EGP
           </Text>
         </View>
         <View className="flex-1 py-4 items-center">
@@ -50,7 +50,7 @@ export function SummaryCard({
             Tips
           </Text>
           <Text className="text-white text-base font-black mt-0.5">
-            {tips.toFixed(0)} EGP
+            {tips.toFixed(2)} EGP
           </Text>
         </View>
       </View>
