@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import api from '@config/axios';
 import type { ApiResponse } from '@src/types/api.types';
+import { useUIStore } from '@store/uiStore';
 
 import type {
   ActiveDeliveryOrder,
@@ -20,25 +21,29 @@ export const DELIVERY_KEYS = {
 
 // ─── Get Active Delivery ───────────────────────────────────────
 export const useActiveDelivery = () => {
+  const isOnline = useUIStore((s) => s.isOnline);
   return useQuery({
     queryKey: DELIVERY_KEYS.active(),
     queryFn: async () => {
       const res = await api.get<ApiResponse<ActiveDeliveryOrder | null>>('/drivers/orders/active');
       return res.data.data;
     },
-    refetchInterval: 30_000, // Poll every 30s to keep in sync
+    // Poll every 30s only when online; stop entirely when offline
+    refetchInterval: isOnline ? 30_000 : false,
   });
 };
 
 // ─── Get Pending Assignment ────────────────────────────────────
 export const usePendingAssignment = () => {
+  const isOnline = useUIStore((s) => s.isOnline);
   return useQuery({
     queryKey: DELIVERY_KEYS.pending(),
     queryFn: async () => {
       const res = await api.get<ApiResponse<PendingAssignment | null>>('/drivers/orders/pending');
       return res.data.data;
     },
-    refetchInterval: 10_000,
+    // Poll every 10s only when online; stop entirely when offline
+    refetchInterval: isOnline ? 10_000 : false,
   });
 };
 
@@ -50,9 +55,11 @@ export const useAcceptDelivery = () => {
       const res = await api.post<ApiResponse<any>>(`/drivers/orders/${orderId}/accept`);
       return res.data;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: DELIVERY_KEYS.active() });
-      qc.invalidateQueries({ queryKey: DELIVERY_KEYS.pending() });
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: DELIVERY_KEYS.active() }),
+        qc.invalidateQueries({ queryKey: DELIVERY_KEYS.pending() }),
+      ]);
     },
   });
 };
@@ -64,8 +71,8 @@ export const useRejectDelivery = () => {
     mutationFn: async ({ orderId, reason }: { orderId: string; reason?: string }) => {
       await api.post(`/drivers/orders/${orderId}/reject`, { reason });
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: DELIVERY_KEYS.pending() });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: DELIVERY_KEYS.pending() });
     },
   });
 };
@@ -78,8 +85,8 @@ export const useUpdateDeliveryStatus = () => {
       const res = await api.patch<ApiResponse<any>>(`/drivers/orders/${orderId}/status`, { status });
       return res.data;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: DELIVERY_KEYS.active() });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: DELIVERY_KEYS.active() });
     },
   });
 };
