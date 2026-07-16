@@ -2,9 +2,9 @@ import { create } from "zustand";
 import api from "../config/axios";
 
 interface AuthState {
-  role: "admin" | null;
+  role: "admin" | "owner" | null;
   storeId: string | null;
-  setAuth: (role: "admin") => void;
+  setAuth: (role: "admin" | "owner") => void;
   logout: () => void;
 }
 
@@ -16,10 +16,10 @@ const getCookie = (name: string) => {
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
-  role: getCookie("userRole") as "admin" | null,
+  role: getCookie("userRole") as "admin" | "owner" | null,
   storeId: null,
 
-  setAuth: (role: "admin") => {
+  setAuth: (role: "admin" | "owner") => {
     document.cookie = `userRole=${role}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
     set({ role, storeId: null });
   },
