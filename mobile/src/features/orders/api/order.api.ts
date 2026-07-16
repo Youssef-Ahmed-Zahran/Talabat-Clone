@@ -1,8 +1,8 @@
 import {
   useQuery,
+  useInfiniteQuery,
   useMutation,
   useQueryClient,
-  keepPreviousData,
 } from "@tanstack/react-query";
 import api from "@src/config/axios";
 import type {
@@ -15,17 +15,23 @@ import { useUIStore } from "@src/store/uiStore";
 
 // ─── Get My Orders ────────────────────────────────────────────
 export const useMyOrders = () => {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["orders", "my"],
-    queryFn: async () => {
+    initialPageParam: 1,
+    queryFn: async ({ pageParam = 1 }) => {
       const res =
         await api.get<ApiResponse<{ orders: Order[]; pagination: any }>>(
           "/orders/my",
+          { params: { page: pageParam, limit: 10 } }
         );
-      return res?.data?.data?.orders;
+      return res?.data?.data;
+    },
+    getNextPageParam: (lastPage) => {
+      if (!lastPage?.pagination) return undefined;
+      const { page, totalPages } = lastPage.pagination;
+      return page < totalPages ? page + 1 : undefined;
     },
     staleTime: 30_000, // treat data as fresh for 30s — no background flicker
-    // placeholderData: keepPreviousData, // keep showing old data while refetching
   });
 };
 
