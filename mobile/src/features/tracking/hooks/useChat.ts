@@ -33,7 +33,7 @@ export function useChat(): UseChatReturn {
     let isMounted = true;
 
     const setup = async () => {
-      const token = await AsyncStorage.getItem("token");
+      const token = await AsyncStorage.getItem("user_token");
       if (!token) {
         if (isMounted) {
           setConnectError("Not authenticated.");
