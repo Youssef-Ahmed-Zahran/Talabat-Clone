@@ -42,6 +42,19 @@ export default function WishlistScreen() {
           paddingBottom: 40,
         }}
         showsVerticalScrollIndicator={false}
+        onEndReached={() => {
+          if (
+            query.hasNextPage &&
+            !query.isFetchingNextPage &&
+            actions.fetchNextPage
+          ) {
+            actions.fetchNextPage();
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          query.isFetchingNextPage ? <Loader fullScreen={false} /> : null
+        }
         renderItem={({ item }) => (
           <TouchableOpacity
             className="flex-row items-center bg-white p-3 rounded-xl mb-2 border border-border/40"
