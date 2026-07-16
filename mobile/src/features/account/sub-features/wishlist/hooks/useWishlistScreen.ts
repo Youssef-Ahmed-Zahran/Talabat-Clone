@@ -10,7 +10,8 @@ import { getErrorMessage } from "@src/utils/error";
 
 export function useWishlistScreen() {
   const router = useRouter();
-  const { data: wishlist, isLoading } = useWishlist();
+  const { data: wishlistData, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useWishlist();
+  const wishlist = wishlistData?.pages.flatMap((page: any) => page.wishlist || []) || [];
   const clearWishlistApi = useClearWishlist();
   const toggleWishlistApi = useToggleWishlist();
 
@@ -58,10 +59,13 @@ export function useWishlistScreen() {
       wishlist,
       isLoading,
       isClearing: clearWishlistApi.isPending,
+      hasNextPage,
+      isFetchingNextPage,
     },
     actions: {
       handleClearWishlist,
       handleToggleWishlist,
+      fetchNextPage,
     },
     router: {
       navigateBack,
