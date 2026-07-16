@@ -1,4 +1,11 @@
-import { Store as StoreIcon, Power, Pencil, ArrowRight } from "lucide-react";
+import {
+  Store as StoreIcon,
+  Power,
+  Pencil,
+  ArrowRight,
+  Trash2,
+  Loader2,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Store } from "../../../../types";
 import PageLoader from "../../../../components/loader/PageLoader";
@@ -7,7 +14,10 @@ interface StoresTableProps {
   stores?: Store[];
   onToggleStatus: (storeId: number | string, e: React.MouseEvent) => void;
   onEdit: (store: Store, e: React.MouseEvent) => void;
+  onDelete: (storeId: number | string, e: React.MouseEvent) => void;
   isToggling: boolean;
+  isDeleting?: boolean;
+  deletingId?: string;
   isLoading?: boolean;
 }
 
@@ -15,7 +25,10 @@ export function StoresTable({
   stores,
   onToggleStatus,
   onEdit,
+  onDelete,
   isToggling,
+  isDeleting,
+  deletingId,
   isLoading,
 }: StoresTableProps) {
   const navigate = useNavigate();
@@ -126,6 +139,17 @@ export function StoresTable({
                       className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100/50 rounded-xl transition-all active:scale-95"
                     >
                       <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => onDelete(store.id, e)}
+                      disabled={isDeleting}
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100/50 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isDeleting && deletingId === store.id.toString() ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-red-600" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
                     </button>
                     <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-brand group-hover:translate-x-0.5 transition-all duration-200" />
                   </div>
