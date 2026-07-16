@@ -11,6 +11,7 @@ export type DeliveryType =
 export interface Store {
   id: string;
   mainCategoryId: string;
+  mainCategory?: { id: string; name: string };
   cityId: string;
   name: string;
   description: string | null;
