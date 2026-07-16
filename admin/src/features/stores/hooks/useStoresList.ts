@@ -8,7 +8,7 @@ import {
 } from "../../categories/api/category.api";
 import type { Store } from "../../../types";
 import { handleApiError } from "../../../utils/error";
-import { useCreateStore, useUpdateStore } from "../api/store.api";
+import { useCreateStore, useUpdateStore, useDeleteStore } from "../api/store.api";
 import type { StoreFormValues } from "../../../schemas/store.schema";
 import type { CreateStorePayload } from "../../../types";
 
@@ -62,6 +62,18 @@ export function useStoresList() {
           "We couldn't update the store status. Please try again.",
         ),
     });
+  };
+
+  const deleteMutation = useDeleteStore();
+
+  const handleDelete = (storeId: number | string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this store? This action cannot be undone and will delete all associated data.")) {
+      deleteMutation.mutate(storeId.toString(), {
+        onSuccess: () => toast.success("Store deleted successfully"),
+        onError: (err) => handleApiError(err, "We couldn't delete the store."),
+      });
+    }
   };
 
   const openCreateStore = () => setModalState({ type: "CREATE" });
@@ -156,6 +168,9 @@ export function useStoresList() {
       isPending: createMutation.isPending || updateMutation.isPending,
       handleToggle,
       isToggling: toggleMutation.isPending,
+      handleDelete,
+      isDeleting: deleteMutation.isPending,
+      deletingId: deleteMutation.variables,
     },
   };
 }
