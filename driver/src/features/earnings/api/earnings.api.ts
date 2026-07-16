@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, keepPreviousData } from "@tanstack/react-query";
 import api from "@config/axios";
 import type { ApiResponse } from "@src/types/api.types";
 import type { Period } from "../types/earnings.types";
@@ -27,5 +27,6 @@ export const useEarningsQuery = (period: Period) => {
       return undefined;
     },
     staleTime: 1000 * 60 * 2,
+    placeholderData: keepPreviousData,
   });
 };
