@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { Earning, Period } from "../types/earnings.types";
 import { useEarningsQuery } from "../api/earnings.api";
 
 export function useEarningsScreen() {
   const [period, setPeriod] = useState<Period>("week");
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   const {
     data,
-    isLoading,
-    isRefetching,
+    isFetching,
     refetch,
     fetchNextPage,
     hasNextPage,
@@ -23,14 +23,20 @@ export function useEarningsScreen() {
   };
   const totalDeliveries = data?.pages[0]?.pagination?.total ?? 0;
 
+  const handleRefresh = useCallback(async () => {
+    setIsManualRefreshing(true);
+    await refetch();
+    setIsManualRefreshing(false);
+  }, [refetch]);
+
   return {
     query: {
       earnings,
       summary,
       totalDeliveries,
-      isLoading,
-      isRefetching,
+      isFetching,
       isFetchingNextPage,
+      isManualRefreshing,
       hasNextPage,
     },
     state: {
@@ -39,9 +45,8 @@ export function useEarningsScreen() {
     },
     modal: {},
     actions: {
-      refetch,
+      refetch: handleRefresh,
       fetchNextPage,
     },
   };
 }
-
