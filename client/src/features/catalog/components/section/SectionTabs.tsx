@@ -59,11 +59,11 @@ export function SectionNav({
                   : "text-gray-600 hover:text-brand hover:bg-brand-50/50"
               }`}
             >
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-3">
                 <GripVertical
                   className={`w-4 h-4 shrink-0 transition-colors ${activeSectionId === s.id ? "text-white/40" : "text-gray-300 group-hover:text-brand/40"}`}
                 />
-                <span className="truncate">{s.name}</span>
+                <span className="text-left break-words">{s.name}</span>
               </div>
 
               <div className="flex items-center gap-2">
