@@ -126,6 +126,8 @@ export interface UseOrderHistoryReturn {
   query: {
     orders: Order[] | undefined;
     isLoading: boolean;
+    hasNextPage?: boolean;
+    isFetchingNextPage?: boolean;
   };
   state: {
     refreshing: boolean;
@@ -138,6 +140,7 @@ export interface UseOrderHistoryReturn {
     handleTrack: (orderId: string) => void;
     handleReview: (order: Order) => void;
     closeReviewModal: () => void;
+    fetchNextPage?: () => void;
   };
   router: {
     navigateHome: () => void;
