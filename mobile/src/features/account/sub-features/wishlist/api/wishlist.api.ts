@@ -1,15 +1,23 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@src/config/axios";
 import type { ApiResponse } from "@src/types/api.types";
 import type { Store } from "@src/features/stores/types/store.types";
 
 // ─── Get Wishlist ─────────────────────────────────────────────
 export const useWishlist = () => {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["wishlist"],
-    queryFn: async () => {
-      const res = await api.get<ApiResponse<{ store: Store }[]>>("/wishlist");
+    initialPageParam: 1,
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.get<ApiResponse<{ wishlist: { store: Store }[], pagination: any }>>("/wishlist", {
+        params: { page: pageParam, limit: 20 },
+      });
       return res.data.data;
+    },
+    getNextPageParam: (lastPage) => {
+      if (!lastPage?.pagination) return undefined;
+      const { page, totalPages } = lastPage.pagination;
+      return page < totalPages ? page + 1 : undefined;
     },
   });
 };
