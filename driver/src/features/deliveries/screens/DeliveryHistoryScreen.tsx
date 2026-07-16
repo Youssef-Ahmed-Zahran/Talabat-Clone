@@ -5,7 +5,6 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
-  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -67,9 +66,8 @@ export default function DeliveryHistoryScreen() {
           />
         }
         renderItem={({ item }) => (
-          <TouchableOpacity
+          <View
             className="bg-surface rounded-2xl p-4 mb-3 border border-border flex-row items-center"
-            activeOpacity={0.8}
           >
             <View className="w-10 h-10 rounded-full bg-successLight items-center justify-center mr-3">
               <Ionicons
@@ -101,7 +99,7 @@ export default function DeliveryHistoryScreen() {
                 </Text>
               )}
             </View>
-          </TouchableOpacity>
+          </View>
         )}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-20">
