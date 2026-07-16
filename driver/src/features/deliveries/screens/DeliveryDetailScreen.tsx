@@ -26,51 +26,7 @@ import { ChatSheet } from "../components/ChatSheet";
 import { useUIStore } from "@store/uiStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { HOME_KEYS } from "@features/home/api/home.api";
-
-const NEXT_STATUS: Record<
-  string,
-  { label: string; next: DeliveryStatus; icon: string; color: string }
-> = {
-  CONFIRMED: {
-    label: "Arrived at Store",
-    next: "READY_FOR_PICKUP",
-    icon: "storefront-outline",
-    color: COLORS.primary,
-  },
-  PREPARING: {
-    label: "Arrived at Store",
-    next: "READY_FOR_PICKUP",
-    icon: "storefront-outline",
-    color: COLORS.primary,
-  },
-  READY_FOR_PICKUP: {
-    label: "Picked Up Order",
-    next: "PICKED_UP",
-    icon: "bag-check-outline",
-    color: COLORS.primary,
-  },
-  PICKED_UP: {
-    label: "Start Delivery",
-    next: "ON_THE_WAY",
-    icon: "navigate-outline",
-    color: "#3B82F6",
-  },
-  ON_THE_WAY: {
-    label: "Confirm Delivered",
-    next: "DELIVERED",
-    icon: "flag-outline",
-    color: COLORS.success,
-  },
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  CONFIRMED: "🏍️ Heading to store",
-  PREPARING: "👨‍🍳 Store is preparing",
-  READY_FOR_PICKUP: "📦 Ready for pickup",
-  PICKED_UP: "🛵 On the way",
-  ON_THE_WAY: "🚀 On the way",
-  DELIVERED: "✅ Delivered",
-};
+import { NEXT_STATUS, STATUS_LABEL } from "../components/constants";
 
 export default function DeliveryDetailScreen() {
   const router = useRouter();
@@ -174,13 +130,17 @@ export default function DeliveryDetailScreen() {
 
       // Ping server every 15s via socket
       pingInterval.current = setInterval(async () => {
-        const loc = await Location.getLastKnownPositionAsync();
-        if (!loc) return;
-        trackingSocket.emit("tracking:driver_ping", {
-          orderId: order.id,
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-        });
+        try {
+          const loc = await Location.getLastKnownPositionAsync();
+          if (!loc) return;
+          trackingSocket.emit("tracking:driver_ping", {
+            orderId: order.id,
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          });
+        } catch (err) {
+          console.warn("[Location] ping interval failed:", err);
+        }
       }, 15_000);
     })();
 
@@ -330,11 +290,11 @@ export default function DeliveryDetailScreen() {
       </View>
 
       {/* Map */}
-      <View className="h-72">
+      <View className="h-96">
         <MapView
           ref={mapRef}
           provider={PROVIDER_DEFAULT}
-          className="flex-1"
+          style={{ flex: 1 }}
           initialRegion={{
             latitude: storeCoords?.latitude ?? 30.0444,
             longitude: storeCoords?.longitude ?? 31.2357,
