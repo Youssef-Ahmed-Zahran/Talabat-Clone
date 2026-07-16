@@ -45,7 +45,7 @@ export function useHome(): UseHomeReturn {
     refetch: refetchStores,
   } = useNearbyStores(selectedLatitude, selectedLongitude);
 
-  const stores = nearbyData?.stores ?? [];
+  const stores = nearbyData?.pages?.flatMap((page) => page.stores || []) ?? [];
 
   const currentStatus =
     tracking?.status ||
