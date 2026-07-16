@@ -1,6 +1,6 @@
 import prisma from "../config/db.js";
 import { driverRoom, orderRoom } from "../config/socket.js";
-import { emitToUser, emitToDriver } from "./notifications.socket.js";
+import { emitToUser, emitToDriver, emitToOwner, emitToAdmins } from "./notifications.socket.js";
 import { emitDriverAssigned } from "./tracking.socket.js";
 
 // ─── Haversine distance (km) ──────────────────────────────────────────────────
@@ -198,24 +198,47 @@ export const dispatchToNearestDriver = async (io, orderId, store, userAddress, e
         return null;
     }
 
-    // ── 5. Filter out drivers with no GPS or beyond the dispatch radius ───────
+    // ── 5. Separate drivers into GPS-equipped (within radius) vs no-GPS ─────────
+    // Drivers without GPS are NOT discarded — they are used as a fallback
+    // so that a zone-matched driver who hasn't sent a location ping yet
+    // still receives the dispatch notification.
     const storeLat = Number(store.latitude);
     const storeLng = Number(store.longitude);
 
-    const reachableDrivers = availableDrivers.filter((d) => {
+    const reachableDrivers = [];   // Have GPS + within MAX_DISPATCH_RADIUS_KM
+    const noGpsDrivers = [];       // Online & in-zone but no GPS fix yet
+
+    for (const d of availableDrivers) {
         if (d.latitude === null || d.longitude === null) {
-            console.log(`[Dispatch] Skipping driver ${d.id} — no live GPS.`);
-            return false;
+            console.log(`[Dispatch] Driver ${d.id} has no live GPS — kept as fallback.`);
+            noGpsDrivers.push(d);
+            continue;
         }
         const dist = haversine(Number(d.latitude), Number(d.longitude), storeLat, storeLng);
         if (dist > MAX_DISPATCH_RADIUS_KM) {
-            console.log(`[Dispatch] Skipping driver ${d.id} — ${dist.toFixed(1)} km from store (limit: ${MAX_DISPATCH_RADIUS_KM} km).`);
-            return false;
+            console.log(`[Dispatch] Driver ${d.id} is ${dist.toFixed(1)} km from store (limit: ${MAX_DISPATCH_RADIUS_KM} km) — skipped.`);
+            continue;
         }
-        return true;
-    });
+        reachableDrivers.push({ ...d, _distKm: dist });
+    }
 
-    if (reachableDrivers.length === 0) {
+    // Sort GPS-equipped drivers by distance (closest first)
+    reachableDrivers.sort((a, b) => a._distKm - b._distKm);
+
+    let nearestDriver;
+    let distanceKm;
+
+    if (reachableDrivers.length > 0) {
+        nearestDriver = reachableDrivers[0];
+        distanceKm = reachableDrivers[0]._distKm.toFixed(2);
+        console.log(`[Dispatch] Nearest driver (GPS): ${nearestDriver.id} (${distanceKm} km from store)`);
+    } else if (noGpsDrivers.length > 0) {
+        // Fallback: dispatch to a zone-matched driver without GPS
+        // (they are online & approved; they just haven't sent a location ping yet)
+        nearestDriver = noGpsDrivers[0];
+        distanceKm = null;
+        console.log(`[Dispatch] No GPS-equipped drivers found — dispatching to no-GPS driver ${nearestDriver.id} as fallback.`);
+    } else {
         console.log(`[Dispatch] No reachable drivers within ${MAX_DISPATCH_RADIUS_KM} km for order ${orderId}`);
         await prisma.liveTracking.upsert({
             where: { orderId },
@@ -224,17 +247,6 @@ export const dispatchToNearestDriver = async (io, orderId, store, userAddress, e
         });
         return null;
     }
-
-    // Sort by distance to store (closest first)
-    reachableDrivers.sort((a, b) =>
-        haversine(Number(a.latitude), Number(a.longitude), storeLat, storeLng) -
-        haversine(Number(b.latitude), Number(b.longitude), storeLat, storeLng)
-    );
-
-    const nearestDriver = reachableDrivers[0];
-    const distanceKm = haversine(Number(nearestDriver.latitude), Number(nearestDriver.longitude), storeLat, storeLng).toFixed(2);
-
-    console.log(`[Dispatch] Nearest driver: ${nearestDriver.id} (${distanceKm} km from store)`);
 
     // 3. Create or update the assignment
     const existingAssignment = await prisma.orderDriverAssignment.findUnique({
@@ -455,6 +467,7 @@ export const acceptAssignment = async (io, orderId, driverId) => {
                 id: true,
                 userId: true,
                 status: true,
+                storeId: true,
                 store: { select: { name: true } },
             },
         });
@@ -478,6 +491,28 @@ export const acceptAssignment = async (io, orderId, driverId) => {
             type: "DRIVER_ACCEPTED",
             driver: driverInfo,
         },
+    });
+
+    // Notify the store owner
+    const storeOwner = await prisma.ownerAccount.findFirst({
+        where: { storeId: order.storeId, isActive: true }
+    });
+
+    if (storeOwner) {
+        await emitToOwner(io, storeOwner.id, {
+            title: "Driver Assigned 🛵",
+            body: `${driverInfo.firstName} has accepted order #${orderId}.`,
+            type: "ORDER_UPDATE",
+            relatedOrderId: orderId,
+        });
+    }
+
+    // Notify admins
+    emitToAdmins(io, {
+        title: "Driver Assigned 🛵",
+        body: `Driver ${driverInfo.firstName} accepted order #${orderId}.`,
+        type: "ORDER_UPDATE",
+        meta: { orderId }
     });
 
     // 7. Emit tracking event to order room
