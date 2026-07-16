@@ -1,19 +1,10 @@
-import { useDeliveryHistoryQuery } from "../api/deliveries.api";
-
-export interface EarningRow {
-  id: string;
-  orderId: string;
-  baseAmount: number;
-  tipAmount: number;
-  totalAmount: number;
-  createdAt: string;
-  order: { id: string; createdAt: string };
-}
+import { useDeliveryHistoryQuery } from '../api/deliveries.api';
+import type { Earning } from '@features/earnings/types/earnings.types';
 
 export function useDeliveryHistoryScreen() {
   const historyQuery = useDeliveryHistoryQuery();
 
-  const earnings: EarningRow[] = historyQuery.data?.pages.flatMap((page) => page.earnings) ?? [];
+  const earnings: Earning[] = historyQuery.data?.pages.flatMap((page) => page.earnings) ?? [];
   const summary = historyQuery.data?.pages[0]?.summary ?? {};
   const pagination = historyQuery.data?.pages[0]?.pagination ?? {};
 
@@ -35,4 +26,3 @@ export function useDeliveryHistoryScreen() {
     },
   };
 }
-
