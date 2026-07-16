@@ -61,6 +61,29 @@ export function LocationStep() {
           Detect My Current Position
         </button>
 
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+              Latitude *
+            </label>
+            <input
+              {...register("latitude")}
+              placeholder="e.g. 30.0444"
+              className={`w-full px-4 py-3 bg-gray-50 border ${errors.latitude ? "border-red-500" : "border-gray-100"} rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all`}
+            />
+          </div>
+          <div>
+            <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
+              Longitude *
+            </label>
+            <input
+              {...register("longitude")}
+              placeholder="e.g. 31.2357"
+              className={`w-full px-4 py-3 bg-gray-50 border ${errors.longitude ? "border-red-500" : "border-gray-100"} rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all`}
+            />
+          </div>
+        </div>
+
         <div>
           <label className="block text-[13px] font-bold text-gray-700 mb-1.5 ml-1">
             Full Street Address *
