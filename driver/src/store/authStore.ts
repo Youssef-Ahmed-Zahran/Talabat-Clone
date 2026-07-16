@@ -39,7 +39,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     set((state) => {
       if (!state.driver) return {};
       const updated = { ...state.driver, ...driverData };
-      AsyncStorage.setItem('driver_user', JSON.stringify(updated)).catch(() => {});
+      AsyncStorage.setItem('driver_user', JSON.stringify(updated)).catch((err) => {
+        console.warn('[AuthStore] Failed to persist driver update to AsyncStorage:', err);
+      });
       return { driver: updated };
     });
   },
