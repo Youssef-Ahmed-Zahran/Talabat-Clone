@@ -296,10 +296,10 @@ export default function ProductsScreen() {
             {/* Details (right) */}
             <View className="flex-1 justify-center pt-1">
               <Text className="text-[19px] font-extrabold text-textPrimary text-left mb-0.5">
-                {query.store?.name || "El Wahaty"}
+                {query.store?.name || "Demo Place"}
               </Text>
               <Text className="text-xs font-medium text-textSecondary text-left mb-1.5">
-                foul & falafel
+                {query.store?.mainCategory?.name || "food"}
               </Text>
 
               {/* Rating */}
