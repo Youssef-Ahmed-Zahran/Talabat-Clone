@@ -105,7 +105,13 @@ function socketAuthMiddleware(...allowedRoles) {
 
             if (!raw && socket.handshake.headers?.cookie) {
                 const cookies = parse(socket.handshake.headers.cookie);
-                raw = cookies.jwt;
+                raw =
+                    cookies.jwt_owner ||
+                    cookies.jwt_admin ||
+                    cookies.jwt_user ||
+                    cookies.jwt_driver ||
+                    cookies.jwt ||
+                    null;
             }
 
             if (!raw) {
