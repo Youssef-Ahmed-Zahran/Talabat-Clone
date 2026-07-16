@@ -25,7 +25,7 @@ export default function OrderHistoryScreen() {
         )}
       </View>
 
-      {query.isLoading && !query.orders ? (
+      {query.isLoading ? (
         <Loader message="Loading your orders..." />
       ) : (
         <FlatList
@@ -46,6 +46,19 @@ export default function OrderHistoryScreen() {
           showsVerticalScrollIndicator={false}
           onRefresh={actions.onRefresh}
           refreshing={state.refreshing}
+          onEndReached={() => {
+            if (
+              query.hasNextPage &&
+              !query.isFetchingNextPage &&
+              actions.fetchNextPage
+            ) {
+              actions.fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            query.isFetchingNextPage ? <Loader fullScreen={false} /> : null
+          }
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center py-20">
               <View className="w-20 h-20 bg-[#F5F5F5] rounded-full items-center justify-center mb-4">
