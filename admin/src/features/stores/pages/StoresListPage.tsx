@@ -141,7 +141,10 @@ export default function StoresListPage() {
             stores={query.stores}
             onToggleStatus={actions.handleToggle}
             onEdit={modal.openEditStore}
+            onDelete={actions.handleDelete}
             isToggling={actions.isToggling}
+            isDeleting={actions.isDeleting}
+            deletingId={actions.deletingId}
             isLoading={query.isLoading || query.isFetching}
           />
           {query.pagination && (
