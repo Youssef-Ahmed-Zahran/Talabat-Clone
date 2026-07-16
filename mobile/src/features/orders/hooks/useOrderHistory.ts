@@ -13,7 +13,8 @@ export function useOrderHistory(): UseOrderHistoryReturn {
   const router = useRouter();
   const qc = useQueryClient();
 
-  const { data: orders, isLoading, refetch } = useMyOrders();
+  const { data: ordersData, isLoading, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useMyOrders();
+  const orders = ordersData?.pages.flatMap((page: any) => page.orders || []) || [];
   const { mutate: reorder } = useReorder();
 
   const [reorderingId, setReorderingId] = useState<string | null>(null);
@@ -102,6 +103,8 @@ export function useOrderHistory(): UseOrderHistoryReturn {
     query: {
       orders,
       isLoading,
+      hasNextPage,
+      isFetchingNextPage,
     },
     state: {
       refreshing,
@@ -114,6 +117,7 @@ export function useOrderHistory(): UseOrderHistoryReturn {
       handleTrack,
       handleReview,
       closeReviewModal,
+      fetchNextPage,
     },
     router: {
       navigateHome,
