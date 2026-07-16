@@ -32,40 +32,35 @@ export function EarningRow({ item }: { item: Earning }) {
         </Text>
       </View>
 
-      {/* Detail row */}
-      {(tip > 0 || !item.paidOut) && (
-        <View className="flex-row items-center px-4 py-2 border-t border-border gap-4 bg-surfaceAlt">
-          {tip > 0 && (
-            <View className="flex-row items-center gap-1">
-              <Text className="text-xs text-textSecondary">Base:</Text>
-              <Text className="text-xs font-semibold text-textPrimary">
-                {base.toFixed(2)} EGP
-              </Text>
-              <Text className="text-xs text-textTertiary mx-1">·</Text>
-              <Text className="text-xs text-textSecondary">Tip:</Text>
-              <Text className="text-xs font-semibold text-success">
-                +{tip.toFixed(2)} EGP
-              </Text>
-            </View>
-          )}
-          {!item.paidOut && (
-            <View className="ml-auto flex-row items-center gap-1 bg-warningLight px-2 py-0.5 rounded-full">
-              <View className="w-1.5 h-1.5 rounded-full bg-warning" />
-              <Text className="text-[10px] font-bold text-warning">
-                Pending payout
-              </Text>
-            </View>
-          )}
-          {item.paidOut && (
-            <View className="ml-auto flex-row items-center gap-1 bg-successLight px-2 py-0.5 rounded-full">
-              <View className="w-1.5 h-1.5 rounded-full bg-success" />
-              <Text className="text-[10px] font-bold text-success">
-                Paid out
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
+      {/* Detail row — always visible so the payout badge is never hidden */}
+      <View className="flex-row items-center px-4 py-2 border-t border-border gap-4 bg-surfaceAlt">
+        {tip > 0 && (
+          <View className="flex-row items-center gap-1">
+            <Text className="text-xs text-textSecondary">Base:</Text>
+            <Text className="text-xs font-semibold text-textPrimary">
+              {base.toFixed(2)} EGP
+            </Text>
+            <Text className="text-xs text-textTertiary mx-1">·</Text>
+            <Text className="text-xs text-textSecondary">Tip:</Text>
+            <Text className="text-xs font-semibold text-success">
+              +{tip.toFixed(2)} EGP
+            </Text>
+          </View>
+        )}
+        {!item.paidOut ? (
+          <View className="ml-auto flex-row items-center gap-1 bg-warningLight px-2 py-0.5 rounded-full">
+            <View className="w-1.5 h-1.5 rounded-full bg-warning" />
+            <Text className="text-[10px] font-bold text-warning">
+              Pending payout
+            </Text>
+          </View>
+        ) : (
+          <View className="ml-auto flex-row items-center gap-1 bg-successLight px-2 py-0.5 rounded-full">
+            <View className="w-1.5 h-1.5 rounded-full bg-success" />
+            <Text className="text-[10px] font-bold text-success">Paid out</Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
