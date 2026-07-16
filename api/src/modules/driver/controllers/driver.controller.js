@@ -355,12 +355,23 @@ export const toggleOnline = async (req, res, next) => {
         const newOnline = !driver.isOnline;
         const newStatus = newOnline ? "ONLINE" : "OFFLINE";
 
+        // Save GPS coordinates when going online so dispatch can find the driver
+        const updateData = { isOnline: newOnline, status: newStatus };
+        if (newOnline) {
+            const { latitude, longitude } = req.body;
+            if (latitude !== undefined && longitude !== undefined) {
+                updateData.latitude = latitude;
+                updateData.longitude = longitude;
+            }
+        }
+
         await prisma.driver.update({
             where: { id: driver.id },
-            data: { isOnline: newOnline, status: newStatus },
+            data: updateData,
         });
 
         res.json(new ApiResponse(200, { isOnline: newOnline, status: newStatus }, `Driver is now ${newStatus}.`));
+
     } catch (err) {
         next(err);
     }
@@ -610,7 +621,7 @@ export const updateDeliveryStatus = async (req, res, next) => {
             include: {
                 driverAssign: true,
                 paymentMethod: true,
-                store: { select: { name: true } }
+                store: { select: { name: true } },
             }
         });
 
@@ -761,7 +772,7 @@ export const updateDeliveryStatus = async (req, res, next) => {
                 liveStatus: liveStatusMap[status]
             });
 
-            const { emitToUser } = await import("../../../sockets/notifications.socket.js");
+            const { emitToUser, emitToOwner, emitToAdmins } = await import("../../../sockets/notifications.socket.js");
             const userNotifs = {
                 READY_FOR_PICKUP: { title: "Driver at store 📍", body: "Your driver has arrived at the store and is picking up your order." },
                 PICKED_UP: { title: "Picked up! 🚀", body: "Your driver has picked up your order and is heading to you." },
@@ -772,6 +783,24 @@ export const updateDeliveryStatus = async (req, res, next) => {
                     ...userNotifs[status],
                     type: "ORDER_UPDATE",
                     relatedOrderId: orderId
+                });
+
+                const storeOwner = await prisma.ownerAccount.findFirst({
+                    where: { storeId: order.storeId, isActive: true }
+                });
+                
+                if (storeOwner) {
+                    await emitToOwner(io, storeOwner.id, {
+                        ...userNotifs[status],
+                        type: "ORDER_UPDATE",
+                        relatedOrderId: orderId
+                    });
+                }
+
+                emitToAdmins(io, {
+                    ...userNotifs[status],
+                    type: "ORDER_UPDATE",
+                    meta: { orderId }
                 });
             }
         } catch (err) {
