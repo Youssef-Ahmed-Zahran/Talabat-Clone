@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
+import { useStoreDetails } from "../api/store.api";
 import {
   storeSchema,
   type StoreFormValues,
@@ -39,6 +40,10 @@ export function useStoreForm(isOpen: boolean, editingStore: Store | null) {
   const [currentStep, setCurrentStep] = useState(1);
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
 
+  // Fetch full details if editing, since list payload might not have storeZones or categoryId
+  const { data: fullStore } = useStoreDetails(editingStore?.id ? String(editingStore.id) : undefined);
+  const activeStore = fullStore || editingStore;
+
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen);
     if (isOpen) {
@@ -54,45 +59,47 @@ export function useStoreForm(isOpen: boolean, editingStore: Store | null) {
 
   useEffect(() => {
     if (isOpen) {
-      if (editingStore) {
+      if (activeStore) {
         methods.reset({
-          name: editingStore.name || "",
-          description: editingStore.description || "",
-          legalName: editingStore.legalName || "",
-          phone: editingStore.phone || "",
-          email: editingStore.email || "",
-          address: editingStore.address || "",
-          latitude: editingStore.latitude || "30.0444",
-          longitude: editingStore.longitude || "31.2357",
-          zoneId: editingStore.storeZones?.[0]?.zoneId ?? "",
-          mainCategoryId: editingStore.categoryId
-            ? String(editingStore.categoryId)
-            : "",
-          storeType: editingStore.storeType || "",
+          name: activeStore.name || "",
+          description: activeStore.description || "",
+          legalName: activeStore.legalName || "",
+          phone: activeStore.phone || "",
+          email: activeStore.email || "",
+          address: activeStore.address || "",
+          latitude: activeStore.latitude || "30.0444",
+          longitude: activeStore.longitude || "31.2357",
+          zoneId: activeStore.storeZones?.[0]?.zoneId ?? "",
+          mainCategoryId: activeStore.categoryId
+            ? String(activeStore.categoryId)
+            : activeStore.mainCategory?.id
+              ? String(activeStore.mainCategory.id)
+              : "",
+          storeType: activeStore.storeType || "",
           deliveryType:
-            (editingStore.deliveryType as StoreFormValues["deliveryType"]) ||
+            (activeStore.deliveryType as StoreFormValues["deliveryType"]) ||
             "TALABAT_DELIVERY",
-          openTime: editingStore.openTime || "09:00",
-          closeTime: editingStore.closeTime || "22:00",
-          deliveryTimeMinutes: editingStore.deliveryTimeMinutes || 30,
-          minimumOrderCost: Number(editingStore.minimumOrderCost) || 50,
-          deliveryFees: Number(editingStore.deliveryFees) || 15,
-          allowPreorder: editingStore.allowPreorder ?? true,
+          openTime: activeStore.openTime || "09:00",
+          closeTime: activeStore.closeTime || "22:00",
+          deliveryTimeMinutes: activeStore.deliveryTimeMinutes || 30,
+          minimumOrderCost: Number(activeStore.minimumOrderCost) || 50,
+          deliveryFees: Number(activeStore.deliveryFees) || 15,
+          allowPreorder: activeStore.allowPreorder ?? true,
           ownerEmail: "",
           ownerPassword: "",
-          logoUrl: editingStore.logoUrl || "",
-          coverImage: editingStore.coverUrl || editingStore.coverImage || "",
+          logoUrl: activeStore.logoUrl || "",
+          coverImage: activeStore.coverUrl || activeStore.coverImage || "",
           maxDeliveryDistanceKm:
-            Number(editingStore.maxDeliveryDistanceKm) || 15,
+            Number(activeStore.maxDeliveryDistanceKm) || 15,
           outsideZoneDeliveryFees:
-            Number(editingStore.outsideZoneDeliveryFees) || 50,
-          commissionRate: Number(editingStore.commissionRate) || 15,
+            Number(activeStore.outsideZoneDeliveryFees) || 50,
+          commissionRate: Number(activeStore.commissionRate) || 15,
         });
       } else {
         methods.reset(defaultValues);
       }
     }
-  }, [isOpen, editingStore, methods]);
+  }, [isOpen, activeStore, methods]);
 
 
   const handleNext = async () => {
