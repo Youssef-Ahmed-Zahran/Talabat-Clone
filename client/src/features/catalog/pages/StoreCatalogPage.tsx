@@ -122,7 +122,7 @@ export default function StoreCatalogPage() {
           </div>
 
           {/* ── Products Grid with Drag-and-Drop ───────────────────────── */}
-          {query.isLoading ? (
+          {query.isLoading || query.isFetching ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-6 h-6 text-brand animate-spin" />
             </div>
