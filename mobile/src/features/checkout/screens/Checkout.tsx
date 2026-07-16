@@ -37,34 +37,36 @@ export default function CheckoutScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-6">
-          <Text className="text-base font-bold text-textPrimary mb-3">
-            Delivery Address
-          </Text>
-          <View className="gap-y-2">
-            {(query.addresses || []).map((a) => (
-              <AddressOption
-                key={a.id}
-                address={a}
-                isSelected={state.selectedAddress === a.id}
-                onSelect={state.setSelectedAddress}
-              />
-            ))}
-            {(!query.addresses || query.addresses.length === 0) && (
-              <TouchableOpacity
-                className="bg-white p-4 rounded-xl border border-dashed border-primary/40 items-center flex-row justify-center"
-                onPress={router.navigateToAddresses}
-              >
-                <Ionicons
-                  name="add-circle-outline"
-                  size={20}
-                  color={COLORS.primary}
-                />
-                <Text className="text-primary font-semibold ml-1.5">
-                  Add New Address
-                </Text>
-              </TouchableOpacity>
-            )}
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-base font-bold text-textPrimary">
+              Delivery Address
+            </Text>
+            <TouchableOpacity onPress={router.navigateToAddresses}>
+              <Text className="text-sm font-semibold text-primary">Change</Text>
+            </TouchableOpacity>
           </View>
+
+          {query.selectedAddressObj ? (
+            <AddressOption
+              address={query.selectedAddressObj}
+              isSelected={true}
+              onSelect={() => {}}
+            />
+          ) : (
+            <TouchableOpacity
+              className="bg-white p-4 rounded-xl border border-dashed border-primary/40 items-center flex-row justify-center"
+              onPress={router.navigateToAddresses}
+            >
+              <Ionicons
+                name="add-circle-outline"
+                size={20}
+                color={COLORS.primary}
+              />
+              <Text className="text-primary font-semibold ml-1.5">
+                Add New Address
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View className="mb-6">
