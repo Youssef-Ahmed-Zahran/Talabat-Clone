@@ -32,8 +32,9 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      await AsyncStorage.removeItem('driver_token');
-      await AsyncStorage.removeItem('driver_user');
+      // Import lazily to avoid circular dependency
+      const { useAuthStore } = await import('@store/authStore');
+      await useAuthStore.getState().logout();
     }
     return Promise.reject(error);
   }
