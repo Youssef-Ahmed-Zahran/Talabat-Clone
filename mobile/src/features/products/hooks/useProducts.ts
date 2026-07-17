@@ -28,6 +28,18 @@ export function useProducts(): UseProductsReturn {
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refetchStore(), refetchSections()]);
+    } catch (error) {
+      console.error("[useProducts] Error refreshing data:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchStore, refetchSections]);
 
   const navigateBack = useCallback(() => router.back(), [router]);
   const closeModal = useCallback(() => setIsModalVisible(false), []);
@@ -102,6 +114,8 @@ export function useProducts(): UseProductsReturn {
     state: {
       selectedProduct,
       isModalVisible,
+      refreshing,
+      onRefresh,
     },
     actions: {
       handleAddToCart,
