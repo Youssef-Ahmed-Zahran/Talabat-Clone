@@ -7,11 +7,23 @@ import {
 } from "../api/wishlist.api";
 import { Alert } from "react-native";
 import { getErrorMessage } from "@src/utils/error";
+import { useLocationStore } from "@src/store/locationStore";
 
 export function useWishlistScreen() {
   const router = useRouter();
-  const { data: wishlistData, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useWishlist();
-  const wishlist = wishlistData?.pages.flatMap((page: any) => page.wishlist || []) || [];
+  const { selectedLatitude, selectedLongitude } = useLocationStore();
+
+  const {
+    data: wishlistData,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useWishlist(selectedLatitude, selectedLongitude);
+
+  const wishlist =
+    wishlistData?.pages.flatMap((page: any) => page.wishlist || []) || [];
+
   const clearWishlistApi = useClearWishlist();
   const toggleWishlistApi = useToggleWishlist();
 
@@ -74,3 +86,4 @@ export function useWishlistScreen() {
     },
   };
 }
+
