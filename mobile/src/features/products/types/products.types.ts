@@ -32,6 +32,8 @@ export interface UseProductsReturn {
   state: {
     selectedProduct: Product | null;
     isModalVisible: boolean;
+    refreshing: boolean;
+    onRefresh: () => Promise<void>;
   };
   actions: {
     handleAddToCart: (product: Product) => void;
