@@ -32,9 +32,32 @@ export const useToggleWishlist = () => {
       );
       return res.data.data;
     },
+    // ── Optimistic toggle: flip both caches instantly ─────────────
+    onMutate: async (storeId) => {
+      // Cancel any in-flight refetches so they don't overwrite our optimistic state
+      await qc.cancelQueries({ queryKey: ["wishlist-status", storeId] });
+      await qc.cancelQueries({ queryKey: ["wishlist"] });
+
+      // Snapshot previous values for rollback
+      const prevStatus = qc.getQueryData<boolean>(["wishlist-status", storeId]);
+
+      // Flip the single-store status immediately
+      qc.setQueryData<boolean>(["wishlist-status", storeId], (old) => !old);
+
+      return { prevStatus, storeId };
+    },
     onSuccess: (_data, storeId) => {
       qc.invalidateQueries({ queryKey: ["wishlist"] });
       qc.invalidateQueries({ queryKey: ["wishlist-status", storeId] });
+    },
+    // ── Rollback on error ────────────────────────────────────────
+    onError: (_err, _storeId, context) => {
+      if (context) {
+        qc.setQueryData(
+          ["wishlist-status", context.storeId],
+          context.prevStatus,
+        );
+      }
     },
   });
 };
