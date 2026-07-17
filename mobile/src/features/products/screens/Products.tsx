@@ -63,16 +63,6 @@ export default function ProductsScreen() {
   const [deliveryInfoModalVisible, setDeliveryInfoModalVisible] =
     useState(false);
 
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await query.refetch();
-    } finally {
-      setRefreshing(false);
-    }
-  }, [query]);
-
   const isTalabatDelivery =
     query.store?.deliveryType !== "STORE" &&
     query.store?.deliveryType !== "STORE_DELIVERY";
@@ -167,22 +157,30 @@ export default function ProductsScreen() {
 
   return (
     <View className="flex-1 bg-[#F9F9F9]">
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
-      {/* Top Floating Controls */}
-      <View className="absolute top-12 left-4 right-4 z-20 flex-row justify-between items-center">
-        {/* Left actions: Back */}
-        <TouchableOpacity
-          onPress={() => router.navigateBack()}
-          className="w-10 h-10 rounded-full bg-white/90 items-center justify-center shadow-md"
-        >
-          <Ionicons name="arrow-back" size={18} color={COLORS.textPrimary} />
-        </TouchableOpacity>
+      {/* Top Solid Header (Like Home Page) */}
+      <View className="bg-white pt-14 pb-4 px-4 z-20 flex-row justify-between items-center shadow-sm border-b border-border/30">
+        {/* Left actions: Back & Title */}
+        <View className="flex-row items-center gap-3 flex-1">
+          <TouchableOpacity
+            onPress={() => router.navigateBack()}
+            className="w-10 h-10 rounded-full bg-[#F5F5F5] items-center justify-center"
+          >
+            <Ionicons name="arrow-back" size={18} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+          <Text
+            className="text-lg font-bold text-textPrimary flex-shrink"
+            numberOfLines={1}
+          >
+            {query.store?.name || "Store"}
+          </Text>
+        </View>
 
         {/* Right actions: Heart, Share, Search */}
         <View className="flex-row gap-2">
           <TouchableOpacity
-            className="w-10 h-10 rounded-full bg-white items-center justify-center shadow-sm"
+            className="w-10 h-10 rounded-full bg-[#F5F5F5] items-center justify-center"
             onPress={() => {
               actions.toggleWishlist();
             }}
@@ -193,7 +191,7 @@ export default function ProductsScreen() {
               color={query.isWishlisted ? COLORS.primary : COLORS.textPrimary}
             />
           </TouchableOpacity>
-          <TouchableOpacity className="w-10 h-10 rounded-full bg-white items-center justify-center shadow-sm">
+          <TouchableOpacity className="w-10 h-10 rounded-full bg-[#F5F5F5] items-center justify-center">
             <Ionicons
               name="share-outline"
               size={20}
@@ -201,7 +199,7 @@ export default function ProductsScreen() {
             />
           </TouchableOpacity>
           <TouchableOpacity
-            className="w-10 h-10 rounded-full bg-white items-center justify-center shadow-sm"
+            className="w-10 h-10 rounded-full bg-[#F5F5F5] items-center justify-center"
             onPress={() => expoRouter.push("/search")}
           >
             <Ionicons
@@ -240,11 +238,10 @@ export default function ProductsScreen() {
         }}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
+            refreshing={state.refreshing}
+            onRefresh={state.onRefresh}
             tintColor={COLORS.primary}
             colors={[COLORS.primary]}
-            progressViewOffset={50}
           />
         }
       >
