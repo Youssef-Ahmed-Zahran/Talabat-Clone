@@ -55,48 +55,67 @@ export default function WishlistScreen() {
         ListFooterComponent={
           query.isFetchingNextPage ? <Loader fullScreen={false} /> : null
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            className="flex-row items-center bg-white p-3 rounded-xl mb-2 border border-border/40"
-            onPress={() => router.navigateToStore(item.store.id)}
-            activeOpacity={0.8}
-          >
-            <View className="w-14 h-14 rounded-lg bg-[#F5F5F5] items-center justify-center overflow-hidden mr-3">
-              {item.store.logoUrl ? (
-                <Image
-                  source={{ uri: item.store.logoUrl }}
-                  className="w-full h-full"
-                />
-              ) : (
-                <Ionicons
-                  name="storefront-outline"
-                  size={24}
-                  color={COLORS.textTertiary}
-                />
-              )}
-            </View>
-            <View className="flex-1">
-              <Text
-                className="text-sm font-bold text-textPrimary"
-                numberOfLines={1}
-              >
-                {item.store.name}
-              </Text>
-              <View className="flex-row items-center mt-0.5">
-                <Ionicons name="star" size={12} color={COLORS.star} />
-                <Text className="text-xs font-semibold text-textSecondary ml-0.5">
-                  {Number(item.store.averageRating || 0).toFixed(1)}
-                </Text>
-              </View>
-            </View>
+        renderItem={({ item }) => {
+          const isAvailable = item.isAvailable !== false;
+          return (
             <TouchableOpacity
-              className="p-2"
-              onPress={() => actions.handleToggleWishlist(item.store.id)}
+              className="flex-row items-center bg-white p-3 rounded-xl mb-2 border border-border/40"
+              onPress={() =>
+                isAvailable && router.navigateToStore(item.store.id)
+              }
+              activeOpacity={isAvailable ? 0.8 : 1}
+              style={{ opacity: isAvailable ? 1 : 0.5 }}
             >
-              <Ionicons name="heart" size={20} color={COLORS.primary} />
+              <View className="w-14 h-14 rounded-lg bg-[#F5F5F5] items-center justify-center overflow-hidden mr-3">
+                {item.store.logoUrl ? (
+                  <Image
+                    source={{ uri: item.store.logoUrl }}
+                    className="w-full h-full"
+                  />
+                ) : (
+                  <Ionicons
+                    name="storefront-outline"
+                    size={24}
+                    color={COLORS.textTertiary}
+                  />
+                )}
+              </View>
+              <View className="flex-1">
+                <Text
+                  className="text-sm font-bold text-textPrimary"
+                  numberOfLines={1}
+                >
+                  {item.store.name}
+                </Text>
+                {!isAvailable ? (
+                  <View className="flex-row items-center mt-1">
+                    <Ionicons
+                      name="location-outline"
+                      size={12}
+                      color={COLORS.textTertiary}
+                    />
+                    <Text className="text-xs text-textTertiary ml-0.5">
+                      Unavailable in this area
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="flex-row items-center mt-0.5">
+                    <Ionicons name="star" size={12} color={COLORS.star} />
+                    <Text className="text-xs font-semibold text-textSecondary ml-0.5">
+                      {Number(item.store.averageRating || 0).toFixed(1)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity
+                className="p-2"
+                onPress={() => actions.handleToggleWishlist(item.store.id)}
+              >
+                <Ionicons name="heart" size={20} color={COLORS.primary} />
+              </TouchableOpacity>
             </TouchableOpacity>
-          </TouchableOpacity>
-        )}
+          );
+        }}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-16">
             <Ionicons
