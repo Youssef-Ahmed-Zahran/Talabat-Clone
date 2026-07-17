@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useCartStore } from "@src/store/cartStore";
@@ -7,7 +7,6 @@ import {
   useUpdateCartQuantity,
   useClearCart,
 } from "../api/cart.api";
-import type { CartItem } from "@src/features/cart/types/cart.types";
 import { UseCartReturn } from "../types/cart.types";
 export function useCartScreen(): UseCartReturn {
   const router = useRouter();
@@ -15,6 +14,11 @@ export function useCartScreen(): UseCartReturn {
   const removeItem = useRemoveCartItem();
   const updateQty = useUpdateCartQuantity();
   const clearCart = useClearCart();
+
+  // Per-item debounce: itemId → timer handle
+  const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // Per-item snapshot: captured BEFORE the first tap in a rapid sequence for correct rollback
+  const snapshots = useRef<Record<string, typeof items>>({});
 
   // Compute subtotal including option extras
   const subtotal = items.reduce((sum, i) => {
@@ -59,7 +63,38 @@ export function useCartScreen(): UseCartReturn {
         handleRemove(itemId);
         return;
       }
-      updateQty.mutate({ itemId, quantity });
+
+      const { items: currentItems, updateQuantityLocally, setCart, cartId: cId, storeId: sId } =
+        useCartStore.getState();
+
+      // 1. Save snapshot only on the FIRST tap of a rapid sequence
+      if (!debounceTimers.current[itemId]) {
+        snapshots.current[itemId] = currentItems;
+      }
+
+      // 2. Update UI instantly — no waiting for the network
+      updateQuantityLocally(itemId, quantity);
+
+      // 3. Reset the debounce timer for this specific item
+      clearTimeout(debounceTimers.current[itemId]);
+      debounceTimers.current[itemId] = setTimeout(() => {
+        const snapshot = snapshots.current[itemId];
+        delete debounceTimers.current[itemId];
+        delete snapshots.current[itemId];
+
+        // 4. Fire ONE request with the final quantity after 600ms of inactivity
+        updateQty.mutate(
+          { itemId, quantity },
+          {
+            onError: () => {
+              // 5. Rollback to the pre-sequence state on failure
+              if (snapshot && cId && sId) {
+                setCart(cId, sId, snapshot);
+              }
+            },
+          },
+        );
+      }, 600);
     },
     [updateQty, handleRemove],
   );
