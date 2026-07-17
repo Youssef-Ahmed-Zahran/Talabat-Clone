@@ -35,7 +35,8 @@ export function useStoresList(): UseStoresListReturn {
     selectedSubCategory,
   );
 
-  const { data: wishlistItems } = useWishlist();
+  const { data: wishlistItems } = useWishlist(selectedLatitude, selectedLongitude);
+
   const toggleWishlistApi = useToggleWishlist();
   // Local optimistic overrides: storeId → true (wishlisted) | false (not wishlisted)
   // Applied immediately on tap so the heart icon flips without waiting for the query to refetch
