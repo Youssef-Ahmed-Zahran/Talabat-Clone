@@ -62,6 +62,7 @@ export const useUpdateCartQuantity = () => {
       );
       return res.data.data;
     },
+    // Sync server truth after the debounced call resolves
     onSuccess: (cart) => {
       const { setCart } = useCartStore.getState();
       if (cart) {
