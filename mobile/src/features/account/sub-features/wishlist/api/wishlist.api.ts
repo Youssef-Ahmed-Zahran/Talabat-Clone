@@ -4,13 +4,17 @@ import type { ApiResponse } from "@src/types/api.types";
 import type { Store } from "@src/features/stores/types/store.types";
 
 // ─── Get Wishlist ─────────────────────────────────────────────
-export const useWishlist = () => {
+export const useWishlist = (lat?: number | null, lng?: number | null) => {
   return useInfiniteQuery({
-    queryKey: ["wishlist"],
+    queryKey: ["wishlist", lat ?? null, lng ?? null],
     initialPageParam: 1,
     queryFn: async ({ pageParam = 1 }) => {
-      const res = await api.get<ApiResponse<{ wishlist: { store: Store }[], pagination: any }>>("/wishlist", {
-        params: { page: pageParam, limit: 20 },
+      const res = await api.get<ApiResponse<{ wishlist: ({ store: Store; isAvailable: boolean })[], pagination: any }>>("/wishlist", {
+        params: {
+          page: pageParam,
+          limit: 20,
+          ...(lat != null && lng != null ? { lat, lng } : {}),
+        },
       });
       return res.data.data;
     },
@@ -21,6 +25,7 @@ export const useWishlist = () => {
     },
   });
 };
+
 
 // ─── Toggle Wishlist ──────────────────────────────────────────
 export const useToggleWishlist = () => {
