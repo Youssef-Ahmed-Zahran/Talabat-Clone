@@ -37,11 +37,23 @@ export function useStoresList(): UseStoresListReturn {
 
   const { data: wishlistItems } = useWishlist();
   const toggleWishlistApi = useToggleWishlist();
+  // Local optimistic overrides: storeId → true (wishlisted) | false (not wishlisted)
+  // Applied immediately on tap so the heart icon flips without waiting for the query to refetch
+  const [optimisticOverrides, setOptimisticOverrides] = useState<
+    Record<string, boolean>
+  >({});
+
   const wishlistedStoreIds = new Set(
     wishlistItems?.pages.flatMap((page) =>
       page.wishlist.map((item) => item.store.id),
     ) || [],
   );
+
+  // Apply optimistic overrides on top of the real set
+  Object.entries(optimisticOverrides).forEach(([id, wishlisted]) => {
+    if (wishlisted) wishlistedStoreIds.add(id);
+    else wishlistedStoreIds.delete(id);
+  });
 
   const stores = nearbyData?.pages.flatMap((page) => page.stores) || [];
   const zone = nearbyData?.pages[0]?.zone ?? null;
@@ -58,9 +70,31 @@ export function useStoresList(): UseStoresListReturn {
 
   const toggleWishlist = useCallback(
     (storeId: string) => {
-      toggleWishlistApi.mutate(storeId);
+      const currentlyWishlisted = wishlistedStoreIds.has(storeId);
+
+      // 1. Flip locally — instant heart toggle ✅
+      setOptimisticOverrides((prev) => ({
+        ...prev,
+        [storeId]: !currentlyWishlisted,
+      }));
+
+      toggleWishlistApi.mutate(storeId, {
+        // 2. Clear override once server truth syncs back
+        onSettled: () =>
+          setOptimisticOverrides((prev) => {
+            const next = { ...prev };
+            delete next[storeId];
+            return next;
+          }),
+        // 3. Rollback on failure
+        onError: () =>
+          setOptimisticOverrides((prev) => ({
+            ...prev,
+            [storeId]: currentlyWishlisted,
+          })),
+      });
     },
-    [toggleWishlistApi],
+    [toggleWishlistApi, wishlistedStoreIds],
   );
 
   return {
