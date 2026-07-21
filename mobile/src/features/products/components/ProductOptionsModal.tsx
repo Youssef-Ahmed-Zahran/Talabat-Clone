@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Product, OptionGroup } from "@src/features/stores/types/store.types";
@@ -27,11 +28,13 @@ export const ProductOptionsModal: React.FC<ProductOptionsModalProps> = ({
     Record<string, string[]>
   >({});
   const [quantity, setQuantity] = useState(1);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
     if (visible && product) {
       setSelectedOptions({});
       setQuantity(1);
+      setActiveImageIndex(0);
     }
   }, [visible, product]);
 
@@ -134,8 +137,13 @@ export const ProductOptionsModal: React.FC<ProductOptionsModalProps> = ({
     });
   };
 
-  const hasImages = product.images && product.images.length > 0;
+  // Build a stable, deduplicated list of all images.
   const primaryImage = product.imageUrl;
+  const allImages = [
+    ...(primaryImage ? [primaryImage] : []),
+    ...(product.images || []).filter((img) => img !== primaryImage),
+  ];
+  const carouselWidth = Dimensions.get("window").width - 32; // modal horizontal padding
 
   return (
     <Modal
@@ -171,30 +179,67 @@ export const ProductOptionsModal: React.FC<ProductOptionsModalProps> = ({
               </Text>
             ) : null}
 
-            {hasImages ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                className="mb-2"
-                contentContainerStyle={{ gap: 8 }}
-                snapToInterval={264} // 256 (w-64) + 8 (gap)
-                decelerationRate="fast"
-              >
-                {product.images!.map((imgUrl, idx) => (
+            {allImages.length > 0 ? (
+              <View className="mb-3">
+                {allImages.length === 1 ? (
+                  // Single image — plain full-width, no carousel chrome
                   <Image
-                    key={idx}
-                    source={{ uri: imgUrl }}
-                    className="w-64 h-48 rounded-xl bg-gray-100"
+                    source={{ uri: allImages[0] }}
+                    style={{ width: "100%", height: 192, borderRadius: 12 }}
                     resizeMode="cover"
                   />
-                ))}
-              </ScrollView>
-            ) : primaryImage ? (
-              <Image
-                source={{ uri: primaryImage }}
-                className="w-full h-48 rounded-xl bg-gray-100 mb-2"
-                resizeMode="cover"
-              />
+                ) : (
+                  // Multiple images — full-width paged carousel
+                  <View>
+                    <ScrollView
+                      horizontal
+                      pagingEnabled
+                      showsHorizontalScrollIndicator={false}
+                      decelerationRate="fast"
+                      snapToInterval={carouselWidth + 12}
+                      contentContainerStyle={{ gap: 12 }}
+                      onScroll={(e) => {
+                        const idx = Math.round(
+                          e.nativeEvent.contentOffset.x / (carouselWidth + 12),
+                        );
+                        setActiveImageIndex(idx);
+                      }}
+                      scrollEventThrottle={16}
+                    >
+                      {allImages.map((imgUrl, idx) => (
+                        <Image
+                          key={idx}
+                          source={{ uri: imgUrl }}
+                          style={{
+                            width: carouselWidth,
+                            height: 192,
+                            borderRadius: 12,
+                          }}
+                          resizeMode="cover"
+                        />
+                      ))}
+                    </ScrollView>
+                    {/* Dot indicators */}
+                    <View
+                      className="flex-row justify-center mt-2"
+                      style={{ gap: 6 }}
+                    >
+                      {allImages.map((_, idx) => (
+                        <View
+                          key={idx}
+                          style={{
+                            width: idx === activeImageIndex ? 16 : 6,
+                            height: 6,
+                            borderRadius: 3,
+                            backgroundColor:
+                              idx === activeImageIndex ? "#FF5A00" : "#D5D5D5",
+                          }}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
             ) : null}
           </View>
 
