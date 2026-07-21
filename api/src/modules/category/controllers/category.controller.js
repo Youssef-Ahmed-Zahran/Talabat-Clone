@@ -19,8 +19,8 @@ export const getAllMainCategories = async (req, res, next) => {
     const take = Number(limit);
 
     const where = search
-      ? { name: { contains: search, mode: "insensitive" } }
-      : {};
+      ? { name: { contains: search, mode: "insensitive" }, isActive: true }
+      : { isActive: true };
 
     const cacheKey = search ? null : `categories:main:p_${page}:l_${limit}`;
     if (cacheKey) {
@@ -35,7 +35,7 @@ export const getAllMainCategories = async (req, res, next) => {
         where,
         skip,
         take,
-        orderBy: { name: "asc" },
+        orderBy: { createdAt: "asc" },
         include: {
           _count: { select: { subCategories: true, stores: true } },
         },
@@ -106,7 +106,7 @@ export const getSubCategories = async (req, res, next) => {
     }
 
     const subCategories = await prisma.subCategory.findMany({
-      where: { mainCategoryId: id },
+      where: { mainCategoryId: id, isActive: true },
       orderBy: { name: "asc" },
       include: {
         _count: { select: { storeLinks: true } },
@@ -124,7 +124,7 @@ export const getSubCategories = async (req, res, next) => {
 /** POST /api/categories — Admin */
 export const createMainCategory = async (req, res, next) => {
   try {
-    const { name, image } = req.body;
+    const { name, image, isActive } = req.body;
 
     if (!name) {
       throw new ApiError(400, "Name is required.");
@@ -136,7 +136,7 @@ export const createMainCategory = async (req, res, next) => {
     }
 
     const category = await prisma.mainCategory.create({
-      data: { name, imageUrl },
+      data: { name, imageUrl, ...(isActive !== undefined && { isActive }) },
     });
 
     await cache.delPattern("categories:*");
@@ -153,7 +153,7 @@ export const createMainCategory = async (req, res, next) => {
 export const updateMainCategory = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, image } = req.body;
+    const { name, image, isActive } = req.body;
 
     const existing = await prisma.mainCategory.findUnique({ where: { id } });
     if (!existing) {
@@ -170,7 +170,7 @@ export const updateMainCategory = async (req, res, next) => {
 
     const category = await prisma.mainCategory.update({
       where: { id },
-      data: { ...(name && { name }), imageUrl },
+      data: { ...(name && { name }), imageUrl, ...(isActive !== undefined && { isActive }) },
     });
 
     await cache.delPattern("categories:*");
@@ -213,7 +213,7 @@ export const deleteMainCategory = async (req, res, next) => {
 export const createSubCategory = async (req, res, next) => {
   try {
     const { id: mainCategoryId } = req.params;
-    const { name, image } = req.body;
+    const { name, image, isActive } = req.body;
 
     if (!name) {
       throw new ApiError(400, "Name is required.");
@@ -232,7 +232,7 @@ export const createSubCategory = async (req, res, next) => {
     }
 
     const subCategory = await prisma.subCategory.create({
-      data: { name, mainCategoryId, imageUrl },
+      data: { name, mainCategoryId, imageUrl, ...(isActive !== undefined && { isActive }) },
     });
 
     await cache.delPattern("categories:*");
@@ -249,7 +249,7 @@ export const createSubCategory = async (req, res, next) => {
 export const updateSubCategory = async (req, res, next) => {
   try {
     const { subId } = req.params;
-    const { name, image } = req.body;
+    const { name, image, isActive } = req.body;
 
     const existing = await prisma.subCategory.findUnique({
       where: { id: subId },
@@ -268,7 +268,7 @@ export const updateSubCategory = async (req, res, next) => {
 
     const subCategory = await prisma.subCategory.update({
       where: { id: subId },
-      data: { ...(name && { name }), imageUrl },
+      data: { ...(name && { name }), imageUrl, ...(isActive !== undefined && { isActive }) },
     });
 
     await cache.delPattern("categories:*");
