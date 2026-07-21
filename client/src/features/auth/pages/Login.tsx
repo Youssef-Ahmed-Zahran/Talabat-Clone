@@ -1,6 +1,14 @@
 import { LoginForm } from "../components/LoginForm";
+import { Navigate } from "react-router-dom";
+import { useAuthStore } from "../../../store/authStore";
 
 export default function LoginPage() {
+  const role = useAuthStore((s) => s.role);
+
+  if (role) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 relative overflow-hidden">
       {/* Background decoration */}
