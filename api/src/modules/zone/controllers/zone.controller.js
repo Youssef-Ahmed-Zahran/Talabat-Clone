@@ -82,7 +82,7 @@ export const createZone = async (req, res, next) => {
 
         // New zone affects delivery coverage — invalidate nearby stores and zone list caches
         await cache.delPattern("zones:*");
-        await cache.delPattern("stores:nearby:*");
+        await cache.delPattern("stores:*");
     } catch (err) {
         next(err);
     }
@@ -286,7 +286,7 @@ export const updateZone = async (req, res, next) => {
 
         // Invalidate all zone and nearby store caches — updated polygon changes delivery coverage
         await cache.delPattern("zones:*");
-        await cache.delPattern("stores:nearby:*");
+        await cache.delPattern("stores:*");
     } catch (err) {
         next(err);
     }
