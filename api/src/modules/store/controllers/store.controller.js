@@ -272,6 +272,12 @@ export const getAllStores = async (req, res, next) => {
                     longitude: true,
                     city: { select: { id: true, name: true } },
                     mainCategory: { select: { id: true, name: true } },
+                    storeZones: {
+                        select: {
+                            zoneId: true,
+                            zone: { select: { id: true, name: true } }
+                        }
+                    }
                 },
             }),
             prisma.store.count({ where }),
@@ -608,6 +614,9 @@ export const updateStore = async (req, res, next) => {
             name,
             description,
             legalName,
+            phone,
+            email,
+            address,
             openTime,
             closeTime,
             overtimeOpenTime,
@@ -649,6 +658,9 @@ export const updateStore = async (req, res, next) => {
                 ...(name && { name }),
                 ...(description !== undefined && { description }),
                 ...(legalName !== undefined && { legalName }),
+                ...(phone !== undefined && { phone }),
+                ...(email !== undefined && { email }),
+                ...(address !== undefined && { address }),
                 ...(openTime !== undefined && { openTime }),
                 ...(closeTime !== undefined && { closeTime }),
                 ...(overtimeOpenTime !== undefined && { overtimeOpenTime }),
