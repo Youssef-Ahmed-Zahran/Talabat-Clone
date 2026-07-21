@@ -6,7 +6,7 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
-import type { BulkImportResult } from "../../api/bulkImport.api";
+import type { BulkImportResult } from "../../../../types";
 
 export function ResultCard({ result }: { result: BulkImportResult }) {
   const [showErrors, setShowErrors] = useState(false);
@@ -102,7 +102,7 @@ export function ResultCard({ result }: { result: BulkImportResult }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.errors.map((err, i) => (
+                  {result.errors.map((err: any, i: number) => (
                     <tr
                       key={i}
                       className="border-b border-gray-50 last:border-0"
