@@ -90,6 +90,7 @@ export function useMainCategoriesPage() {
           categoryId: modalState.category.id,
           name: data.name.trim(),
           image: data.image || undefined,
+          isActive: data.isActive,
         },
         {
           onSuccess: () => {
@@ -101,7 +102,7 @@ export function useMainCategoriesPage() {
       );
     } else if (modalState.type === "MAIN_CREATE") {
       createCategoryMut.mutate(
-        { name: data.name.trim(), image: data.image || undefined },
+        { name: data.name.trim(), image: data.image || undefined, isActive: data.isActive },
         {
           onSuccess: () => {
             toast.success("Category created");
