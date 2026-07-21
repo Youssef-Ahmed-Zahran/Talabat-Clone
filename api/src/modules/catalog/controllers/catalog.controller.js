@@ -264,12 +264,11 @@ export const createProduct = async (req, res, next) => {
         if (!name || price === undefined) throw new ApiError(400, "Name and price are required.");
 
         // 1. Upload images to Cloudinary (Before DB transaction)
-        if (primaryImage) {
-            primaryImageUrl = await uploadToCloudinary(primaryImage, "products/restaurant");
-        }
-
         if (images?.length) {
             uploadedImages = await uploadMultipleToCloudinary(images, "products/restaurant");
+            primaryImageUrl = uploadedImages[0];
+        } else if (primaryImage) {
+            primaryImageUrl = await uploadToCloudinary(primaryImage, "products/restaurant");
         }
 
         const productMeta = meta || {};
@@ -445,12 +444,32 @@ export const updateProduct = async (req, res, next) => {
         const [existing] = await tenantQuery(storeId, `SELECT * FROM products WHERE id = $1`, [productId]);
         if (!existing) throw new ApiError(404, "Product not found.");
 
-        const { name, description, price, quantity, sectionId, secondarySectionIds, isAvailable, primaryImage, meta, optionGroups } = req.body;
+        const { name, description, price, quantity, sectionId, secondarySectionIds, isAvailable, primaryImage, images, meta, optionGroups } = req.body;
         let primaryImageUrl = existing.primary_image_url;
 
-        if (primaryImage && !primaryImage.startsWith("http")) {
-            if (primaryImageUrl) await deleteFromCloudinary(primaryImageUrl);
-            primaryImageUrl = await uploadToCloudinary(primaryImage, "products/restaurant");
+        // 1. Handle Images
+        let finalImages = [];
+        if (images !== undefined) {
+            // images is provided, meaning we need to sync it
+            finalImages = await uploadMultipleToCloudinary(images, "products/restaurant");
+            primaryImageUrl = finalImages.length > 0 ? finalImages[0] : null;
+
+            // Find images to delete from Cloudinary
+            const existingImagesRes = await tenantQuery(storeId, `SELECT image_url FROM product_images WHERE product_id = $1`, [productId]);
+            const existingUrls = existingImagesRes.map(img => img.image_url);
+            
+            const urlsToDelete = existingUrls.filter(url => !finalImages.includes(url));
+            if (urlsToDelete.length > 0) {
+                deleteMultipleFromCloudinary(urlsToDelete).catch(e => console.error("[Cloudinary Cleanup Failed]:", e.message));
+            }
+        } else if (primaryImage !== undefined) {
+            if (primaryImage && !primaryImage.startsWith("http")) {
+                if (primaryImageUrl) await deleteFromCloudinary(primaryImageUrl);
+                primaryImageUrl = await uploadToCloudinary(primaryImage, "products/restaurant");
+            } else if (!primaryImage) {
+                if (primaryImageUrl) await deleteFromCloudinary(primaryImageUrl);
+                primaryImageUrl = null;
+            }
         }
 
         const updates = [];
@@ -466,9 +485,29 @@ export const updateProduct = async (req, res, next) => {
         if (primaryImageUrl !== existing.primary_image_url) { updates.push(`primary_image_url = $${paramIdx++}`); params.push(primaryImageUrl); }
         
         let finalMeta = meta !== undefined ? meta : existing.meta;
+
         if (secondarySectionIds !== undefined) {
-            finalMeta = { ...finalMeta, secondarySectionIds };
+            // Track manual Picks for you additions/removals
+            const oldSecondary = finalMeta?.secondarySectionIds || [];
+            const [picksSection] = await tenantQuery(storeId, `SELECT id FROM store_sections WHERE name = 'Picks for you' LIMIT 1`);
+            const picksId = picksSection?.id;
+            
+            if (picksId) {
+                const wasInPicks = oldSecondary.includes(picksId);
+                const isNowInPicks = secondarySectionIds.includes(picksId);
+                
+                finalMeta = { ...finalMeta };
+                if (wasInPicks && !isNowInPicks) {
+                    finalMeta.excludedFromPicks = true;
+                    finalMeta.manuallyAddedToPicks = false;
+                } else if (!wasInPicks && isNowInPicks) {
+                    finalMeta.excludedFromPicks = false;
+                    finalMeta.manuallyAddedToPicks = true;
+                }
+            }
+            finalMeta.secondarySectionIds = secondarySectionIds;
         }
+
         if (meta !== undefined || secondarySectionIds !== undefined) { 
             updates.push(`meta = $${paramIdx++}`); params.push(finalMeta); 
         }
@@ -486,6 +525,17 @@ export const updateProduct = async (req, res, next) => {
             `, params);
 
             const p = rows[0];
+
+            // A2. Replace images if provided
+            if (images !== undefined) {
+                await client.query(`DELETE FROM product_images WHERE product_id = $1`, [productId]);
+                for (let i = 0; i < finalImages.length; i++) {
+                    await client.query(`
+                        INSERT INTO product_images (product_id, image_url, sort_order)
+                        VALUES ($1, $2, $3)
+                    `, [productId, finalImages[i], i]);
+                }
+            }
 
             // B. Replace option groups if provided (full replace strategy)
             if (Array.isArray(optionGroups)) {
