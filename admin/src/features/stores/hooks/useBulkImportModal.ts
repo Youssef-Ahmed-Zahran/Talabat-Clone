@@ -1,8 +1,8 @@
 import { useState } from "react";
 import {
   useBulkImportStores,
-  type BulkImportResult,
 } from "../api/bulkImport.api";
+import type { BulkImportResult } from "../../../types";
 import { handleApiError } from "../../../utils/error";
 
 export interface UseBulkImportModalProps {
