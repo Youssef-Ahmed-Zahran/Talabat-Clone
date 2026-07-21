@@ -6,6 +6,7 @@ import type { StoreFormValues } from "../../../../schemas/store.schema";
 import type { Zone } from "../../../../types";
 import { fetchAllZones } from "../../../zones/api/zones.api";
 import { LocationPicker } from "../location/LocationPicker";
+import { useEffect } from "react";
 
 export function LocationStep() {
   const {
@@ -28,6 +29,14 @@ export function LocationStep() {
 
   const lat = watch("latitude");
   const lng = watch("longitude");
+  const zoneId = watch("zoneId");
+
+  useEffect(() => {
+    // Force re-evaluation of zoneId when zones finish loading
+    if (zones.length > 0 && zoneId) {
+      setValue("zoneId", zoneId);
+    }
+  }, [zones.length, zoneId, setValue]);
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -101,6 +110,7 @@ export function LocationStep() {
           </label>
           <select
             {...register("zoneId")}
+            value={zoneId || ""}
             className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none transition-all appearance-none"
           >
             <option value="">Auto-detect from coordinates</option>
