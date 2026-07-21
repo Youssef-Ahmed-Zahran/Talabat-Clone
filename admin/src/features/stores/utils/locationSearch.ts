@@ -29,6 +29,24 @@ export const searchNominatim = async (q: string): Promise<PlaceResult[]> => {
   );
 };
 
+/** Nominatim Reverse Geocoding — get address from lat/lng */
+export const reverseGeocodeNominatim = async (lat: string, lng: string): Promise<string | undefined> => {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
+      { headers: { "Accept-Language": "en,ar" } },
+    );
+    const data = await res.json();
+    if (data && data.display_name) {
+      // Return a formatted short address similar to the forward geocoding
+      return data.display_name.split(",").slice(0, 3).join(",").trim();
+    }
+  } catch (err) {
+    console.error("Reverse geocoding error:", err);
+  }
+  return undefined;
+};
+
 /** Photon (Komoot) — better for POI / business names */
 export const searchPhoton = async (q: string): Promise<PlaceResult[]> => {
   const res = await fetch(
