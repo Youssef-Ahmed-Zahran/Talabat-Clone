@@ -33,10 +33,11 @@ export default function ProductsScreen() {
   const [isSticky, setIsSticky] = useState(false);
   const isStickyRef = useRef(false);
   const tabsY = useRef(0);
+  // Measured height of the fixed top header (back bar) — used for sticky threshold & position
+  const [fixedHeaderHeight, setFixedHeaderHeight] = useState(98);
   // Stores the Y offset of each section header in the main ScrollView
   const sectionYOffsets = useRef<number[]>([]);
   // Height of the fixed header above the sections (cover + info card + offer strip + tabs)
-  const headerHeight = useRef(0);
   const isScrollingToSection = useRef(false);
 
   // ── Tab press → scroll to section ────────────────────────────
@@ -73,7 +74,9 @@ export default function ProductsScreen() {
       const scrollY = e.nativeEvent.contentOffset.y;
 
       if (tabsY.current > 0) {
-        const shouldBeSticky = scrollY >= tabsY.current - 100;
+        // Sticky appears exactly when the original tab bar's top edge
+        // hits the top of the ScrollView (which is exactly below the fixed header).
+        const shouldBeSticky = scrollY >= tabsY.current;
         if (shouldBeSticky !== isStickyRef.current) {
           isStickyRef.current = shouldBeSticky;
           setIsSticky(shouldBeSticky);
@@ -99,7 +102,7 @@ export default function ProductsScreen() {
         });
       }
     },
-    [activeSectionIndex],
+    [activeSectionIndex, fixedHeaderHeight],
   );
 
   const renderTabs = (
@@ -160,7 +163,13 @@ export default function ProductsScreen() {
       <StatusBar style="dark" />
 
       {/* Top Solid Header (Like Home Page) */}
-      <View className="bg-white pt-14 pb-4 px-4 z-20 flex-row justify-between items-center shadow-sm border-b border-border/30">
+      <View
+        className="bg-white pt-14 pb-4 px-4 z-20 flex-row justify-between items-center shadow-sm border-b border-border/30"
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          if (h > 0 && h !== fixedHeaderHeight) setFixedHeaderHeight(h);
+        }}
+      >
         {/* Left actions: Back & Title */}
         <View className="flex-row items-center gap-3 flex-1">
           <TouchableOpacity
@@ -215,7 +224,7 @@ export default function ProductsScreen() {
       <View
         style={{
           position: "absolute",
-          top: 0,
+          top: fixedHeaderHeight, // always sits exactly below the measured header
           left: 0,
           right: 0,
           zIndex: 10,
@@ -223,7 +232,6 @@ export default function ProductsScreen() {
         }}
         pointerEvents={isSticky ? "auto" : "none"}
       >
-        <View style={{ height: 100, backgroundColor: "white" }} />
         {renderTabs(stickyTabScrollRef, true)}
       </View>
 
@@ -233,9 +241,6 @@ export default function ProductsScreen() {
         className="flex-1"
         scrollEventThrottle={16}
         onScroll={handleScroll}
-        onLayout={(e) => {
-          headerHeight.current = e.nativeEvent.layout.y;
-        }}
         refreshControl={
           <RefreshControl
             refreshing={state.refreshing}
