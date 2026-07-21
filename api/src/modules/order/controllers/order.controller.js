@@ -5,6 +5,7 @@ import { tenantQuery, tenantTransaction } from "../../../lib/tenantDb.js";
 import { getIO } from "../../../config/socket.js";
 import { dispatchToNearestDriver } from "../../../sockets/dispatch.socket.js";
 import { queue } from "../../../lib/queue.js";
+import { syncPicksForYou } from "../../catalog/utils/picksForYou.js";
 
 // ═══════════════════════════════════════════════════════════════
 // HELPER: Fetch Cart Items from Tenant Schema
@@ -184,6 +185,9 @@ export const placeOrder = async (req, res, next) => {
             order,
             store
         }, { retries: 2 });
+
+        // 3. Sync "Picks for you" best sellers asynchronously
+        syncPicksForYou(storeId).catch((err) => console.error("Failed to sync picks for you:", err));
 
         const fullOrder = await prisma.order.findUnique({
             where: { id: order.id },
