@@ -1,5 +1,5 @@
 import { Loader2, Tag } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   categorySchema,
@@ -35,6 +35,7 @@ export default function CategoryModal({
     values: {
       name: editingCategory?.name || "",
       image: editingCategory?.imageUrl || editingCategory?.image || "",
+      isActive: editingCategory ? editingCategory.isActive : true,
     },
   });
 
@@ -92,6 +93,35 @@ export default function CategoryModal({
           </div>
 
           <ImageUploadField control={control} setValue={setValue} />
+
+          {/* Status Toggle */}
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+            <div>
+              <p className="text-[13px] font-bold text-gray-700">Status</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Inactive categories won't appear on the app
+              </p>
+            </div>
+            <Controller
+              name="isActive"
+              control={control}
+              render={({ field }) => (
+                <button
+                  type="button"
+                  onClick={() => field.onChange(!field.value)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    field.value ? "bg-emerald-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                      field.value ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              )}
+            />
+          </div>
         </div>
       </div>
     </SlideOver>
