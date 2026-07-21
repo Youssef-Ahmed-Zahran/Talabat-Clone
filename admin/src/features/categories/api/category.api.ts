@@ -109,7 +109,7 @@ export const useCreateSubCategory = () => {
 export const useUpdateSubCategory = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ subCategoryId, ...payload }: { subCategoryId: string; name: string; image?: string }) => {
+    mutationFn: async ({ subCategoryId, ...payload }: { subCategoryId: string; name: string; image?: string; isActive?: boolean }) => {
       const { data } = await api.put(`/categories/sub-categories/${subCategoryId}`, payload);
       return data.data ?? data;
     },
