@@ -151,12 +151,12 @@ enum StatusChangedByType {
 }
 
 enum WalletTransactionType {
-  CASH_ORDER_DEBIT    // Deducted when driver collects cash from a customer
+  CASH_ORDER_DEBIT // Deducted when driver collects cash from a customer
   DELIVERY_FEE_CREDIT // Credited when driver completes an online-paid order
-  ADMIN_TOP_UP        // Admin clears debt after driver deposits cash
-  ADMIN_DEBIT         // Manual deduction by admin
-  PAYOUT              // Driver earnings payout
-  DEBT_REPAYMENT      // Driver pays off their negative balance (cash owed to Talabat)
+  ADMIN_TOP_UP // Admin clears debt after driver deposits cash
+  ADMIN_DEBIT // Manual deduction by admin
+  PAYOUT // Driver earnings payout
+  DEBT_REPAYMENT // Driver pays off their negative balance (cash owed to Talabat)
 }
 
 enum DebtPaymentMethod {
@@ -166,15 +166,15 @@ enum DebtPaymentMethod {
 }
 
 enum DebtPaymentStatus {
-  PENDING   // Awaiting admin confirmation (VF/InstaPay) or auto-confirm (Card simulated)
+  PENDING // Awaiting admin confirmation (VF/InstaPay) or auto-confirm (Card simulated)
   CONFIRMED // Wallets have been settled
-  REJECTED  // Admin rejected (wrong amount, fake receipt, etc.)
+  REJECTED // Admin rejected (wrong amount, fake receipt, etc.)
 }
 
 enum WithdrawalStatus {
-  PENDING    // Payout initiated, not yet transferred
-  COMPLETED  // Bank transfer sent to store owner
-  FAILED     // Transfer failed
+  PENDING // Payout initiated, not yet transferred
+  COMPLETED // Bank transfer sent to store owner
+  FAILED // Transfer failed
 }
 
 enum WalletTransactionStatus {
@@ -550,6 +550,7 @@ model MainCategory {
   id       String  @id @default(uuid())
   name     String
   imageUrl String?
+  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
 
@@ -565,6 +566,7 @@ model SubCategory {
   mainCategoryId String
   name           String
   imageUrl       String?
+  isActive       Boolean @default(true)
 
   createdAt DateTime @default(now())
 
@@ -1062,12 +1064,12 @@ model DriverDebtPayment {
   id       String @id @default(uuid())
   driverId String
 
-  amount          Decimal
-  method          DebtPaymentMethod
-  status          DebtPaymentStatus @default(PENDING)
+  amount Decimal
+  method DebtPaymentMethod
+  status DebtPaymentStatus @default(PENDING)
 
-  referenceNumber String?  // VF Cash / InstaPay transaction reference
-  receiptUrl      String?  // Screenshot upload URL (optional)
+  referenceNumber String? // VF Cash / InstaPay transaction reference
+  receiptUrl      String? // Screenshot upload URL (optional)
   note            String?
 
   confirmedAt     DateTime?
@@ -1169,13 +1171,13 @@ model StoreWithdrawal {
   id      String @id @default(uuid())
   storeId String
 
-  amount           Decimal          // Net amount paid out (after commission already deducted)
-  status           WithdrawalStatus @default(PENDING)
-  transactionRef   String?          // Bank transfer reference number
-  note             String?
+  amount         Decimal // Net amount paid out (after commission already deducted)
+  status         WithdrawalStatus @default(PENDING)
+  transactionRef String? // Bank transfer reference number
+  note           String?
 
-  processedAt  DateTime?
-  completedAt  DateTime?
+  processedAt DateTime?
+  completedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
