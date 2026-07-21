@@ -28,6 +28,7 @@ import {
   searchNominatim,
   searchPhoton,
   mergeResults,
+  reverseGeocodeNominatim,
 } from "../../utils/locationSearch";
 
 // ── Main Component ──────────────────────────────────────────────────────────
@@ -105,9 +106,22 @@ export const LocationPicker = ({
   );
 
   const handleMapClick = useCallback(
-    (lat: string, lng: string) => {
+    async (lat: string, lng: string) => {
       onChange(lat, lng);
       setFlyTarget(null);
+
+      setIsSearching(true);
+      try {
+        const address = await reverseGeocodeNominatim(lat, lng);
+        if (address) {
+          onChange(lat, lng, address);
+          setQuery(address);
+        }
+      } catch (err) {
+        console.error("Reverse geocoding error:", err);
+      } finally {
+        setIsSearching(false);
+      }
     },
     [onChange],
   );
