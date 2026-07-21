@@ -51,18 +51,19 @@ export const useToggleWishlist = () => {
 
       return { prevStatus, storeId };
     },
-    onSuccess: (_data, storeId) => {
-      qc.invalidateQueries({ queryKey: ["wishlist"] });
-      qc.invalidateQueries({ queryKey: ["wishlist-status", storeId] });
-    },
-    // ── Rollback on error ────────────────────────────────────────
-    onError: (_err, _storeId, context) => {
-      if (context) {
+    onSettled: async (_data, error, storeId, context) => {
+      if (error && context) {
         qc.setQueryData(
           ["wishlist-status", context.storeId],
           context.prevStatus,
         );
       }
+      
+      // Await the invalidation so that any caller's onSettled waits for the refetch to complete.
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["wishlist"] }),
+        qc.invalidateQueries({ queryKey: ["wishlist-status", storeId] })
+      ]);
     },
   });
 };
