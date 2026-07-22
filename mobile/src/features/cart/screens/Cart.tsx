@@ -1,6 +1,12 @@
 import { SafeAreaView } from "react-native-safe-area-context";
 import React from "react";
-import { View, Text, TouchableOpacity, FlatList } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useCartScreen } from "../hooks/useCart";
@@ -11,7 +17,7 @@ import { COLORS } from "@src/constants/theme";
 import type { CartItem } from "@src/features/cart/types/cart.types";
 
 export default function CartScreen() {
-  const { query, actions, router } = useCartScreen();
+  const { query, state, actions, router } = useCartScreen();
 
   if (query.itemCount === 0) {
     return (
@@ -32,9 +38,18 @@ export default function CartScreen() {
         <Text className="text-xl font-bold text-textPrimary">Cart</Text>
         <TouchableOpacity
           onPress={actions.handleClear}
+          disabled={state.isClearingCart}
           className="flex-row items-center"
         >
-          <Ionicons name="trash-outline" size={16} color={COLORS.error} />
+          {state.isClearingCart ? (
+            <ActivityIndicator
+              size="small"
+              color={COLORS.error}
+              style={{ marginRight: 4 }}
+            />
+          ) : (
+            <Ionicons name="trash-outline" size={16} color={COLORS.error} />
+          )}
           <Text className="text-error font-semibold text-sm ml-1">Clear</Text>
         </TouchableOpacity>
       </View>
