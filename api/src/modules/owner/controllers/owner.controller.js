@@ -139,6 +139,33 @@ export const getDashboardStats = async (req, res, next) => {
         const { ensureStoreWallet } = await import("../../driver/controllers/wallet.controller.js");
         const wallet = await ensureStoreWallet(storeId);
 
+        // Build last-7-days revenue history scoped to this store
+        const days = Array.from({ length: 7 }, (_, i) => {
+            const date = new Date();
+            date.setDate(date.getDate() - (6 - i));
+            date.setHours(0, 0, 0, 0);
+            return date;
+        });
+
+        const revenueHistory = await Promise.all(days.map(async (day) => {
+            const nextDay = new Date(day);
+            nextDay.setDate(nextDay.getDate() + 1);
+
+            const result = await prisma.order.aggregate({
+                where: {
+                    storeId,
+                    status: "DELIVERED",
+                    createdAt: { gte: day, lt: nextDay },
+                },
+                _sum: { totalAmount: true },
+            });
+
+            return {
+                day: day.toLocaleDateString('en-US', { weekday: 'short' }),
+                revenue: Number(result._sum.totalAmount || 0),
+            };
+        }));
+
         res.json(
             new ApiResponse(200, {
                 wallet: { balance: Number(wallet.balance) },
@@ -147,6 +174,7 @@ export const getDashboardStats = async (req, res, next) => {
                 storeEarnings: Number(revenue._sum.storeEarnings || 0),
                 appCommissionPaid: Number(revenue._sum.appFee || 0),
                 reviews: store,
+                revenueHistory,
             }, "Dashboard stats fetched.")
         );
     } catch (err) {
