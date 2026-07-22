@@ -52,13 +52,20 @@ export function useCheckout(): UseCheckoutReturn {
 
   // Sync selectedAddress whenever the defaultAddress from locationStore changes
   useEffect(() => {
-    if (defaultAddress?.id) {
-      setSelectedAddress(defaultAddress.id);
-    } else if (addresses?.length) {
+    if (!addresses) return;
+
+    // Check if the defaultAddress still exists in the fetched addresses
+    const defaultExists = addresses.find((a) => a.id === defaultAddress?.id);
+
+    if (defaultExists) {
+      setSelectedAddress(defaultExists.id);
+    } else if (addresses.length) {
       // Fallback: pick the default saved address or the first one
       const defaultSaved = addresses.find((a) => a.isDefault);
       const preferred = defaultSaved ?? addresses[0];
-      setSelectedAddress((prev) => prev || preferred.id);
+      setSelectedAddress(preferred.id);
+    } else {
+      setSelectedAddress("");
     }
   }, [defaultAddress, addresses]);
 
