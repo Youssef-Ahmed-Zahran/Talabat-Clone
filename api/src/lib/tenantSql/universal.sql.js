@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS "${schema}"."products" (
     description       TEXT,
     price             NUMERIC(10,2) NOT NULL,
     compare_at_price  NUMERIC(10,2),
-    quantity          INTEGER       NOT NULL DEFAULT 0,
+    quantity          INTEGER,
     primary_image_url TEXT,
     is_available      BOOLEAN       NOT NULL DEFAULT TRUE,
     sort_order        INTEGER       NOT NULL DEFAULT 0,
