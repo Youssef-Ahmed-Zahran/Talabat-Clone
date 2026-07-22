@@ -127,6 +127,8 @@ export function useProductsManager(sid: string) {
       handleSubmitProduct,
       handleReorderProducts,
       isPending: createProductMut.isPending || updateProductMut.isPending,
+      deletingProductId: deleteProductMut.isPending ? deleteProductMut.variables : null,
+      togglingProductId: updateProductMut.isPending ? updateProductMut.variables?.productId : null,
     },
   };
 }
