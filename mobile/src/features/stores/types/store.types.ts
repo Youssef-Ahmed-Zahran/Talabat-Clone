@@ -66,6 +66,7 @@ export interface Product {
   isAvailable: boolean;
   sortOrder: number;
   optionGroups?: OptionGroup[];
+  meta?: Record<string, unknown>;
 }
 
 export interface OptionGroup {

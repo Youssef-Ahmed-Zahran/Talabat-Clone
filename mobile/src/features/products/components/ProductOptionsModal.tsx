@@ -179,6 +179,21 @@ export const ProductOptionsModal: React.FC<ProductOptionsModalProps> = ({
               </Text>
             ) : null}
 
+            {product.meta && Object.keys(product.meta).length > 0 ? (
+              <View className="flex-row flex-wrap mb-4" style={{ gap: 8 }}>
+                {Object.entries(product.meta).map(([key, value]) => (
+                  <View
+                    key={key}
+                    className="bg-primary/10 px-2.5 py-1.5 rounded-lg border border-primary/20"
+                  >
+                    <Text className="text-xs text-primary font-bold">
+                      {key}: {String(value)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
             {allImages.length > 0 ? (
               <View className="mb-3">
                 {allImages.length === 1 ? (
