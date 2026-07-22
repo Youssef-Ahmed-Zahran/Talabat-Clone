@@ -409,10 +409,14 @@ export const reorder = async (req, res, next) => {
                 if (!item.product_id) continue;
 
                 const { rows: productCheck } = await client.query(
-                    `SELECT id FROM products WHERE id = $1`,
+                    `SELECT id, is_available, quantity FROM products WHERE id = $1`,
                     [item.product_id]
                 );
                 if (productCheck.length === 0) continue;
+
+                const product = productCheck[0];
+                if (!product.is_available) continue;
+                if (product.quantity !== null && product.quantity <= 0) continue;
 
                 const { rows: cRows } = await client.query(
                     `INSERT INTO cart_items (cart_id, product_id, quantity, base_price)
