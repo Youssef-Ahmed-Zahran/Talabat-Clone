@@ -47,6 +47,7 @@ export function ProductMetaEditor() {
               }
             />
             <button
+              type="button"
               onClick={() => {
                 const nm = { ...currentMeta };
                 delete nm[k];
@@ -72,6 +73,7 @@ export function ProductMetaEditor() {
             className="flex-[2] px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm"
           />
           <button
+            type="button"
             onClick={handleAddMeta}
             className="p-3 bg-brand/10 text-brand rounded-xl hover:bg-brand hover:text-white transition-all"
           >
