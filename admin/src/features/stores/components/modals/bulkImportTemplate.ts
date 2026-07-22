@@ -28,7 +28,7 @@ export const SAMPLE_ROWS = [
     name: "My Burger Place",
     ownerEmail: "owner@example.com",
     ownerPassword: "SecurePass123",
-    mainCategoryId: "Restaurants", // You can use Name or ID
+    mainCategoryId: "Food",
     storeType: "RESTAURANT",
     deliveryType: "TALABAT_DELIVERY",
     cityName: "Cairo",
