@@ -179,6 +179,8 @@ export default function StoreCatalogPage() {
                       onEdit={modal.openEdit}
                       onDelete={actions.handleDeleteProduct}
                       onToggleAvailability={actions.handleToggleAvailability}
+                      isDeleting={actions.deletingProductId === p.id}
+                      isToggling={actions.togglingProductId === p.id}
                     />
                   </div>
                 ))}

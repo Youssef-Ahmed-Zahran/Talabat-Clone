@@ -1,4 +1,4 @@
-import { Package, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
+import { Package, Eye, EyeOff, Pencil, Trash2, Loader2 } from "lucide-react";
 import type { Product } from "../../../../types";
 
 interface ProductCardProps {
@@ -7,6 +7,8 @@ interface ProductCardProps {
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onToggleAvailability: (product: Product) => void;
+  isDeleting?: boolean;
+  isToggling?: boolean;
 }
 
 export function ProductCard({
@@ -14,6 +16,8 @@ export function ProductCard({
   onEdit,
   onDelete,
   onToggleAvailability,
+  isDeleting,
+  isToggling,
 }: ProductCardProps) {
   return (
     <div
@@ -31,7 +35,8 @@ export function ProductCard({
             alt={p.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             onError={(e) => {
-              e.currentTarget.src = "https://placehold.co/400x400/f8fafc/94a3b8?text=Image+Not+Found";
+              e.currentTarget.src =
+                "https://placehold.co/400x400/f8fafc/94a3b8?text=Image+Not+Found";
             }}
           />
         ) : (
@@ -41,14 +46,17 @@ export function ProductCard({
         )}
         {/* Availability badge */}
         <button
-          onClick={() => onToggleAvailability(p)}
+          onClick={() => !isToggling && onToggleAvailability(p)}
+          disabled={isToggling}
           className={`absolute top-3 right-3 p-2 rounded-xl backdrop-blur-md transition-all shadow-sm ${
             p.is_available
               ? "bg-emerald-500/90 text-white hover:bg-emerald-600 hover:scale-105"
               : "bg-red-500/90 text-white hover:bg-red-600 hover:scale-105"
-          }`}
+          } ${isToggling ? "opacity-75 cursor-wait" : ""}`}
         >
-          {p.is_available ? (
+          {isToggling ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : p.is_available ? (
             <Eye className="w-4 h-4" />
           ) : (
             <EyeOff className="w-4 h-4" />
@@ -106,11 +114,16 @@ export function ProductCard({
               Edit Product
             </button>
             <button
-              onClick={() => onDelete(p)}
-              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100/50 rounded-xl transition-all"
+              onClick={() => !isDeleting && onDelete(p)}
+              disabled={isDeleting}
+              className={`p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100/50 rounded-xl transition-all ${isDeleting ? "opacity-75 cursor-wait" : ""}`}
               title="Delete Product"
             >
-              <Trash2 className="w-4 h-4" />
+              {isDeleting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
             </button>
           </div>
         </div>
