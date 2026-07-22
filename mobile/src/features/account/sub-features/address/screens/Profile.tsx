@@ -10,6 +10,7 @@ import {
 import { Loader } from "@src/components/loader/Loader";
 import type { UserAddress } from "@src/features/location/types/address.types";
 import { StatusBar } from "expo-status-bar";
+import { useLocationStore } from "@src/store/locationStore";
 
 export default function AddressListScreen() {
   const router = useRouter();
@@ -32,8 +33,21 @@ export default function AddressListScreen() {
     );
   };
 
+  const setDefaultAddressLocal = useLocationStore((s) => s.setDefaultAddress);
+
+  const handleSelect = async (item: UserAddress) => {
+    await setDefaultAddressLocal(item);
+    if (router.canGoBack()) {
+      router.back();
+    }
+  };
+
   const renderAddress = ({ item }: { item: UserAddress }) => (
-    <View className="bg-white rounded-[32px] p-6 mb-4 shadow-xl shadow-black/[0.03] border border-border/40">
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => handleSelect(item)}
+      className="bg-white rounded-[32px] p-6 mb-4 shadow-xl shadow-black/[0.03] border border-border/40"
+    >
       <View className="flex-row items-center mb-6">
         <View className="w-12 h-12 rounded-2xl bg-surfaceAlt items-center justify-center border border-border/20 mr-4">
           <Text className="text-2xl">
@@ -69,7 +83,10 @@ export default function AddressListScreen() {
       <View className="flex-row items-center justify-end gap-x-6 pt-5 border-t border-border/20">
         {!item.isDefault && (
           <TouchableOpacity
-            onPress={() => setDefault.mutate(item.id)}
+            onPress={() => {
+              setDefault.mutate(item.id);
+              setDefaultAddressLocal(item);
+            }}
             className="flex-row items-center"
           >
             <Text className="text-sm font-black text-primary uppercase tracking-widest">
@@ -86,7 +103,7 @@ export default function AddressListScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   if (isLoading) return <Loader message="Fetching your addresses..." />;
