@@ -181,9 +181,9 @@ The goal was to model the complete workflow rather than simply create a food ord
 
 ---
 
-## 🔗 GitHub
+## 🔗 Linkedin
 
-[View the full project on GitHub](https://lnkd.in/eRQHsmCF)
+[View the full project on GitHub]([https://lnkd.in/eRQHsmCF](https://www.linkedin.com/posts/youssef-zahran-9a8718280_systemdesign-nodejs-postgresql-ugcPost-7486017487713701888-Cze0/?utm_source=share&utm_medium=member_desktop&rcm=ACoAAERzIJABGzgZwbhH8337zWdfsReFxJauum0))
 
 ---
 
