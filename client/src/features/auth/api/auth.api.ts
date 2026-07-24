@@ -39,6 +39,10 @@ const loginOwner = async (payload: LoginPayload): Promise<OwnerLoginResponse> =>
   return data.data ?? data;
 };
 
+export const logoutUser = async () => {
+  await api.post('/auth/logout');
+};
+
 export const useLoginAdmin = () => {
   return useMutation({
     mutationFn: loginAdmin,
