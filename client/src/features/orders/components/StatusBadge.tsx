@@ -1,8 +1,13 @@
+import React from "react";
 import type { OrderStatus } from "../../../types";
 
 import { STATUS_CONFIG } from "./constants";
 
-export function StatusBadge({ status }: { status: OrderStatus }) {
+export const StatusBadge = React.memo(function StatusBadge({
+  status,
+}: {
+  status: OrderStatus;
+}) {
   const c = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING;
   return (
     <span
@@ -12,4 +17,4 @@ export function StatusBadge({ status }: { status: OrderStatus }) {
       {c.label}
     </span>
   );
-}
+});
