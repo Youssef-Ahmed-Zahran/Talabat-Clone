@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useDebounce } from "../../../../hooks/useDebouncing";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import { Search, Loader2, MapPin, X } from "lucide-react";
 import L from "leaflet";
@@ -37,6 +38,7 @@ export const LocationPicker = ({
   onChange,
 }: LocationPickerProps) => {
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query, 400);
   const [results, setResults] = useState<PlaceResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -45,7 +47,6 @@ export const LocationPicker = ({
     lng: number;
   } | null>(null);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const defaultCenter: [number, number] = [30.0444, 31.2357];
@@ -55,23 +56,17 @@ export const LocationPicker = ({
       : defaultCenter;
 
   // ── Debounced dual-source search ──────────────────────────────────────────
-  const handleQueryChange = (value: string) => {
-    setQuery(value);
-    setShowDropdown(false);
-
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!value.trim()) {
-      setResults([]);
-      return;
-    }
-
-    debounceRef.current = setTimeout(async () => {
+  useEffect(() => {
+    const search = async () => {
+      if (!debouncedQuery.trim()) {
+        setResults([]);
+        return;
+      }
       setIsSearching(true);
       try {
-        // fire both in parallel, use whichever finishes
         const [nominatimResults, photonResults] = await Promise.allSettled([
-          searchNominatim(value),
-          searchPhoton(value),
+          searchNominatim(debouncedQuery),
+          searchPhoton(debouncedQuery),
         ]);
 
         const nom =
@@ -86,7 +81,13 @@ export const LocationPicker = ({
       } finally {
         setIsSearching(false);
       }
-    }, 400);
+    };
+    search();
+  }, [debouncedQuery]);
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    setShowDropdown(false);
   };
 
   const selectResult = useCallback(
