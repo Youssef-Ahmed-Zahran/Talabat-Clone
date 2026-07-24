@@ -7,7 +7,6 @@ import {
 import api from "../../../config/axios";
 import type { Order } from "../../../types";
 
-import { useAuthStore } from "../../../store/authStore";
 
 export interface OrdersResponse {
   orders: Order[];
@@ -20,8 +19,7 @@ export interface OrdersResponse {
 }
 
 // ── Fetch all orders (admin/owner endpoint) ──────────────────────────────────
-const fetchLiveOrders = async (search?: string, page?: number, limit?: number): Promise<OrdersResponse> => {
-  const role = useAuthStore.getState().role;
+const fetchLiveOrders = async (role: "owner" | null, search?: string, page?: number, limit?: number): Promise<OrdersResponse> => {
   const endpoint = role === "owner" ? "/orders/store" : "/orders/admin/all";
   const { data } = await api.get(endpoint, {
     params: { search, page, limit },
@@ -30,11 +28,12 @@ const fetchLiveOrders = async (search?: string, page?: number, limit?: number): 
   return payload;
 };
 
-export const useLiveOrders = (search?: string, page?: number, limit?: number) => {
+export const useLiveOrders = (role: "owner" | null, search?: string, page?: number, limit?: number) => {
   return useQuery({
-    queryKey: ["orders", "live", search, page, limit],
-    queryFn: () => fetchLiveOrders(search, page, limit),
+    queryKey: ["orders", "live", role, search, page, limit],
+    queryFn: () => fetchLiveOrders(role, search, page, limit),
     placeholderData: keepPreviousData,
+    enabled: !!role,
   });
 };
 
@@ -42,10 +41,10 @@ export const useLiveOrders = (search?: string, page?: number, limit?: number) =>
 interface UpdateStatusPayload {
   orderId: string | number;
   status: string;
+  role: "owner" | null;
 }
 
-const updateOrderStatus = async ({ orderId, status }: UpdateStatusPayload) => {
-  const role = useAuthStore.getState().role;
+const updateOrderStatus = async ({ orderId, status, role }: UpdateStatusPayload) => {
   const endpoint =
     role === "owner"
       ? `/orders/store/${orderId}/status`
@@ -60,15 +59,16 @@ export const useUpdateOrderStatus = () => {
     mutationFn: updateOrderStatus,
     onSuccess: (data) => {
       // Optimistically update the orders list in cache without triggering a refetch
-      qc.setQueriesData({ queryKey: ["orders"] }, (oldData: Order[] | undefined) => {
-        if (Array.isArray(oldData)) {
-          return oldData.map((order: Order) =>
+      qc.setQueriesData({ queryKey: ["orders"] }, (oldData: OrdersResponse | undefined) => {
+        if (!oldData?.orders) return oldData;
+        return {
+          ...oldData,
+          orders: oldData.orders.map((order: Order) =>
             order.id === data.orderId
               ? { ...order, status: data.status }
               : order
-          );
-        }
-        return oldData;
+          ),
+        };
       });
     },
   });
