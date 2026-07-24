@@ -1,4 +1,3 @@
-import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -18,6 +17,7 @@ import { useParams } from "react-router-dom";
 import { useAuthStore } from "../../../store/authStore";
 import { useSectionsManager } from "../hooks/useSectionsManager";
 import { useProductsManager } from "../hooks/useProductsManager";
+import { useDragReorder } from "../hooks/useDragReorder";
 
 export default function StoreCatalogPage() {
   const params = useParams<{ storeId: string }>();
@@ -28,12 +28,11 @@ export default function StoreCatalogPage() {
   const { filters, query, modal, actions } = useProductsManager(sid);
 
   // ── Drag-and-drop reorder state ──────────────────────────────
-  const [orderedProducts, setOrderedProducts] = useState<
-    typeof query.products | null
-  >(null);
-  const draggedId = useRef<string | null>(null);
-  const dragOverId = useRef<string | null>(null);
-  const displayedProducts = orderedProducts ?? query.products;
+  const {
+    displayedItems: displayedProducts,
+    dragProps,
+    resetOrder,
+  } = useDragReorder(query.products, actions.handleReorderProducts);
 
   const {
     query: sectionsQuery,
@@ -94,7 +93,7 @@ export default function StoreCatalogPage() {
               sections={sectionsQuery.sections}
               activeSectionId={filters.activeSectionId}
               onSectionChange={(id) => {
-                setOrderedProducts(null);
+                resetOrder();
                 filters.setActiveSectionId(id);
               }}
               onEditSection={sectionsModal.openEdit}
@@ -112,7 +111,7 @@ export default function StoreCatalogPage() {
                 type="text"
                 value={filters.productSearch}
                 onChange={(e) => {
-                  setOrderedProducts(null);
+                  resetOrder();
                   filters.setProductSearch(e.target.value);
                 }}
                 placeholder="Search products..."
@@ -139,38 +138,7 @@ export default function StoreCatalogPage() {
                   <div
                     key={p.id}
                     draggable={!filters.productSearch}
-                    onDragStart={() => {
-                      draggedId.current = p.id;
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      dragOverId.current = p.id;
-                    }}
-                    onDragEnd={() => {
-                      if (
-                        !draggedId.current ||
-                        !dragOverId.current ||
-                        draggedId.current === dragOverId.current
-                      ) {
-                        draggedId.current = null;
-                        dragOverId.current = null;
-                        return;
-                      }
-                      const current = orderedProducts ?? query.products;
-                      const fromIdx = current.findIndex(
-                        (x) => x.id === draggedId.current,
-                      );
-                      const toIdx = current.findIndex(
-                        (x) => x.id === dragOverId.current,
-                      );
-                      const reordered = [...current];
-                      const [moved] = reordered.splice(fromIdx, 1);
-                      reordered.splice(toIdx, 0, moved);
-                      setOrderedProducts(reordered);
-                      actions.handleReorderProducts(reordered.map((x) => x.id));
-                      draggedId.current = null;
-                      dragOverId.current = null;
-                    }}
+                    {...(!filters.productSearch ? dragProps(p.id) : {})}
                     className="cursor-grab active:cursor-grabbing active:scale-[0.98] transition-transform"
                   >
                     <ProductCard
