@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import api from "../config/axios";
 
 interface AuthState {
   role: "owner" | null;
@@ -26,12 +25,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ role: "owner", storeId });
   },
 
-  logout: async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch {
-      // Ignore
-    }
+  logout: () => {
     document.cookie = "storeId=; path=/; max-age=0";
     set({ role: null, storeId: null });
   },
