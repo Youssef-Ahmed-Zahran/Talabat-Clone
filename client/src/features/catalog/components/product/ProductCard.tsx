@@ -1,3 +1,4 @@
+import React from "react";
 import { Package, Eye, EyeOff, Pencil, Trash2, Loader2 } from "lucide-react";
 import type { Product } from "../../../../types";
 
@@ -11,7 +12,7 @@ interface ProductCardProps {
   isToggling?: boolean;
 }
 
-export function ProductCard({
+export const ProductCard = React.memo(function ProductCard({
   product: p,
   onEdit,
   onDelete,
@@ -48,6 +49,7 @@ export function ProductCard({
         <button
           onClick={() => !isToggling && onToggleAvailability(p)}
           disabled={isToggling}
+          aria-label={p.is_available ? "Hide product" : "Show product"}
           className={`absolute top-3 right-3 p-2 rounded-xl backdrop-blur-md transition-all shadow-sm ${
             p.is_available
               ? "bg-emerald-500/90 text-white hover:bg-emerald-600 hover:scale-105"
@@ -130,4 +132,4 @@ export function ProductCard({
       </div>
     </div>
   );
-}
+});
