@@ -1,5 +1,8 @@
 # 🚀 Full-Stack Food Delivery Ecosystem
 
+🎥 **Project Demo & Explanation Video:**
+https://drive.google.com/drive/folders/1u9w7ikLbnLcQEsqLGnijhzmepQLPUUsq?usp=drive_link
+
 I built an entire food delivery ecosystem from scratch — including the backend, real-time infrastructure, database architecture, geospatial systems, financial workflows, and **4 separate frontends**.
 
 > **5 Platforms. 1 Shared Backend. Real-Time Synchronization Across Every Layer.**
