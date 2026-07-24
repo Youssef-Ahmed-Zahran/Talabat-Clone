@@ -4,8 +4,10 @@ import { useLiveOrders, useUpdateOrderStatus } from "../api/order.api";
 import { useDebounce } from "../../../hooks/useDebouncing";
 import { getNotificationSocket } from "../../../config/socket";
 import { handleApiError } from "../../../utils/error";
+import { useAuthStore } from "../../../store/authStore";
 
 export function useLiveOrdersPage() {
+  const role = useAuthStore((s) => s.role);
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 500);
   const [page, setPage] = useState(1);
@@ -17,7 +19,7 @@ export function useLiveOrdersPage() {
     isError,
     refetch,
     isFetching,
-  } = useLiveOrders(debouncedSearch, page, limit);
+  } = useLiveOrders(role, debouncedSearch, page, limit);
 
   const orders = response?.orders || [];
   const pagination = response?.pagination || null;
@@ -48,7 +50,7 @@ export function useLiveOrdersPage() {
 
   const handleStatusChange = (orderId: string | number, status: string) => {
     updateStatus(
-      { orderId, status },
+      { orderId, status, role },
       {
         onSuccess: () => {
           toast.success(`Order #${orderId} status updated to ${status}`);
