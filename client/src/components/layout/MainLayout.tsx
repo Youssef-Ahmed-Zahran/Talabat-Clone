@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
+import { logoutUser } from "../../features/auth/api/auth.api";
 import ErrorBoundary from "../error-boundary/ErrorBoundary";
 import Breadcrumbs from "./Breadcrumbs";
 import Sidebar from "./Sidebar";
@@ -12,7 +13,12 @@ export default function MainLayout() {
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch {
+      // Ignore
+    }
     logout();
     navigate("/login");
   };
